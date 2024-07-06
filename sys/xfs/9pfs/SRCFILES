@@ -1,0 +1,7 @@
+# This file gets included by the Makefile in this directory to determine
+# the files that should go only into source distributions.
+
+HEADER = 9p.h 9p_proto.h virtio.h
+COBJS = 9p_fs.c 9p_proto.c virtio.c
+
+SRCFILES = $(HEADER) $(COBJS)
