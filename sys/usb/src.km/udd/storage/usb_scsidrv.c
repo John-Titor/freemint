@@ -1,6 +1,7 @@
 /*
  * USB Storage SCSIDRV Implementation (C) 2014-2015.
  * By Alan Hourihane <alanh@fairlite.co.uk>
+ * Improved by Claude Labelle
  */
 
 #include "../../global.h"
@@ -551,17 +552,18 @@ static long
 SCSIDRV_InquireSCSI (short what, BUSINFO * info)
 {
 	long ret;
+	int i;
 
 	debug ("INQSCSI\r\n");
 
 	if (what == cInqFirst) {
 		info->busids = 0;
+		/* zero private bytes */
+		for (i = 0;i < 28;i++)
+			info->res[i] = 0;
 	}
 
-	/* 
-	 * We let Uwe go first because it looks nicer in HDDRUTIL to show
-	 * 0, 1, 2, and then 3 :-)
-	 */
+	/* We call the previous driver to get its bus ids */
 	if (oldscsi.version)
 	{
 		ret = oldscsi.InquireSCSI (what, info);
@@ -570,6 +572,7 @@ SCSIDRV_InquireSCSI (short what, BUSINFO * info)
 	}
 
 	/*
+	 * We assign our BUS id no. 3
 	 * We shouldn't fail here as we scanned the busses when we installed
 	 * so our USBbus number should be valid.
 	 */
@@ -583,7 +586,7 @@ SCSIDRV_InquireSCSI (short what, BUSINFO * info)
 		return 0;
 	}
 
-	return -1;
+	return ENODEV;
 }
 
 
@@ -893,36 +896,33 @@ again:
 		add_cookie (&SCSIDRV_COOKIE);
 	}
 #else
-	BUSINFO info[32];
-	short j;
+	static BUSINFO info[32];
 	long ret;
 	SCSIDRV *tmpscsi;
 
-	/*
-	 * Find a busno. We start at 3, and work up to a max of 32.
-	 */
-	i = 0;
-	ret =scsidrv_InquireSCSI(cInqFirst, &info[i++]);
+	/* Scan for busses reported by previous driver */
 
-	while (ret == 0 && i < 32)
+	ret = scsidrv_InquireSCSI(cInqFirst, info);
+
+	while (ret == 0)
 	{
-		ret = scsidrv_InquireSCSI(cInqNext, &info[i++]);
+		ret = scsidrv_InquireSCSI(cInqNext, info);
 	}
 
-again:
-	for (j = 0; j < i; j++) {
-		if (info[j].busno == USBbus) {
-			USBbus++;
-			goto again;
-		}
-	}
+	/*
+	 * Find a free busno for USB bus. We use a fixed bus number of 3.
+	 * If it's occupied, we don't install.
+	 */
 
-	/* don't install, we couldn't find a bus */
-	if (USBbus >= 32) 
+	if (info->busids & 1<<USBbus)
+	{
+		c_conws("Bus ID 3 already exists. SCSIDRV not installed.\r\n");
 		return;
+	}
 
 	tmpscsi = (SCSIDRV *)scsidrv_InstallNewDriver(&scsidrv);
 	if (tmpscsi)
 		memcpy(&oldscsi, tmpscsi, sizeof(oldscsi));
+
 #endif /* TOSONLY */
 }
