@@ -850,33 +850,29 @@ install_scsidrv (void)
 	SCSIDRV *tmp = NULL;
 	if (getcookie (COOKIE_SCSI, (long *)&tmp))
 	{
-		BUSINFO info[32];
-		short j;
+		static BUSINFO info[32];
 		long ret;
+		oldscsi.version = 0;
+
+		/* Scan for busses reported by previous driver */
+
+		ret = tmp->InquireSCSI(cInqFirst, info);
+
+		while (ret == 0)
+		{
+			ret = tmp->InquireSCSI(cInqNext, info);
+		}
 
 		/*
-		 * Find a busno. We start at 3, and work up to a max of 32.
-		 */
-		i = 0;
-		ret = tmp->InquireSCSI(cInqFirst, &info[i++]);
+		 * Find a free busno for USB bus. We use a fixed bus number of 3.
+		 * If it's occupied, we don't install.
+cd 		 */
 
-		while (ret == 0 && i < 32)
+		if (info->busids & 1<<USBbus)
 		{
-			ret = tmp->InquireSCSI(cInqNext, &info[i++]);
-		}
-
-again:
-		for (j = 0; j < i; j++) {
-			if (info[j].busno == USBbus) {
-				USBbus++;
-				goto again;
-			}
-		}
-
-		/* don't install, we couldn't find a bus */
-		if (USBbus >= 32) 
+			(void) Cconws("Bus ID 3 already exists. SCSIDRV not installed.\r\n");
 			return;
-
+		}
 		/* Take a copy of the old pointers, and replace with ours.
 		 * This way we don't delete and replace the existing cookie.
 		 */
