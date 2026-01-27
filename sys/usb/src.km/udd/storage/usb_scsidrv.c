@@ -866,11 +866,11 @@ install_scsidrv (void)
 		/*
 		 * Find a free busno for USB bus. We use a fixed bus number of 3.
 		 * If it's occupied, we don't install.
-cd 		 */
+		 */
 
 		if (info->busids & 1<<USBbus)
 		{
-			(void) Cconws("Bus ID 3 already exists. SCSIDRV not installed.\r\n");
+			c_conws("Bus ID 3 already exists. SCSIDRV not installed.\r\n");
 			return;
 		}
 		/* Take a copy of the old pointers, and replace with ours.
