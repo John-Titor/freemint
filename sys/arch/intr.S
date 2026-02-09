@@ -108,9 +108,9 @@ L_frame060:
 
 L_novbl:
 	move.w	SYM(uptimetick),d0
-	subq.l	#1,d0
-	tst.w   d0
-	bpl.s   L_nouptime
+	subq.l	#1,d0		// ColdFire friendly
+	tst.w   d0		//
+	bne.s   L_nouptime
 	addq.l  #1,SYM(uptime)
 	move.w  #200,d0
 L_nouptime:
@@ -151,7 +151,7 @@ L_short_1:
 	move.w	sr,-(sp)
 L_novbl:
 	subq.w	#1,SYM(uptimetick)
-	bpl.s   L_nouptime
+	bne.s   L_nouptime
 	addq.l  #1,SYM(uptime)
 	move.w  #200,SYM(uptimetick)
 L_nouptime:
@@ -190,7 +190,7 @@ L_novbl:
 	move.l	SYM(old_5ms).w(pc),-(sp)	// push old vector & save a bit of memory
 	move.l	a0,-(sp)
 	subq.w	#1,SYM(uptimetick)
-	bpl.s   L_nouptime
+	bne.s   L_nouptime
 	addq.l  #1,SYM(uptime)
 	move.w  #200,SYM(uptimetick)
 L_nouptime:
