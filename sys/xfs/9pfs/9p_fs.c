@@ -48,38 +48,14 @@
 #include "virtio.h"
 
 /*
- * debugging stuff
- */
-
-# if 1
-# define FS_DEBUG 1
-# endif
-
-/*
- * version
- */
-
-# define VER_MAJOR  0
-# define VER_MINOR  0
-
-# if 0
-# define ALPHA
-# endif
-
-# if 0
-# define BETA
-# endif
-
-/*
  * startup messages
  */
 
 # define MSG_VERSION    str (VER_MAJOR) "." str (VER_MINOR)
 # define MSG_BUILDDATE  __DATE__
 
-# define MSG_BOOT   \
-    "\033p 9P filesystem driver version " MSG_VERSION " \033q\r\n"
-
+# define MSG_BOOT   "\033p 9P filesystem driver version " MSG_VERSION " \033q\r\n"
+# define MSG_LOADED "\033p   Using protocol 9P2000.u with MSIZE=" str (NINEP_MSIZE) "\033q\r\n"
 
 /****************************************************************************/
 /* BEGIN kernel interface */
@@ -108,7 +84,6 @@ static long _cdecl ninep_chown      (fcookie *fc, int uid, int gid);
 static long _cdecl ninep_chmode     (fcookie *fc, unsigned mode);
 
 static long _cdecl ninep_mkdir      (fcookie *dir, const char *name, unsigned mode);
-static long _cdecl ninep_rmdir      (fcookie *dir, const char *name);
 static long _cdecl ninep_creat      (fcookie *dir, const char *name, unsigned mode, int attrib, fcookie *fc);
 static long _cdecl ninep_remove     (fcookie *dir, const char *name);
 static long _cdecl ninep_getname    (fcookie *root, fcookie *dir, char *pathname, int size);
@@ -165,7 +140,7 @@ static FILESYS ftab =
     ninep_root,
     ninep_lookup, ninep_creat, ninep_getdev, ninep_getxattr,
     ninep_chattr, ninep_chown, ninep_chmode,
-    ninep_mkdir, ninep_rmdir, ninep_remove, ninep_getname, ninep_rename,
+    ninep_mkdir, ninep_remove, ninep_remove, ninep_getname, ninep_rename,
     ninep_opendir, ninep_readdir, ninep_rewinddir, ninep_closedir,
     ninep_pathconf, ninep_dfree, ninep_writelabel, ninep_readlabel,
     ninep_symlink, ninep_readlink, ninep_hardlink, ninep_fscntl, ninep_dskchng,
@@ -208,31 +183,6 @@ static DEVDRV devtab =
 };
 
 
-#define _drvbits        *(unsigned long *)0x4C2
-#define DRIVE_NUM       ('V' - 'A')
-#define DRIVE_BIT       (1UL << DRIVE_NUM)
-
-/*
- * debugging stuff
- */
-
-# ifdef FS_DEBUG
-
-# define FORCE(x)
-# define ALERT(x)   KERNEL_ALERT x
-# define DEBUG(x)   KERNEL_DEBUG x
-# define TRACE(x)   KERNEL_TRACE x
-
-# else
-
-# define FORCE(x)
-# define ALERT(x)   KERNEL_ALERT x
-# define DEBUG(x)
-# define TRACE(x)
-
-# endif
-
-
 /* END definition part */
 /****************************************************************************/
 
@@ -256,9 +206,8 @@ FILESYS * _cdecl init_xfs (struct kerinfo *k)
     KERNEL = k;
 
     c_conws (MSG_BOOT);
-    c_conws ("\r\n");
 
-    KERNEL_DEBUG (("9p.c: init"));
+    DEBUG(("9p.c: init"));
 
     /* version check */
     if ((MINT_MAJOR < 1) || 
@@ -267,35 +216,35 @@ FILESYS * _cdecl init_xfs (struct kerinfo *k)
         (bio.version != 3) ||
         (bio.revision < 1))
     {
-        ALERT(("Unsupported FreeMiNT version, not loading."));
+        ALERT(("9pfs: unsupported FreeMiNT version, not loading."));
         return NULL;
     }
 
     /* check our drive is available */
     if (_drvbits & DRIVE_BIT) {
-        ALERT(("Drive V: already in use, not loading."));
+        ALERT(("9pfs: drive V: already in use, not loading."));
         return NULL;
     }
 
     /* set up the virtio-9p transport */
     if (virtio_init())
     {
-        ALERT(("Virtio transport setup failure, not loading."));
+        ALERT(("9pfs: transport setup failure, not loading."));
         return NULL;
     }
 
     /* attach the share */
-    if (!ninep_attach()) {
+    if (!ninep_p_attach()) {
         ALERT(("9pfs: attach failed"));
         for (;;);
         return NULL;
     }
 
-
     /* Add our drive */
     _drvbits |= DRIVE_BIT;
 
-    KERNEL_DEBUG ("9p: loaded and ready (k = %lx) -> %lx.", (unsigned long)k, (long) &ftab);
+    c_conws (MSG_LOADED);
+
     return &ftab;
 }
 
@@ -308,51 +257,39 @@ FILESYS * _cdecl init_xfs (struct kerinfo *k)
 static long _cdecl
 ninep_root (int drv, fcookie *fc)
 {
-    /* is this us? */
+    /* check for a drive we created */
     if (drv != DRIVE_NUM) {
         return ENXIO;
     }
 
+    fc->fs = &ftab;
+    fc->dev = drv;
+    fc->aux = NINEP_ROOT_FID;
+    fc->index = 0;
     return E_OK;
 }
 
 static long _cdecl
 ninep_lookup (fcookie *dir, const char *name, fcookie *fc)
 {
-//  COOKIE *c = (COOKIE *) dir->index;
-//  SI *s = super [dir->dev];
-
-    DEBUG (("dummy [%c]: ninep_lookup (%s)", dir->dev+'A', name));
+    DEBUG (("9pfs: ninep_lookup (%s)", name));
 
     *fc = *dir;
-    
+
     /* 1 - itself */
     if (!*name || (name [0] == '.' && name [1] == '\0'))
-    {   
-//      c->links++;
-    
-        DEBUG (("dummy [%c]: ninep_lookup: leave ok, (name = \".\")", dir->dev+'A'));
-        return E_OK;
+    {
+        return ninep_p_walk(dir->aux, &fc->aux, NULL);
     }
-    
+
     /* 2 - parent dir */
     if (name [0] == '.' && name [1] == '.' && name [2] == '\0')
     {
-//      if (dir == rootcookie)
-//      {
-//          DEBUG (("dummy [%c]: ninep_lookup: leave ok, EMOUNT, (name = \"..\")", dir->dev+'A'));
-//          return EMOUNT;
-//      }
+        return ninep_p_walk(dir->aux, &fc->aux, "..");
     }
-    
+
     /* 3 - normal entry */
-    {
-//      if (not found)
-            return ENOENT;
-    }
-    
-    DEBUG (("dummy [%c]: ninep_lookup: leave ok", dir->dev+'A'));
-    return E_OK;
+    return ninep_p_walk(dir->aux, &fc->aux, name);
 }
 
 static DEVDRV * _cdecl
@@ -360,7 +297,7 @@ ninep_getdev (fcookie *fc, long *devsp)
 {
     if (fc->fs == &ftab)
         return &devtab;
-    
+
     *devsp = ENOSYS;
     return NULL;
 }
@@ -368,8 +305,9 @@ ninep_getdev (fcookie *fc, long *devsp)
 static long _cdecl
 ninep_getxattr (fcookie *fc, XATTR *xattr)
 {
+    /* XXX TODO */
     return ENOSYS;
-    
+
 # if 0
     xattr->mode         = 
     xattr->index            = 
@@ -400,62 +338,63 @@ ninep_getxattr (fcookie *fc, XATTR *xattr)
 static long _cdecl
 ninep_stat64 (fcookie *fc, STAT *stat)
 {
-    /* later */
+    /* XXX TODO */
     return ENOSYS;
 }
 
 static long _cdecl
 ninep_chattr (fcookie *fc, int attrib)
 {
-    /* nothing todo */
+    /* unimplemented */
     return EACCES;
 }
 
 static long _cdecl
 ninep_chown (fcookie *fc, int uid, int gid)
 {
-    /* nothing todo */
+    /* unimplemented */
     return ENOSYS;
 }
 
 static long _cdecl
 ninep_chmode (fcookie *fc, unsigned mode)
 {
-    /* nothing todo */
+    /* XXX TODO */
     return ENOSYS;
 }
 
 static long _cdecl
 ninep_mkdir (fcookie *dir, const char *name, unsigned mode)
 {
-    /* nothing todo */
-    return EACCES;
-}
-
-static long _cdecl
-ninep_rmdir (fcookie *dir, const char *name)
-{
-    /* nothing todo */
+    /* XXX TODO */
     return EACCES;
 }
 
 static long _cdecl
 ninep_creat (fcookie *dir, const char *name, unsigned mode, int attrib, fcookie *fc)
 {
-    /* nothing todo */
+    /* XXX TODO */
     return EACCES;
 }
 
 static long _cdecl
 ninep_remove (fcookie *dir, const char *name)
 {
-    /* nothing todo */
-    return EACCES;
+    ninep_fid_t tmp_fid;
+
+    ninep_errno_t ret = ninep_p_walk(dir->fc.aux, &tmp_fid, name);
+    if (ret)
+    {
+        return ret;
+    }
+    /* tmp_fid is always clunked by the server */
+    return ninep_p_remove(tmp_fid);
 }
 
 static long _cdecl
 ninep_getname (fcookie *root, fcookie *dir, char *pathname, int size)
 {
+    /* XXX TODO */
     DEBUG (("dummy: ninep_getname enter"));
     
     pathname [0] = '\0';
@@ -473,19 +412,14 @@ ninep_getname (fcookie *root, fcookie *dir, char *pathname, int size)
 static long _cdecl
 ninep_rename (fcookie *olddir, char *oldname, fcookie *newdir, const char *newname)
 {
-    /* nothing todo */
+    /* XXX TODO */
     return EACCES;
 }
 
 static long _cdecl
 ninep_opendir (DIR *dirh, int flags)
 {
-//  if (!S_ISDIR (...))
-    {
-        DEBUG (("dummy: ninep_opendir: dir not a DIR!"));
-        return EACCES;
-    }
-    
+    /* XXX TODO verify that dirh->fc.aux is a directory fid */
     dirh->index = 0;
     return E_OK;
 }
@@ -493,22 +427,28 @@ ninep_opendir (DIR *dirh, int flags)
 static long _cdecl
 ninep_readdir (DIR *dirh, char *nm, int nmlen, fcookie *fc)
 {
-    long ret = ENMFILES;
-    
-    {
-        ;
+    char *np = nm;
+    int nl = nmlen;
+    if ((dirh->flags & TOS_SEARCH) == 0) {
+        np += 4;
+        nmlen -= 4;
     }
-    
-    return ret;
+    long ret = ninep_p_readdir(dirh->fc.aux, dirh->index, np, nmlen);
+    if (ret != 0) {
+        return ret;
+    }
+    if ((dirh->flags & TOS_SEARCH) == 0) {
+        *(u_int32_t *)nm = dirh->index;
+    }
+    dirh->index++;
+
+    *fc = dirh->fc;
+    return ninep_p_walk(dirh->fc.aux, &fc->aux, np);
 }
 
 static long _cdecl
 ninep_rewinddir (DIR *dirh)
 {
-    {
-        ;
-    }
-    
     dirh->index = 0;
     return E_OK;
 }
@@ -516,27 +456,24 @@ ninep_rewinddir (DIR *dirh)
 static long _cdecl
 ninep_closedir (DIR *dirh)
 {
-    {
-        ;
-    }
-        
-    dirh->index = 0;
+    /* nothing to do, fid will clunk when cookie is released */
     return E_OK;
 }
 
 static long _cdecl
 ninep_pathconf (fcookie *dir, int which)
 {
+    /* XXX TODO */
     switch (which)
     {
         case DP_INQUIRE:    return DP_VOLNAMEMAX;
-        case DP_IOPEN:      return UNLIMITED;
-        case DP_MAXLINKS:   return UNLIMITED;
+        case DP_IOPEN:      return NINEP_MAXFILES;
+        case DP_MAXLINKS:   return 1;
         case DP_PATHMAX:    return UNLIMITED;
-        case DP_NAMEMAX:    return 255;     /* correct me */
-        case DP_ATOMIC:     return 1024;        /* correct me */
+        case DP_NAMEMAX:    return 255;             /* XXX TODO */
+        case DP_ATOMIC:     return NINEP_MAXIO;
         case DP_TRUNC:      return DP_NOTRUNC;
-        case DP_CASE:       return DP_CASEINSENS;   /* correct me */
+        case DP_CASE:       return DP_CASEINSENS;   /* macOS hosts */
         case DP_MODEATTR:   return (DP_ATTRBITS /* correct me */
                         | DP_MODEBITS
                         | DP_FT_DIR
@@ -545,14 +482,10 @@ ninep_pathconf (fcookie *dir, int which)
                     );
         case DP_XATTRFIELDS:    return (DP_INDEX    /* correct me */
                         | DP_DEV
-                        | DP_NLINK
                         | DP_UID
                         | DP_GID
-                        | DP_BLKSIZE
                         | DP_SIZE
-                        | DP_NBLOCKS
                         | DP_ATIME
-                        | DP_CTIME
                         | DP_MTIME
                     );
         case DP_VOLNAMEMAX: return 255;     /* correct me */
@@ -564,59 +497,47 @@ ninep_pathconf (fcookie *dir, int which)
 static long _cdecl
 ninep_dfree (fcookie *dir, long *buf)
 {
-    DEBUG (("dummy: ninep_dfree called"));
-    
-    *buf++  = 0;    /* free cluster */
-    *buf++  = 0;    /* cluster count */
-    *buf++  = 2048; /* sectorsize */
-    *buf    = 1;    /* nr of sectors per cluster */
-    
+    *buf++  = (1024 * 1024);    /* free cluster */
+    *buf++  = (1024 * 1024);    /* cluster count */
+    *buf++  = 512;              /* sectorsize */
+    *buf    = 1;                /* nr of sectors per cluster */
+
     return E_OK;
 }
 
 static long _cdecl
 ninep_writelabel (fcookie *dir, const char *name)
 {
-    /* nothing todo */
+    /* not supported */
     return EACCES;
 }
 
 static long _cdecl
 ninep_readlabel (fcookie *dir, char *name, int namelen)
 {
-    /* cosmetical */
-    
-    {
-        ;
-    }
-    
-    return EBADARG;
+    /* dummy label */
+    strncpy(name, "virtfs", namelen);
+    return E_OK;
 }
 
 static long _cdecl
 ninep_symlink (fcookie *dir, const char *name, const char *to)
 {
-    /* nothing todo */
+    /* XXX TODO */
     return ENOSYS;
 }
 
 static long _cdecl
 ninep_readlink (fcookie *file, char *buf, int len)
 {
-    long ret = ENOSYS;
-    
-//  if (S_ISLNK (...))
-    {
-        ;
-    }
-    
-    return ret;
+    /* XXX TODO */
+    return ENOSYS;
 }
 
 static long _cdecl
 ninep_hardlink (fcookie *fromdir, const char *fromname, fcookie *todir, const char *toname)
 {
-    /* nothing todo */
+    /* not supported */
     return ENOSYS;
 }
 
@@ -627,7 +548,7 @@ ninep_fscntl (fcookie *dir, const char *name, int cmd, long arg)
     {
         case MX_KER_XFSNAME:
         {
-            strcpy ((char *) arg, "dummy");
+            strcpy ((char *) arg, "9pfs");
             return E_OK;
         }
         case FS_INFO:
@@ -635,13 +556,10 @@ ninep_fscntl (fcookie *dir, const char *name, int cmd, long arg)
             struct fs_info *info = (struct fs_info *) arg;
             if (info)
             {
-                strcpy (info->name, "dummy-xfs");
+                strcpy (info->name, "9pfs-xfs");
                 info->version = ((long) VER_MAJOR << 16) | (long) VER_MINOR;
-                // XXX
-                info->type = FS_ISO9660;
-                strcpy (info->type_asc, "dummy");
-                
-                /* more types later */
+                info->type = FS_HOSTFS;
+                strcpy (info->type_asc, "9pfs");
             }
             return E_OK;
         }
@@ -650,58 +568,44 @@ ninep_fscntl (fcookie *dir, const char *name, int cmd, long arg)
             struct fs_usage *usage = (struct fs_usage *) arg;
             if (usage)
             {
-# if 0
-                usage->blocksize = ;
-                usage->blocks = ;
-                usage->free_blocks = ;
-                usage->inodes = FS_UNLIMITED;
-                usage->free_inodes = FS_UNLIMITED;
-# endif
+                usage->blocksize    = 512;
+                usage->blocks       = (1024 * 1024);
+                usage->free_blocks  = (1024 * 1024);
+                usage->inodes       = FS_UNLIMITED;
+                usage->free_inodes  = FS_UNLIMITED;
             }
             return E_OK;
         }
     }
-    
+
     return ENOSYS;
 }
 
 static long _cdecl
 ninep_dskchng (int drv, int mode)
 {
+    /* not supported */
     return 0;
 }
 
 static long _cdecl
 ninep_release (fcookie *fc)
 {
-    /* this function decrease the inode reference counter
-     * if reached 0 this inode is no longer used by the kernel
-     */
-//  COOKIE *c = (COOKIE *) fc->index;
-    
-//  c->links--;
-    return E_OK;
+    /* release the FID */
+    return ninep_p_clunk(fc->aux);
 }
 
 static long _cdecl
 ninep_dupcookie (fcookie *dst, fcookie *src)
 {
-    /* this function increase the inode reference counter
-     * kernel use this to create a new reference to an inode
-     * and to verify that the inode remain valid until it is
-     * released
-     */
-//  COOKIE *c = (COOKIE *) src->index;
-    
-//  c->links++;
-    *dst = *src;
-    
-    return E_OK;
+    /* dup the FID */
+    return ninep_p_walk(src->aux, &dst->aux, NULL);
 }
 
 static long _cdecl
 ninep_sync (void)
 {
+    /* no-op */
     return E_OK;
 }
 
@@ -714,6 +618,7 @@ ninep_sync (void)
 static long _cdecl
 ninep_open (FILEPTR *f)
 {
+    /* XXX TODO */
 //  COOKIE *c = (COOKIE *) f->fc.index;
     
     DEBUG (("dummy: ninep_open: enter"));
@@ -750,19 +655,41 @@ ninep_open (FILEPTR *f)
 static long _cdecl
 ninep_write (FILEPTR *f, const char *buf, long bytes)
 {
-    /* nothing todo */
-    return 0;
+    while (bytes)
+    {
+        long count = (bytes < NINEP_MAXIO) ? bytes : NINEP_MAXIO;
+        ninep_errno_t ret = ninep_p_write(f->fc.aux, f->pos, buf, count);
+        if (ret)
+        {
+            return ret;
+        }
+        bytes -= count;
+        buf += count;
+    }
+    return E_OK;
 }
 
 static long _cdecl
 ninep_read (FILEPTR *f, char *buf, long bytes)
 {
-    return 0;
+    while (bytes)
+    {
+        long count = (bytes < NINEP_MAXIO) ? bytes : NINEP_MAXIO;
+        ninep_errno_t ret = ninep_p_read(f->fc.aux, f->pos, buf, count);
+        if (ret)
+        {
+            return ret;
+        }
+        bytes -= count;
+        buf += count;
+    }
+    return E_OK;
 }
 
 static long _cdecl
 ninep_lseek (FILEPTR *f, long where, int whence)
 {
+    /* XXX TODO */
 //  COOKIE *c = (COOKIE *) f->fc.index;
     
     DEBUG (("dummy: ninep_lseek: enter (where = %li, whence = %i)", where, whence));
@@ -790,6 +717,7 @@ ninep_lseek (FILEPTR *f, long where, int whence)
 static long _cdecl
 ninep_ioctl (FILEPTR *f, int mode, void *buf)
 {
+    /* XXX TODO */
 //  COOKIE *c = (COOKIE *) f->fc.index;
     
     DEBUG (("fnramfs: ninep_ioctl: enter (mode = %i)", mode));
@@ -942,6 +870,7 @@ ninep_ioctl (FILEPTR *f, int mode, void *buf)
 static long _cdecl
 ninep_datime (FILEPTR *f, ushort *time, int flag)
 {
+    /* XXX TODO */
 //  COOKIE *c = (COOKIE *) f->fc.index;
     
     switch (flag)
@@ -963,6 +892,7 @@ ninep_datime (FILEPTR *f, ushort *time, int flag)
 static long _cdecl
 ninep_close (FILEPTR *f, int pid)
 {
+    /* XXX TODO */
 //  COOKIE *c = (COOKIE *) f->fc.index;
     
     DEBUG (("dummy: ninep_close: enter (f->links = %i)", f->links));
@@ -1032,10 +962,10 @@ static long _cdecl
 null_select (FILEPTR *f, long int p, int mode)
 {
     if ((mode == O_RDONLY) || (mode == O_WRONLY))
-        /* we're always ready to read/write */
+    {
         return 1;
-    
-    /* other things we don't care about */
+    }
+
     return E_OK;
 }
 
