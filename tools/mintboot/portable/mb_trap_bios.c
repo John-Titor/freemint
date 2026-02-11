@@ -67,8 +67,19 @@ long mb_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno,
 
 long mb_rom_setexc(uint16_t vnum, uint32_t vptr)
 {
-	mb_panic("Setexc(vnum=%u, vptr=%08x)", (uint32_t)vnum, vptr);
-	return -1;
+	volatile uint32_t *vectors;
+	uint32_t prev;
+
+	if (vnum >= 256)
+		return 0;
+
+	vectors = (volatile uint32_t *)0x0;
+	prev = vectors[vnum];
+
+	if (vptr != 0xffffffffu)
+		vectors[vnum] = vptr;
+
+	return (long)prev;
 }
 
 long mb_rom_getbpb(uint16_t dev)
@@ -146,8 +157,9 @@ long mb_rom_getbpb(uint16_t dev)
 
 long mb_rom_bcostat(uint16_t dev)
 {
-	mb_panic("Bcostat(dev=%u)", (uint32_t)dev);
-	return -1;
+	if (dev == 2)
+		return -1;
+	return 0;
 }
 
 long mb_rom_drvmap(void)
@@ -157,21 +169,22 @@ long mb_rom_drvmap(void)
 
 long mb_rom_kbshift(uint16_t data)
 {
-	mb_panic("Kbshift(data=%u)", (uint32_t)data);
-	return -1;
+	(void)data;
+	return 0;
 }
 
 /* XBIOS (trap #14) stubs */
 long mb_rom_initmous(uint16_t type, uint32_t param, uint32_t vptr)
 {
-	mb_panic("Initmous(type=%u, param=%08x, vptr=%08x)", (uint32_t)type, param, vptr);
+	(void)type;
+	(void)param;
+	(void)vptr;
 	return -1;
 }
 
 long mb_rom_getrez(void)
 {
-	mb_panic("Getrez()");
-	return -1;
+	return 2;
 }
 
 long mb_rom_iorec(uint16_t io_dev)
@@ -182,11 +195,13 @@ long mb_rom_iorec(uint16_t io_dev)
 
 long mb_rom_rsconf(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs, uint16_t ts, uint16_t sc)
 {
-	(void)baud; (void)flow; (void)uc; (void)rs; (void)ts; (void)sc;
-	mb_panic("Rsconf(baud=%u, flow=%u, uc=%u, rs=%u, ts=%u, sc=%u)",
-		 (uint32_t)baud, (uint32_t)flow, (uint32_t)uc, (uint32_t)rs,
-		 (uint32_t)ts, (uint32_t)sc);
-	return -1;
+	(void)baud;
+	(void)flow;
+	(void)uc;
+	(void)rs;
+	(void)ts;
+	(void)sc;
+	return 0;
 }
 long mb_rom_keytbl(uint32_t nrml, uint32_t shft, uint32_t caps)
 {
@@ -196,44 +211,50 @@ long mb_rom_keytbl(uint32_t nrml, uint32_t shft, uint32_t caps)
 
 long mb_rom_cursconf(uint16_t rate, uint16_t attr)
 {
-	mb_panic("Cursconf(rate=%u, attr=%u)", (uint32_t)rate, (uint32_t)attr);
-	return -1;
+	(void)attr;
+	if (rate == 5 || rate == 7)
+		return 20;
+	return 0;
 }
 
 long mb_rom_settime(uint32_t time)
 {
-	mb_panic("Settime(time=%08x)", time);
-	return -1;
+	(void)time;
+	return 0;
 }
 
 long mb_rom_gettime(void)
 {
-	mb_panic("Gettime()");
-	return -1;
+	const uint16_t year = 2026;
+	const uint16_t month = 1;
+	const uint16_t day = 1;
+	uint16_t date;
+
+	date = (uint16_t)(((year - 1980u) << 9) | (month << 5) | day);
+	return (long)(((uint32_t)date << 16) | 0u);
 }
 
 long mb_rom_bioskeys(void)
 {
-	mb_panic("Bioskeys()");
-	return -1;
+	return 0;
 }
 
 long mb_rom_offgibit(uint16_t ormask)
 {
-	mb_panic("Offgibit(mask=%u)", (uint32_t)ormask);
-	return -1;
+	(void)ormask;
+	return 0;
 }
 
 long mb_rom_ongibit(uint16_t andmask)
 {
-	mb_panic("Ongibit(mask=%u)", (uint32_t)andmask);
-	return -1;
+	(void)andmask;
+	return 0;
 }
 
 long mb_rom_dosound(uint32_t ptr)
 {
-	mb_panic("Dosound(ptr=%08x)", ptr);
-	return -1;
+	(void)ptr;
+	return 0;
 }
 
 long mb_rom_kbdvbase(void)
@@ -244,8 +265,7 @@ long mb_rom_kbdvbase(void)
 
 long mb_rom_vsync(void)
 {
-	mb_panic("Vsync()");
-	return -1;
+	return 0;
 }
 
 long mb_rom_bconmap(uint16_t dev)
@@ -256,15 +276,17 @@ long mb_rom_bconmap(uint16_t dev)
 
 long mb_rom_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode)
 {
-	(void)lscrn; (void)pscrn; (void)rez; (void)mode;
-	mb_panic("VsetScreen(ls=%08x, ps=%08x, rez=%u, mode=%u)",
-		 lscrn, pscrn, (uint32_t)rez, (uint32_t)mode);
+	(void)lscrn;
+	(void)pscrn;
+	(void)rez;
+	(void)mode;
 	return -1;
 }
 long mb_rom_kbrate(uint16_t delay, uint16_t rate)
 {
-	mb_panic("Kbrate(delay=%u, rate=%u)", (uint32_t)delay, (uint32_t)rate);
-	return -1;
+	(void)delay;
+	(void)rate;
+	return 0;
 }
 
 long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
