@@ -60,11 +60,73 @@ static void mb_tests_drain_search(void)
 	}
 }
 
+static uint16_t mb_tests_drive_dev;
+static char mb_tests_drive_letter;
+
+static void mb_tests_init_drive(void)
+{
+	uint16_t dev;
+
+	dev = mb_portable_boot_drive();
+	if (dev >= 26)
+		mb_panic("FAT test: boot drive invalid");
+
+	mb_tests_drive_dev = dev;
+	mb_tests_drive_letter = (char)('A' + dev);
+}
+
+static void mb_tests_make_path(char *out, uint32_t outsz, char drive,
+			       const char *suffix)
+{
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	if (outsz < 4)
+		mb_panic("FAT test: path buffer too small");
+
+	out[i++] = drive;
+	out[i++] = ':';
+	out[i++] = '\\';
+
+	if (suffix[0] == '\\' || suffix[0] == '/')
+		j = 1;
+	while (suffix[j] && i + 1 < outsz) {
+		out[i++] = suffix[j++];
+	}
+	out[i] = '\0';
+
+	if (suffix[j])
+		mb_panic("FAT test: path overflow");
+}
+
+static void mb_tests_make_noslash_path(char *out, uint32_t outsz,
+				       char drive, const char *suffix)
+{
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	if (outsz < 3)
+		mb_panic("FAT test: path buffer too small");
+
+	out[i++] = drive;
+	out[i++] = ':';
+
+	if (suffix[0] == '\\' || suffix[0] == '/')
+		j = 1;
+	while (suffix[j] && i + 1 < outsz) {
+		out[i++] = suffix[j++];
+	}
+	out[i] = '\0';
+
+	if (suffix[j])
+		mb_panic("FAT test: path overflow");
+}
+
 static const struct mb_test_bpb *mb_tests_getbpb(void)
 {
 	const struct mb_test_bpb *bpb;
 
-	bpb = (const struct mb_test_bpb *)(uintptr_t)mb_rom_getbpb(2);
+	bpb = (const struct mb_test_bpb *)(uintptr_t)mb_rom_getbpb(mb_tests_drive_dev);
 	if (!bpb || bpb->recsiz != 512)
 		mb_panic("FAT test: BPB invalid");
 	return bpb;
@@ -88,7 +150,8 @@ static void mb_tests_set_readonly(const char name83[11])
 	for (i = 0; i < total_entries; i++) {
 		uint32_t sector_idx = root_start + (i / entries_per_sector);
 		uint32_t offset = (i % entries_per_sector) * 32u;
-		if (mb_rom_dispatch.rwabs(0, sector, 1, (uint16_t)sector_idx, 2) != 0)
+		if (mb_rom_dispatch.rwabs(0, sector, 1, (uint16_t)sector_idx,
+					  mb_tests_drive_dev) != 0)
 			mb_panic("FAT test: rwabs read root");
 		if (sector[offset] == 0x00)
 			break;
@@ -97,7 +160,8 @@ static void mb_tests_set_readonly(const char name83[11])
 		if (mb_tests_memcmp(&sector[offset], (const uint8_t *)name83, 11) != 0)
 			continue;
 		sector[offset + 11] |= 0x01;
-		if (mb_rom_dispatch.rwabs(1, sector, 1, (uint16_t)sector_idx, 2) != 0)
+		if (mb_rom_dispatch.rwabs(1, sector, 1, (uint16_t)sector_idx,
+					  mb_tests_drive_dev) != 0)
 			mb_panic("FAT test: rwabs write root");
 		return;
 	}
@@ -107,7 +171,7 @@ static void mb_tests_set_readonly(const char name83[11])
 
 void mb_fat_run_tests(void)
 {
-	char spec[] = "C:\\*.*";
+	char spec[32];
 	struct mb_test_dta dta;
 	uint8_t buf[128];
 	long rc;
@@ -116,41 +180,41 @@ void mb_fat_run_tests(void)
 	int found = 0;
 	const char expect[] = "mintboot FAT16 test file\n";
 	const char expect_inner[] = "mintboot nested file\n";
-	const char *missing = "C:\\NOFILE.TXT";
-	const char *missing_dir = "C:\\NOSUCH\\HELLO.TXT";
-	const char *missing_dir_spec = "C:\\NOSUCH\\*.*";
-	const char *wrong_drive = "D:\\HELLO.TXT";
+	char missing[32];
+	char missing_dir[40];
+	char missing_dir_spec[40];
+	char wrong_drive[40];
 	const char *bad_drive = "1:\\HELLO.TXT";
-	const char *inner_path = "C:\\SUBDIR\\INNER.TXT";
-	const char *inner_missing = "C:\\SUBDIR\\NOFILE.TXT";
-	const char *inner_spec = "C:\\SUBDIR\\*.*";
-	const char *rename_src = "C:\\RENAME.TXT";
-	const char *rename_dst = "C:\\RENAMED.TXT";
-	const char *move_src = "C:\\MOVE.TXT";
-	const char *move_dst = "C:\\SUBDIR\\MOVED.TXT";
-	const char *rename_dir_src = "C:\\SUBDIR";
-	const char *rename_dir_dst = "C:\\NEWDIR";
-	const char *missing_rename = "C:\\NOFILE.TXT";
-	const char *missing_dir_rename = "C:\\NODIR";
-	const char *missing_dst_dir = "C:\\NOSUCH\\RENAMED.TXT";
-	const char *wrong_drive_rename = "D:\\RENAMED.TXT";
-	const char *renamed_spec = "C:\\RENAMED.TXT";
-	const char *moved_spec = "C:\\SUBDIR\\MOVED.TXT";
-	const char *newdir_spec = "C:\\NEWDIR";
-	const char *dcreate_missing_parent = "C:\\NOSUCH\\NEW.DIR";
-	const char *dcreate_root = "C:\\NEWDIR2";
-	const char *dcreate_exist = "C:\\NEWDIR2";
-	const char *ddelete_dir = "C:\\NEWDIR2";
-	const char *ddelete_missing = "C:\\NEWDIR2";
-	const char *ddelete_file = "C:\\HELLO.TXT";
-	const char *ddelete_missing_dir = "C:\\NOPE";
-	const char *ddelete_nonempty = "C:\\NEWDIR";
-	const char *rename_exist_src = "C:\\RENAMED.TXT";
-	const char *rename_exist_dst = "C:\\HELLO.TXT";
-	const char *rename_readonly_src = "C:\\HELLO.TXT";
-	const char *rename_readonly_dst = "C:\\HELLO2.TXT";
-	const char *rename_readonly_target_src = "C:\\NEWDIR\\INNER.TXT";
-	const char *rename_readonly_target_dst = "C:\\HELLO.TXT";
+	char inner_path[40];
+	char inner_missing[40];
+	char inner_spec[40];
+	char rename_src[40];
+	char rename_dst[40];
+	char move_src[40];
+	char move_dst[40];
+	char rename_dir_src[40];
+	char rename_dir_dst[40];
+	char missing_rename[40];
+	char missing_dir_rename[40];
+	char missing_dst_dir[40];
+	char wrong_drive_rename[40];
+	char renamed_spec[40];
+	char moved_spec[40];
+	char newdir_spec[40];
+	char dcreate_missing_parent[40];
+	char dcreate_root[40];
+	char dcreate_exist[40];
+	char ddelete_dir[40];
+	char ddelete_missing[40];
+	char ddelete_file[40];
+	char ddelete_missing_dir[40];
+	char ddelete_nonempty[40];
+	char rename_exist_src[40];
+	char rename_exist_dst[40];
+	char rename_readonly_src[40];
+	char rename_readonly_dst[40];
+	char rename_readonly_target_src[40];
+	char rename_readonly_target_dst[40];
 	int found_inner = 0;
 	uint16_t dfree[4];
 	uint32_t free_bytes;
@@ -163,6 +227,95 @@ void mb_fat_run_tests(void)
 	uint16_t timebuf[2];
 	uint16_t timebuf2[2];
 	struct mb_fat_check_report report;
+	char other_drive;
+	char wildcard[32];
+	char noslash[32];
+	char mixed[40];
+
+	mb_tests_init_drive();
+	mb_tests_make_path(spec, sizeof(spec), mb_tests_drive_letter, "*.*");
+	mb_tests_make_path(missing, sizeof(missing), mb_tests_drive_letter,
+			   "NOFILE.TXT");
+	mb_tests_make_path(missing_dir, sizeof(missing_dir), mb_tests_drive_letter,
+			   "NOSUCH\\HELLO.TXT");
+	mb_tests_make_path(missing_dir_spec, sizeof(missing_dir_spec),
+			   mb_tests_drive_letter, "NOSUCH\\*.*");
+	mb_tests_make_path(inner_path, sizeof(inner_path), mb_tests_drive_letter,
+			   "SUBDIR\\INNER.TXT");
+	mb_tests_make_path(inner_missing, sizeof(inner_missing),
+			   mb_tests_drive_letter, "SUBDIR\\NOFILE.TXT");
+	mb_tests_make_path(inner_spec, sizeof(inner_spec), mb_tests_drive_letter,
+			   "SUBDIR\\*.*");
+	mb_tests_make_path(rename_src, sizeof(rename_src), mb_tests_drive_letter,
+			   "RENAME.TXT");
+	mb_tests_make_path(rename_dst, sizeof(rename_dst), mb_tests_drive_letter,
+			   "RENAMED.TXT");
+	mb_tests_make_path(move_src, sizeof(move_src), mb_tests_drive_letter,
+			   "MOVE.TXT");
+	mb_tests_make_path(move_dst, sizeof(move_dst), mb_tests_drive_letter,
+			   "SUBDIR\\MOVED.TXT");
+	mb_tests_make_path(rename_dir_src, sizeof(rename_dir_src),
+			   mb_tests_drive_letter, "SUBDIR");
+	mb_tests_make_path(rename_dir_dst, sizeof(rename_dir_dst),
+			   mb_tests_drive_letter, "NEWDIR");
+	mb_tests_make_path(missing_rename, sizeof(missing_rename),
+			   mb_tests_drive_letter, "NOFILE.TXT");
+	mb_tests_make_path(missing_dir_rename, sizeof(missing_dir_rename),
+			   mb_tests_drive_letter, "NODIR");
+	mb_tests_make_path(missing_dst_dir, sizeof(missing_dst_dir),
+			   mb_tests_drive_letter, "NOSUCH\\RENAMED.TXT");
+	mb_tests_make_path(renamed_spec, sizeof(renamed_spec),
+			   mb_tests_drive_letter, "RENAMED.TXT");
+	mb_tests_make_path(moved_spec, sizeof(moved_spec), mb_tests_drive_letter,
+			   "SUBDIR\\MOVED.TXT");
+	mb_tests_make_path(newdir_spec, sizeof(newdir_spec), mb_tests_drive_letter,
+			   "NEWDIR");
+	mb_tests_make_path(dcreate_missing_parent, sizeof(dcreate_missing_parent),
+			   mb_tests_drive_letter, "NOSUCH\\NEW.DIR");
+	mb_tests_make_path(dcreate_root, sizeof(dcreate_root),
+			   mb_tests_drive_letter, "NEWDIR2");
+	mb_tests_make_path(dcreate_exist, sizeof(dcreate_exist),
+			   mb_tests_drive_letter, "NEWDIR2");
+	mb_tests_make_path(ddelete_dir, sizeof(ddelete_dir), mb_tests_drive_letter,
+			   "NEWDIR2");
+	mb_tests_make_path(ddelete_missing, sizeof(ddelete_missing),
+			   mb_tests_drive_letter, "NEWDIR2");
+	mb_tests_make_path(ddelete_file, sizeof(ddelete_file),
+			   mb_tests_drive_letter, "HELLO.TXT");
+	mb_tests_make_path(ddelete_missing_dir, sizeof(ddelete_missing_dir),
+			   mb_tests_drive_letter, "NOPE");
+	mb_tests_make_path(ddelete_nonempty, sizeof(ddelete_nonempty),
+			   mb_tests_drive_letter, "NEWDIR");
+	mb_tests_make_path(rename_exist_src, sizeof(rename_exist_src),
+			   mb_tests_drive_letter, "RENAMED.TXT");
+	mb_tests_make_path(rename_exist_dst, sizeof(rename_exist_dst),
+			   mb_tests_drive_letter, "HELLO.TXT");
+	mb_tests_make_path(rename_readonly_src, sizeof(rename_readonly_src),
+			   mb_tests_drive_letter, "HELLO.TXT");
+	mb_tests_make_path(rename_readonly_dst, sizeof(rename_readonly_dst),
+			   mb_tests_drive_letter, "HELLO2.TXT");
+	mb_tests_make_path(rename_readonly_target_src,
+			   sizeof(rename_readonly_target_src),
+			   mb_tests_drive_letter, "NEWDIR\\INNER.TXT");
+	mb_tests_make_path(rename_readonly_target_dst,
+			   sizeof(rename_readonly_target_dst),
+			   mb_tests_drive_letter, "HELLO.TXT");
+
+	if (mb_tests_drive_letter == 'Z')
+		other_drive = 'Y';
+	else
+		other_drive = (char)(mb_tests_drive_letter + 1);
+	mb_tests_make_path(wrong_drive, sizeof(wrong_drive), other_drive,
+			   "HELLO.TXT");
+	mb_tests_make_path(wrong_drive_rename, sizeof(wrong_drive_rename),
+			   other_drive, "RENAMED.TXT");
+	mb_tests_make_path(wildcard, sizeof(wildcard), mb_tests_drive_letter,
+			   "H*.TXT");
+	mb_tests_make_noslash_path(noslash, sizeof(noslash),
+				   mb_tests_drive_letter, "HELLO.TXT");
+	mb_tests_make_path(mixed, sizeof(mixed), mb_tests_drive_letter,
+			   "NEWDIR\\INNER.TXT");
+	mixed[2] = '/';
 
 	mb_log_puts("mintboot: FAT test start\r\n");
 	bpb = mb_tests_getbpb();
@@ -188,19 +341,19 @@ void mb_fat_run_tests(void)
 	if (!found)
 		mb_panic("FAT test: HELLO.TXT not found");
 
-	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen HELLO.TXT failed");
 
 	n = mb_rom_fread((uint16_t)fh, sizeof(buf), buf);
 	mb_rom_fclose((uint16_t)fh);
 	for (i = 0; i < MB_FAT_MAX_OPEN; i++) {
-		handles[i] = mb_rom_fopen("C:\\HELLO.TXT", 0);
+		handles[i] = mb_rom_fopen(ddelete_file, 0);
 		if (handles[i] < 0)
 			mb_panic("FAT test: Fopen bulk rc=%d at %d",
 				 (int)handles[i], i);
 	}
-	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh != MB_ERR_HNDL)
 		mb_panic("FAT test: Fopen ENHNDL rc=%d expected %d", (int)fh,
 			 MB_ERR_HNDL);
@@ -225,7 +378,7 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fread badf rc=%d expected %d", (int)rc,
 			 MB_ERR_BADF);
 
-	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen HELLO.TXT for lock failed");
 	mb_rom_fclose((uint16_t)fh);
@@ -313,7 +466,7 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fopen bad drive rc=%d expected %d",
 			 (int)fh, MB_ERR_FNF);
 
-	if (mb_rom_dfree((uint32_t)(uintptr_t)dfree, 2) != 0)
+	if (mb_rom_dfree((uint32_t)(uintptr_t)dfree, mb_tests_drive_dev) != 0)
 		mb_panic("FAT test: Dfree failed");
 
 	free_bytes = (uint32_t)dfree[0] * dfree[2] * dfree[3];
@@ -331,7 +484,7 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fopen rename src rc=%d", (int)fh);
 	mb_rom_fclose((uint16_t)fh);
 
-	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen HELLO.TXT for fdatime rc=%d", (int)fh);
 	if (mb_rom_fdatime((uint32_t)(uintptr_t)timebuf, (uint16_t)fh, 0) != 0)
@@ -434,13 +587,13 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: rename readonly target rc=%d expected %d",
 			 (int)rc, MB_ERR_ACCDN);
 
-	rc = mb_rom_fattrib("C:\\HELLO.TXT", 1, 0);
+	rc = mb_rom_fattrib(ddelete_file, 1, 0);
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Fattrib accdn rc=%d expected %d", (int)rc,
 			 MB_ERR_ACCDN);
 
 	mb_rom_fsetdta(&dta2);
-	rc = mb_rom_fsfirst("C:\\H*.TXT", 0x07);
+	rc = mb_rom_fsfirst(wildcard, 0x07);
 	if (rc != 0)
 		mb_panic("FAT test: Fsfirst wildcard rc=%d", (int)rc);
 	if (mb_tests_strcmp(dta2.dta_name, "HELLO.TXT") != 0)
@@ -448,7 +601,7 @@ void mb_fat_run_tests(void)
 	mb_tests_drain_search();
 	mb_rom_fsetdta(&dta);
 
-	rc = mb_tests_fsfirst("C:\\*.*", 0x07, &dta);
+	rc = mb_tests_fsfirst(spec, 0x07, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: Fsfirst attr filter rc=%d", (int)rc);
 	for (;;) {
@@ -462,7 +615,7 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fsnext end rc=%d expected %d", (int)rc,
 			 MB_ERR_NMFIL);
 
-	rc = mb_tests_fsfirst("C:\\*.*", 0x17, &dta);
+	rc = mb_tests_fsfirst(spec, 0x17, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: Fsfirst dir attr rc=%d", (int)rc);
 	for (;;) {
@@ -476,17 +629,17 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: NEWDIR not found rc=%d", (int)rc);
 	mb_tests_drain_search();
 
-	fh = mb_rom_fopen("C:HELLO.TXT", 0);
+	fh = mb_rom_fopen(noslash, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen no slash rc=%d", (int)fh);
 	mb_rom_fclose((uint16_t)fh);
 
-	fh = mb_rom_fopen("C:/NEWDIR\\INNER.TXT", 0);
+	fh = mb_rom_fopen(mixed, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen mixed slashes rc=%d", (int)fh);
 	mb_rom_fclose((uint16_t)fh);
 
-	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen seek rc=%d", (int)fh);
 	rc = mb_rom_fseek(-1, (uint16_t)fh, 0);
@@ -507,11 +660,13 @@ void mb_fat_run_tests(void)
 
 	{
 		uint8_t sector[512];
-		if (mb_rom_dispatch.rwabs(0, sector, 1, 0, 2) != 0)
+		if (mb_rom_dispatch.rwabs(0, sector, 1, 0,
+					  mb_tests_drive_dev) != 0)
 			mb_panic("FAT test: rwabs mbr read");
 		if (sector[510] != 0x55 || sector[511] != 0xaa)
 			mb_panic("FAT test: mbr signature");
-	if (mb_rom_dispatch.rwabs(0, sector, 2, 0xffffu, 2) == 0)
+	if (mb_rom_dispatch.rwabs(0, sector, 2, 0xffffu,
+				  mb_tests_drive_dev) == 0)
 		mb_panic("FAT test: rwabs range");
 	}
 
@@ -549,7 +704,7 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Ddelete nonempty rc=%d expected %d",
 			 (int)rc, MB_ERR_ACCDN);
 
-	rc = mb_fat_check(2, &report);
+	rc = mb_fat_check(mb_tests_drive_dev, &report);
 	if (rc != 0)
 		mb_panic("FAT test: integrity rc=%d bad_bpb=%u bad_dirent=%u bad_chain=%u bad_fat=%u lost=%u cross=%u",
 			 (int)rc, report.bad_bpb, report.bad_dirent,

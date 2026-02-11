@@ -22,6 +22,8 @@ void mb_portable_boot(struct mb_boot_info *info);
 int mb_portable_load_kernel(const char *path, int do_jump);
 uint32_t mb_portable_last_basepage(void);
 
+uint16_t mb_portable_boot_drive(void);
+
 /* Vector/trap setup helpers. */
 void mb_portable_setup_vectors(void);
 void mb_portable_setup_traps(void);

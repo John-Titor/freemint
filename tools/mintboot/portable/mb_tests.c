@@ -9,7 +9,32 @@
 #endif
 #include "../../../sys/buildinfo/version.h"
 
-#include <string.h>
+static uint32_t mb_tests_strlen(const char *s)
+{
+	uint32_t len = 0;
+
+	while (s[len])
+		len++;
+	return len;
+}
+
+static void mb_tests_strcat(char *dst, uint32_t dstsz, const char *src)
+{
+	uint32_t dlen = mb_tests_strlen(dst);
+	uint32_t i = 0;
+
+	if (dlen >= dstsz)
+		mb_panic("Test strcat overflow");
+
+	while (src[i] && dlen + i + 1 < dstsz) {
+		dst[dlen + i] = src[i];
+		i++;
+	}
+	dst[dlen + i] = '\0';
+
+	if (src[i])
+		mb_panic("Test strcat overflow");
+}
 
 struct mb_test_iorec {
 	uint8_t *buf;
@@ -248,15 +273,28 @@ static void mb_kernel_loader_tests(void)
 		uint32_t p_areg[5];
 		char p_cmdlin[0x80];
 	} __attribute__((packed));
-	static const char kernel_path[] =
-		"\\MINT\\" MINT_VERS_PATH_STRING "\\MINT040.PRG";
+	char kernel_path[96];
 	struct mb_prg_header hdr;
 	uint16_t handle;
 	long rc;
 	uint32_t bp_addr;
 	struct mb_basepage *bp;
+	char drive = 'C';
+	uint16_t dev;
 
 	mb_cmdline[0] = '\0';
+
+	dev = mb_portable_boot_drive();
+	if (dev >= 26)
+		mb_panic("Kernel test: invalid boot drive");
+	drive = (char)('A' + dev);
+	kernel_path[0] = drive;
+	kernel_path[1] = ':';
+	kernel_path[2] = '\\';
+	kernel_path[3] = '\0';
+	mb_tests_strcat(kernel_path, sizeof(kernel_path), "MINT\\");
+	mb_tests_strcat(kernel_path, sizeof(kernel_path), MINT_VERS_PATH_STRING);
+	mb_tests_strcat(kernel_path, sizeof(kernel_path), "\\MINT040.PRG");
 
 	handle = (uint16_t)mb_rom_fopen(kernel_path, 0);
 	if ((int16_t)handle < 0)
@@ -277,6 +315,8 @@ static void mb_kernel_loader_tests(void)
 		mb_panic("Kernel test: len mismatch");
 	if (bp->p_tbase != (uint8_t *)(bp + 1))
 		mb_panic("Kernel test: tbase mismatch");
+	if (bp->p_parent || bp->p_xdta)
+		mb_panic("Kernel test: basepage parent/dta not null");
 
 }
 

@@ -17,6 +17,7 @@ extern void mb_install_vector_base(void);
 
 struct mb_cookie_jar mb_cookie_jar;
 char mb_cmdline[128];
+static uint16_t mb_boot_drive = 0xffffu;
 
 #define MB_COOKIE_PTR_ADDR      0x000005a0u
 #define MB_COOKIE_STORAGE_ADDR  0x00000600u
@@ -68,6 +69,28 @@ __attribute__((weak)) uint32_t mb_board_kernel_tpa_start(void)
 	return 0;
 }
 
+static void mb_portable_init_boot_drive(void)
+{
+	uint32_t map = (uint32_t)mb_rom_dispatch.drvmap();
+	uint16_t i;
+
+	mb_boot_drive = 0xffffu;
+	if (map == 0)
+		return;
+
+	for (i = 0; i < 26; i++) {
+		if (map & (1u << i)) {
+			mb_boot_drive = i;
+			return;
+		}
+	}
+}
+
+uint16_t mb_portable_boot_drive(void)
+{
+	return mb_boot_drive;
+}
+
 static void mb_strlcpy(char *dst, const char *src, size_t n)
 {
 	size_t i = 0;
@@ -110,12 +133,31 @@ static int mb_path_exists(const char *path)
 	return 1;
 }
 
+static int mb_find_boot_drive(char *drive_out)
+{
+	if (mb_boot_drive >= 26)
+		return -1;
+	*drive_out = (char)('A' + mb_boot_drive);
+	return 0;
+}
+
 static int mb_find_kernel_path(char *out, size_t outsz)
 {
 	const char *name = "mint000.prg";
 	uint32_t cpu;
+	char drive;
+	char prefix[4];
 
-	mb_strlcpy(out, "\\MINT\\" MINT_VERS_PATH_STRING, outsz);
+	if (mb_find_boot_drive(&drive) != 0)
+		return -1;
+	prefix[0] = drive;
+	prefix[1] = ':';
+	prefix[2] = '\\';
+	prefix[3] = '\0';
+
+	mb_strlcpy(out, prefix, outsz);
+	mb_strlcat(out, "MINT\\", outsz);
+	mb_strlcat(out, MINT_VERS_PATH_STRING, outsz);
 	mb_strlcat(out, "\\", outsz);
 	mb_strlcat(out, name, outsz);
 	if (mb_path_exists(out))
@@ -140,7 +182,9 @@ static int mb_find_kernel_path(char *out, size_t outsz)
 		}
 	}
 
-	mb_strlcpy(out, "\\MINT\\" MINT_VERS_PATH_STRING, outsz);
+	mb_strlcpy(out, prefix, outsz);
+	mb_strlcat(out, "MINT\\", outsz);
+	mb_strlcat(out, MINT_VERS_PATH_STRING, outsz);
 	mb_strlcat(out, "\\", outsz);
 	mb_strlcat(out, name, outsz);
 	if (mb_path_exists(out))
@@ -169,6 +213,7 @@ void mb_portable_boot(struct mb_boot_info *info)
 	mb_portable_init_lowmem();
 	mb_portable_init_cookies();
 	mb_board_init_cookies();
+	mb_portable_init_boot_drive();
 	mb_portable_setup_vectors();
 	mb_portable_setup_traps();
 	mb_portable_run_tests();
