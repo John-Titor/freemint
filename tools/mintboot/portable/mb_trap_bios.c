@@ -206,8 +206,23 @@ long mb_rom_rsconf(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs, uint1
 }
 long mb_rom_keytbl(uint32_t nrml, uint32_t shft, uint32_t caps)
 {
-	mb_panic("Keytbl(nrml=%08x, shft=%08x, caps=%08x)", nrml, shft, caps);
-	return -1;
+	struct mb_keytab {
+		uint8_t *nrml;
+		uint8_t *shft;
+		uint8_t *caps;
+	} __attribute__((packed));
+	static uint8_t keytab_data[128];
+	static struct mb_keytab keytab = {
+		.nrml = keytab_data,
+		.shft = keytab_data,
+		.caps = keytab_data,
+	};
+
+	(void)nrml;
+	(void)shft;
+	(void)caps;
+
+	return (long)(uintptr_t)&keytab;
 }
 
 long mb_rom_cursconf(uint16_t rate, uint16_t attr)
