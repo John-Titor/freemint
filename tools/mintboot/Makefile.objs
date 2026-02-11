@@ -50,7 +50,7 @@ LD = $(CC) $(CFLAGS) -nostdlib -Wl,--entry=mb_entry -Wl,-m,m68kelf -Wl,-T,$(LDSC
 LIBS = -lgcc
 
 $(TARGET): $(OBJS)
-	$(LD) -o $@ -Wall $^ $(LIBS)
+	$(LD) -o $@ -Wl,-Map,$@.map -Wall $^ $(LIBS)
 	$(STRIP) $@
 else
 $(TARGET): $(OBJS)
