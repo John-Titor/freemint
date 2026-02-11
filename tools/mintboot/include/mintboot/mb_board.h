@@ -8,6 +8,9 @@ struct mb_boot_info;
 /* Board-specific early init (clocks, memory, console). */
 void mb_board_early_init(void);
 
+/* Board hook to override cookie defaults after portable init. */
+void mb_board_init_cookies(void);
+
 /* Load kernel image into memory and populate boot info. */
 int mb_board_load_kernel(struct mb_boot_info *info);
 

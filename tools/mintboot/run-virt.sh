@@ -10,9 +10,22 @@ RAMDISK_SIZE_MIB=32
 RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
 CMDLINE=${CMDLINE:-}
+VERSION_H="$ROOT/../../sys/buildinfo/version.h"
+KERNEL_SRC="$ROOT/../../sys/compile.040/mint040.prg"
+if [ ! -f "$KERNEL_SRC" ]; then
+	KERNEL_SRC="$ROOT/../../sys/.compile_040/mint040.prg"
+fi
 
 if [ ! -f "$ELF" ]; then
 	echo "mintboot-virt.elf not found: $ELF" >&2
+	exit 1
+fi
+if [ ! -f "$KERNEL_SRC" ]; then
+	echo "kernel not found: $ROOT/../../sys/compile.040/mint040.prg" >&2
+	exit 1
+fi
+if [ ! -f "$VERSION_H" ]; then
+	echo "version header not found: $VERSION_H" >&2
 	exit 1
 fi
 
@@ -25,6 +38,9 @@ if [ ! -f "$RAMDISK" ]; then
 	regen_ramdisk=1
 else
 	if find "$RAMDISK_DIR" -type f -newer "$RAMDISK" -print -quit | grep -q .; then
+		regen_ramdisk=1
+	fi
+	if [ "$KERNEL_SRC" -nt "$RAMDISK" ]; then
 		regen_ramdisk=1
 	fi
 fi
@@ -64,6 +80,20 @@ if [ "$regen_ramdisk" -eq 1 ]; then
 	printf '\x55\xaa' | dd of="$RAMDISK" bs=1 seek=510 conv=notrunc 2>/dev/null
 
 	mformat -i "$RAMDISK@@$part_offset" -r 512 -c 1 ::
+
+	MINT_MAJ=$(awk '/^#define[[:space:]]+MINT_MAJ_VERSION/ {print $3}' "$VERSION_H")
+	MINT_MIN=$(awk '/^#define[[:space:]]+MINT_MIN_VERSION/ {print $3}' "$VERSION_H")
+	MINT_PATCH=$(awk '/^#define[[:space:]]+MINT_PATCH_LEVEL/ {print $3}' "$VERSION_H")
+	MINT_STATUS_CVS=$(awk '/^#define[[:space:]]+MINT_STATUS_CVS/ {print $3}' "$VERSION_H")
+	if [ "$MINT_STATUS_CVS" -ne 0 ]; then
+		MINT_VERS_PATH="${MINT_MAJ}-${MINT_MIN}-cur"
+	else
+		MINT_VERS_PATH="${MINT_MAJ}-${MINT_MIN}-${MINT_PATCH}"
+	fi
+
+	mmd -i "$RAMDISK@@$part_offset" ::/MINT 2>/dev/null || true
+	mmd -i "$RAMDISK@@$part_offset" "::/MINT/$MINT_VERS_PATH" 2>/dev/null || true
+	mcopy -o -i "$RAMDISK@@$part_offset" "$KERNEL_SRC" "::/MINT/$MINT_VERS_PATH/MINT040.PRG"
 
 	if find "$RAMDISK_DIR" -type f -print -quit | grep -q .; then
 		mcopy -i "$RAMDISK@@$part_offset" -s "$RAMDISK_DIR"/* ::

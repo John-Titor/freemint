@@ -205,6 +205,10 @@ void mb_board_early_init(void)
 	*mb_lm_tmr_ms() = mb_virt_tmr_ms;
 	mb_virt_enable_pic_irq(5, 1);
 	mb_virt_init_rtc_50hz();
+}
+
+void mb_board_init_cookies(void)
+{
 	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), 40);
 	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'F', 'P', 'U'), 40);
 }

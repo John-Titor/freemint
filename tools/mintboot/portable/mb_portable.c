@@ -3,6 +3,15 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_cookie.h"
 #include "mintboot/mb_lowmem.h"
+#include "mintboot/mb_rom.h"
+
+#ifndef str
+#define str(x) _stringify(x)
+#define _stringify(x) #x
+#endif
+#include "../../../sys/buildinfo/version.h"
+
+#include <stddef.h>
 
 extern void mb_install_vector_base(void);
 
@@ -50,6 +59,91 @@ static void mb_portable_init_lowmem(void)
 	*mb_lm_vbclock() = 0;
 }
 
+__attribute__((weak)) void mb_board_init_cookies(void)
+{
+}
+
+static void mb_strlcpy(char *dst, const char *src, size_t n)
+{
+	size_t i = 0;
+
+	if (!n)
+		return;
+
+	for (i = 0; i + 1 < n && src[i]; i++)
+		dst[i] = src[i];
+	dst[i] = '\0';
+}
+
+static void mb_strlcat(char *dst, const char *src, size_t n)
+{
+	size_t dlen = 0;
+	size_t i;
+
+	if (!n)
+		return;
+
+	while (dlen < n && dst[dlen])
+		dlen++;
+
+	if (dlen == n)
+		return;
+
+	for (i = 0; dlen + i + 1 < n && src[i]; i++)
+		dst[dlen + i] = src[i];
+	dst[dlen + i] = '\0';
+}
+
+static int mb_path_exists(const char *path)
+{
+	long fh;
+
+	fh = mb_rom_fopen(path, 0);
+	if (fh < 0)
+		return 0;
+	mb_rom_fclose((uint16_t)fh);
+	return 1;
+}
+
+static int mb_find_kernel_path(char *out, size_t outsz)
+{
+	const char *name = "mint000.prg";
+	uint32_t cpu;
+
+	mb_strlcpy(out, "\\MINT\\" MINT_VERS_PATH_STRING, outsz);
+	mb_strlcat(out, "\\", outsz);
+	mb_strlcat(out, name, outsz);
+	if (mb_path_exists(out))
+		return 0;
+
+	if (mb_cookie_get(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), &cpu) == 0) {
+		switch (cpu) {
+		case 20:
+			name = "mint020.prg";
+			break;
+		case 30:
+			name = "mint030.prg";
+			break;
+		case 40:
+			name = "mint040.prg";
+			break;
+		case 60:
+			name = "mint060.prg";
+			break;
+		default:
+			break;
+		}
+	}
+
+	mb_strlcpy(out, "\\MINT\\" MINT_VERS_PATH_STRING, outsz);
+	mb_strlcat(out, "\\", outsz);
+	mb_strlcat(out, name, outsz);
+	if (mb_path_exists(out))
+		return 0;
+
+	return -1;
+}
+
 void mb_portable_setup_vectors(void)
 {
 	mb_install_vector_base();
@@ -69,9 +163,17 @@ void mb_portable_boot(struct mb_boot_info *info)
 	mb_cmdline[0] = '\0';
 	mb_portable_init_lowmem();
 	mb_portable_init_cookies();
+	mb_board_init_cookies();
 	mb_portable_setup_vectors();
 	mb_portable_setup_traps();
 	mb_portable_run_tests();
+	{
+		char kernel_path[384];
+		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0)
+			mb_log_printf("mintboot: kernel candidate %s\r\n", kernel_path);
+		else
+			mb_log_puts("mintboot: kernel not found\r\n");
+	}
 	mb_log_puts("mintboot: portable init complete\r\n");
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
 }
