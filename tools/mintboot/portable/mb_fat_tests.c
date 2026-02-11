@@ -139,6 +139,12 @@ void mb_fat_run_tests(void)
 	const char *newdir_spec = "C:\\NEWDIR";
 	const char *dcreate_missing_parent = "C:\\NOSUCH\\NEW.DIR";
 	const char *dcreate_root = "C:\\NEWDIR2";
+	const char *dcreate_exist = "C:\\NEWDIR2";
+	const char *ddelete_dir = "C:\\NEWDIR2";
+	const char *ddelete_missing = "C:\\NEWDIR2";
+	const char *ddelete_file = "C:\\HELLO.TXT";
+	const char *ddelete_missing_dir = "C:\\NOPE";
+	const char *ddelete_nonempty = "C:\\NEWDIR";
 	const char *rename_exist_src = "C:\\RENAMED.TXT";
 	const char *rename_exist_dst = "C:\\HELLO.TXT";
 	const char *rename_readonly_src = "C:\\HELLO.TXT";
@@ -514,9 +520,33 @@ void mb_fat_run_tests(void)
 			 (int)rc, MB_ERR_PTH);
 
 	rc = mb_rom_dcreate(dcreate_root);
+	if (rc != 0)
+		mb_panic("FAT test: Dcreate rc=%d expected 0", (int)rc);
+
+	rc = mb_rom_dcreate(dcreate_exist);
 	if (rc != MB_ERR_ACCDN)
-		mb_panic("FAT test: Dcreate accdn rc=%d expected %d", (int)rc,
+		mb_panic("FAT test: Dcreate exists rc=%d expected %d", (int)rc,
 			 MB_ERR_ACCDN);
+
+	rc = mb_rom_ddelete(ddelete_dir);
+	if (rc != 0)
+		mb_panic("FAT test: Ddelete dir rc=%d expected 0", (int)rc);
+	rc = mb_rom_ddelete(ddelete_missing);
+	if (rc != MB_ERR_FNF)
+		mb_panic("FAT test: Ddelete missing rc=%d expected %d", (int)rc,
+			 MB_ERR_FNF);
+	rc = mb_rom_ddelete(ddelete_file);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: Ddelete file rc=%d expected %d", (int)rc,
+			 MB_ERR_ACCDN);
+	rc = mb_rom_ddelete(ddelete_missing_dir);
+	if (rc != MB_ERR_FNF)
+		mb_panic("FAT test: Ddelete missing dir rc=%d expected %d",
+			 (int)rc, MB_ERR_FNF);
+	rc = mb_rom_ddelete(ddelete_nonempty);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: Ddelete nonempty rc=%d expected %d",
+			 (int)rc, MB_ERR_ACCDN);
 
 	mb_log_puts("mintboot: FAT test done\r\n");
 }

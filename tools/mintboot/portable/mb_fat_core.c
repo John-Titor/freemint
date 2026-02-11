@@ -98,6 +98,7 @@ int mb_fat_mount(uint16_t dev)
 	vol->recsiz = bpb->recsiz;
 	vol->spc = (uint16_t)bpb->clsiz;
 	vol->num_fats = num_fats;
+	vol->fat_sectors = (uint16_t)bpb->fsiz;
 	vol->fat_start = fat_start;
 	vol->root_start = root_start;
 	vol->root_sectors = (uint32_t)bpb->rdlen;
@@ -129,6 +130,82 @@ uint16_t mb_fat_read_fat(uint32_t cluster)
 		return 0xffffu;
 
 	return mb_fat_le16(&sector[sector_off]);
+}
+
+int mb_fat_write_fat(uint32_t cluster, uint16_t value)
+{
+	uint8_t sector[512];
+	uint32_t offset = cluster * 2u;
+	uint32_t sector_idx = offset / mb_fat_vol->recsiz;
+	uint32_t sector_off = offset % mb_fat_vol->recsiz;
+	uint16_t fat;
+
+	if (mb_fat_vol->recsiz != 512)
+		return -1;
+
+	for (fat = 0; fat < mb_fat_vol->num_fats; fat++) {
+		uint32_t base = mb_fat_vol->fat_start +
+				(uint32_t)fat * mb_fat_vol->fat_sectors;
+		uint32_t sector_num = base + sector_idx;
+		if (mb_fat_rwabs(0, sector, 1, sector_num,
+				 mb_fat_vol->dev) != 0)
+			return -1;
+		sector[sector_off] = (uint8_t)(value & 0xff);
+		sector[sector_off + 1] = (uint8_t)(value >> 8);
+		if (mb_fat_rwabs(1, sector, 1, sector_num,
+				 mb_fat_vol->dev) != 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+uint32_t mb_fat_alloc_cluster(void)
+{
+	uint32_t cluster;
+
+	for (cluster = 2; cluster < (uint32_t)mb_fat_vol->total_clusters + 2u;
+	     cluster++) {
+		if (mb_fat_read_fat(cluster) == 0) {
+			if (mb_fat_write_fat(cluster, 0xffffu) != 0)
+				return 0;
+			return cluster;
+		}
+	}
+
+	return 0;
+}
+
+int mb_fat_free_chain(uint32_t start_cluster)
+{
+	uint32_t cluster = start_cluster;
+
+	while (cluster >= 2 && cluster < 0xfff8u) {
+		uint16_t next = mb_fat_read_fat(cluster);
+		if (mb_fat_write_fat(cluster, 0) != 0)
+			return -1;
+		if (next >= 0xfff8u)
+			break;
+		cluster = next;
+	}
+
+	return 0;
+}
+
+int mb_fat_zero_cluster(uint32_t cluster)
+{
+	uint8_t sector[512];
+	uint32_t i;
+
+	memset(sector, 0, sizeof(sector));
+	for (i = 0; i < mb_fat_vol->spc; i++) {
+		uint32_t sector_idx = mb_fat_cluster_sector(cluster) + i;
+		if (mb_fat_rwabs(1, sector, 1, sector_idx,
+				 mb_fat_vol->dev) != 0)
+			return -1;
+	}
+
+	return 0;
 }
 
 void mb_fat_pattern_83(const char *pattern, uint8_t out[11])

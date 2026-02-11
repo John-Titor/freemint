@@ -36,9 +36,7 @@ long mb_rom_dcreate(const char *path)
 
 long mb_rom_ddelete(const char *path)
 {
-	mb_panic("Ddelete(path=%08x, \"%s\")", (uint32_t)(uintptr_t)path,
-		 mb_guarded_str(path));
-	return -1;
+	return mb_fat_ddelete(path);
 }
 
 long mb_rom_fcreate(const char *fn, uint16_t mode)

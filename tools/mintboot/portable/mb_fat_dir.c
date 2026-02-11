@@ -41,6 +41,32 @@ int mb_fat_find_in_dir(uint32_t dir_cluster, const uint8_t pat[11],
 	}
 }
 
+int mb_fat_dir_is_empty(uint32_t dir_cluster)
+{
+	uint32_t idx = 0;
+	uint8_t raw[32];
+
+	for (;;) {
+		if (mb_fat_read_dirent_raw(dir_cluster, idx, raw) != 0)
+			return -1;
+		if (raw[0] == 0x00)
+			return 1;
+		if (raw[0] == 0xe5) {
+			idx++;
+			continue;
+		}
+		if (raw[11] == MB_FAT_ATTR_LFN) {
+			idx++;
+			continue;
+		}
+		if (raw[0] == '.' && (raw[1] == ' ' || raw[1] == '.')) {
+			idx++;
+			continue;
+		}
+		return 0;
+	}
+}
+
 int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
 {
 	const char *p = path;

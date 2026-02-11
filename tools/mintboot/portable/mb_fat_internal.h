@@ -36,6 +36,7 @@ struct mb_fat_volume {
 	uint16_t recsiz;
 	uint16_t spc;
 	uint16_t num_fats;
+	uint16_t fat_sectors;
 	uint32_t fat_start;
 	uint32_t root_start;
 	uint32_t root_sectors;
@@ -102,6 +103,10 @@ int mb_fat_rwabs(uint16_t rw, void *buf, uint16_t count, uint32_t recno,
 int mb_fat_mount(uint16_t dev);
 uint32_t mb_fat_cluster_sector(uint32_t cluster);
 uint16_t mb_fat_read_fat(uint32_t cluster);
+int mb_fat_write_fat(uint32_t cluster, uint16_t value);
+uint32_t mb_fat_alloc_cluster(void);
+int mb_fat_free_chain(uint32_t start_cluster);
+int mb_fat_zero_cluster(uint32_t cluster);
 void mb_fat_pattern_83(const char *pattern, uint8_t out[11]);
 int mb_fat_match_83(const uint8_t name[11], const uint8_t pat[11]);
 void mb_fat_name_from_dirent(const struct mb_fat_dirent *ent, char out[14]);
@@ -117,6 +122,7 @@ int mb_fat_read_dirent(uint32_t dir_cluster, uint32_t index,
 		       struct mb_fat_dirent *out);
 int mb_fat_find_in_dir(uint32_t dir_cluster, const uint8_t pat[11],
 		      uint16_t attr, struct mb_fat_dirent *ent, uint32_t *index);
+int mb_fat_dir_is_empty(uint32_t dir_cluster);
 int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent);
 int mb_fat_setup_search(const char *filespec, uint16_t attr,
 			struct mb_fat_search **out);

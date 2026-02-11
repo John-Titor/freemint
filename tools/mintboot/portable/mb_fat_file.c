@@ -258,11 +258,115 @@ long mb_fat_dcreate(const char *path)
 	uint16_t dev;
 	uint32_t dir_cluster;
 	uint8_t name83[11];
+	uint32_t idx;
+	struct mb_fat_dirent ent;
+	uint8_t raw[32];
+	uint32_t new_cluster;
 
-	if (mb_fat_locate_parent(path, &dev, &dir_cluster, name83) != 0)
-		return MB_ERR_PTH;
+	{
+		int rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
+		if (rc != 0)
+			return rc;
+	}
 
-	return MB_ERR_ACCDN;
+	if (mb_fat_mount(dev) != 0)
+		return MB_ERR_ACCDN;
+
+	idx = 0;
+	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &idx) == 0)
+		return MB_ERR_ACCDN;
+
+	if (mb_fat_find_free_entry(dir_cluster, &idx) != 0)
+		return MB_ERR_ACCDN;
+
+	new_cluster = mb_fat_alloc_cluster();
+	if (new_cluster == 0)
+		return MB_ERR_ACCDN;
+
+	if (mb_fat_zero_cluster(new_cluster) != 0) {
+		mb_fat_free_chain(new_cluster);
+		return MB_ERR_ACCDN;
+	}
+
+	memset(raw, 0, sizeof(raw));
+	memcpy(raw, name83, 11u);
+	raw[11] = MB_FAT_ATTR_DIR;
+	raw[26] = (uint8_t)(new_cluster & 0xff);
+	raw[27] = (uint8_t)(new_cluster >> 8);
+	if (mb_fat_write_dirent_raw(dir_cluster, idx, raw) != 0) {
+		mb_fat_free_chain(new_cluster);
+		return MB_ERR_ACCDN;
+	}
+
+	memset(raw, 0, sizeof(raw));
+	raw[0] = '.';
+	memset(&raw[1], ' ', 10);
+	raw[11] = MB_FAT_ATTR_DIR;
+	raw[26] = (uint8_t)(new_cluster & 0xff);
+	raw[27] = (uint8_t)(new_cluster >> 8);
+	if (mb_fat_write_dirent_raw(new_cluster, 0, raw) != 0) {
+		mb_fat_free_chain(new_cluster);
+		return MB_ERR_ACCDN;
+	}
+
+	memset(raw, 0, sizeof(raw));
+	raw[0] = '.';
+	raw[1] = '.';
+	memset(&raw[2], ' ', 9);
+	raw[11] = MB_FAT_ATTR_DIR;
+	raw[26] = (uint8_t)(dir_cluster & 0xff);
+	raw[27] = (uint8_t)(dir_cluster >> 8);
+	if (mb_fat_write_dirent_raw(new_cluster, 1, raw) != 0) {
+		mb_fat_free_chain(new_cluster);
+		return MB_ERR_ACCDN;
+	}
+
+	return 0;
+}
+
+long mb_fat_ddelete(const char *path)
+{
+	uint16_t dev;
+	uint32_t dir_cluster;
+	uint8_t name83[11];
+	struct mb_fat_dirent ent;
+	uint32_t idx = 0;
+	int rc;
+	uint8_t raw[32];
+
+	rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
+	if (rc != 0)
+		return rc;
+
+	if (mb_fat_mount(dev) != 0)
+		return MB_ERR_FNF;
+
+	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &idx) != 0)
+		return MB_ERR_FNF;
+
+	if (!(ent.attr & MB_FAT_ATTR_DIR))
+		return MB_ERR_ACCDN;
+
+	if (ent.attr & MB_FAT_ATTR_RDONLY)
+		return MB_ERR_ACCDN;
+
+	if (ent.start_lo < 2)
+		return MB_ERR_ACCDN;
+
+	rc = mb_fat_dir_is_empty(ent.start_lo);
+	if (rc <= 0)
+		return (rc == 0) ? MB_ERR_ACCDN : MB_ERR_FNF;
+
+	if (mb_fat_read_dirent_raw(dir_cluster, idx, raw) != 0)
+		return MB_ERR_FNF;
+	raw[0] = 0xe5;
+	if (mb_fat_write_dirent_raw(dir_cluster, idx, raw) != 0)
+		return MB_ERR_FNF;
+
+	if (mb_fat_free_chain(ent.start_lo) != 0)
+		return MB_ERR_ACCDN;
+
+	return 0;
 }
 
 long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname)
