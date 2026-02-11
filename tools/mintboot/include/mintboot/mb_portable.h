@@ -18,6 +18,10 @@ extern char mb_cmdline[128];
 /* Portable boot flow entry point (called from board layer). */
 void mb_portable_boot(struct mb_boot_info *info);
 
+/* Portable kernel loader. */
+int mb_portable_load_kernel(const char *path, int do_jump);
+uint32_t mb_portable_last_basepage(void);
+
 /* Vector/trap setup helpers. */
 void mb_portable_setup_vectors(void);
 void mb_portable_setup_traps(void);

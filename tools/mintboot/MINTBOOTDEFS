@@ -1,7 +1,7 @@
 ifeq ($(mintboot),generic)
 TARGET = ../libmintboot-generic.a
 CPU = 000
-COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c portable/mb_fat_core.c portable/mb_fat_dir.c portable/mb_fat_file.c portable/mb_fat_check.c portable/mb_lib.c portable/mb_util.c portable/mb_fat_tests.c portable/mb_tests.c board/mb_board.c
+COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c portable/mb_fat_core.c portable/mb_fat_dir.c portable/mb_fat_file.c portable/mb_fat_check.c portable/mb_kernel.c portable/mb_lib.c portable/mb_util.c portable/mb_fat_tests.c portable/mb_tests.c board/mb_board.c
 SOBJS = portable/mb_vectors.S
 endif
 
@@ -11,7 +11,7 @@ ifeq ($(mintboot),virt)
 TARGET = ../mintboot-virt.elf
 CPU = 040
 BUILD_ELF = yes
-COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c portable/mb_fat_core.c portable/mb_fat_dir.c portable/mb_fat_file.c portable/mb_fat_check.c portable/mb_lib.c portable/mb_util.c portable/mb_fat_tests.c portable/mb_tests.c board/virt/mb_board_virt.c board/virt/mb_rom_virt.c
+COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c portable/mb_fat_core.c portable/mb_fat_dir.c portable/mb_fat_file.c portable/mb_fat_check.c portable/mb_kernel.c portable/mb_lib.c portable/mb_util.c portable/mb_fat_tests.c portable/mb_tests.c board/virt/mb_board_virt.c board/virt/mb_rom_virt.c
 SOBJS = portable/mb_vectors.S board/virt/mb_entry.S
 LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
 endif

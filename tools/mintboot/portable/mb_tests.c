@@ -3,6 +3,14 @@
 #include "mintboot/mb_tests.h"
 #include "mintboot/mb_lowmem.h"
 
+#ifndef str
+#define str(x) _stringify(x)
+#define _stringify(x) #x
+#endif
+#include "../../../sys/buildinfo/version.h"
+
+#include <string.h>
+
 struct mb_test_iorec {
 	uint8_t *buf;
 	uint16_t size;
@@ -205,6 +213,73 @@ static void mb_vbclock_tests(void)
 	mb_panic("VBCLOCK did not increment");
 }
 
+static void mb_kernel_loader_tests(void)
+{
+	struct mb_prg_header {
+		uint16_t magic;
+		uint32_t tlen;
+		uint32_t dlen;
+		uint32_t blen;
+		uint32_t slen;
+		uint32_t res1;
+		uint32_t flags;
+		uint16_t abs;
+	} __attribute__((packed));
+	struct mb_basepage {
+		uint8_t *p_lowtpa;
+		uint8_t *p_hitpa;
+		uint8_t *p_tbase;
+		uint32_t p_tlen;
+		uint8_t *p_dbase;
+		uint32_t p_dlen;
+		uint8_t *p_bbase;
+		uint32_t p_blen;
+		void *p_xdta;
+		struct mb_basepage *p_parent;
+		uint32_t p_flags;
+		char *p_env;
+		uint8_t p_uft[6];
+		char p_lddrv;
+		uint8_t p_curdrv;
+		uint32_t p_1fill[2];
+		uint8_t p_curdir[32];
+		uint32_t p_3fill[2];
+		uint32_t p_dreg;
+		uint32_t p_areg[5];
+		char p_cmdlin[0x80];
+	} __attribute__((packed));
+	static const char kernel_path[] =
+		"\\MINT\\" MINT_VERS_PATH_STRING "\\MINT040.PRG";
+	struct mb_prg_header hdr;
+	uint16_t handle;
+	long rc;
+	uint32_t bp_addr;
+	struct mb_basepage *bp;
+
+	mb_cmdline[0] = '\0';
+
+	handle = (uint16_t)mb_rom_fopen(kernel_path, 0);
+	if ((int16_t)handle < 0)
+		mb_panic("Kernel test: open failed");
+	if (mb_rom_fread(handle, sizeof(hdr), &hdr) != (long)sizeof(hdr))
+		mb_panic("Kernel test: header read");
+	mb_rom_fclose(handle);
+
+	rc = mb_portable_load_kernel(kernel_path, 0);
+	if (rc != 0)
+		mb_panic("Kernel test: load rc=%d", (int)rc);
+
+	bp_addr = mb_portable_last_basepage();
+	if (bp_addr == 0)
+		mb_panic("Kernel test: basepage missing");
+	bp = (struct mb_basepage *)(uintptr_t)bp_addr;
+	if (bp->p_tlen != hdr.tlen || bp->p_dlen != hdr.dlen || bp->p_blen != hdr.blen)
+		mb_panic("Kernel test: len mismatch");
+	if (bp->p_tbase != (uint8_t *)(bp + 1))
+		mb_panic("Kernel test: tbase mismatch");
+
+}
+
 void mb_portable_run_tests(void)
 {
 	mb_fat_run_tests();
@@ -212,5 +287,6 @@ void mb_portable_run_tests(void)
 	mb_gettime_tests();
 	mb_drive_range_tests();
 	mb_bconmap_tests();
+	mb_kernel_loader_tests();
 	mb_vbclock_tests();
 }

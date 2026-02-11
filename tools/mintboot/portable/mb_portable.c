@@ -63,6 +63,11 @@ __attribute__((weak)) void mb_board_init_cookies(void)
 {
 }
 
+__attribute__((weak)) uint32_t mb_board_kernel_tpa_start(void)
+{
+	return 0;
+}
+
 static void mb_strlcpy(char *dst, const char *src, size_t n)
 {
 	size_t i = 0;
@@ -169,10 +174,15 @@ void mb_portable_boot(struct mb_boot_info *info)
 	mb_portable_run_tests();
 	{
 		char kernel_path[384];
-		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0)
+		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
 			mb_log_printf("mintboot: kernel candidate %s\r\n", kernel_path);
-		else
+			if (mb_portable_load_kernel(kernel_path, 0) != 0)
+				mb_log_puts("mintboot: kernel load failed\r\n");
+			else
+				mb_log_puts("mintboot: kernel loaded (no jump)\r\n");
+		} else {
 			mb_log_puts("mintboot: kernel not found\r\n");
+		}
 	}
 	mb_log_puts("mintboot: portable init complete\r\n");
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
