@@ -55,24 +55,28 @@ static void mb_etv_timer_stub(void)
 
 static void mb_portable_init_lowmem(void)
 {
-	uint32_t membot;
-	uint32_t memtop;
-
-	*mb_lm_memvalid() = 0x752019f3u;
-	*mb_lm_memval2() = 0x237698aau;
-
-	membot = (uint32_t)(uintptr_t)_mb_image_end;
-	membot = (membot + 3u) & ~3u;
-	memtop = *mb_lm_phystop();
-	if (membot > memtop)
-		membot = memtop;
-
-	*mb_lm_membot() = membot;
-	*mb_lm_memtop() = memtop;
 	*mb_lm_etv_critic() = (uint32_t)(uintptr_t)mb_etv_critic_stub;
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
 	*mb_lm_etv_timer() = (uint32_t)(uintptr_t)mb_etv_timer_stub;
 	*mb_lm_vbclock() = 0;
+}
+
+void mb_portable_set_st_ram(uint32_t base, uint32_t size)
+{
+	uint32_t membot = base;
+	uint32_t memtop = base + size;
+
+	if (membot < 0x1000u)
+		membot = 0x1000u;
+	if (membot > memtop)
+		membot = memtop;
+
+	*mb_lm_phystop() = memtop;
+	*mb_lm_membot() = membot;
+	*mb_lm_memtop() = memtop;
+	*mb_lm_memvalid() = 0x752019f3u;
+	*mb_lm_memval2() = 0x237698aau;
+	*mb_lm_memval3() = 0x5555aaaau;
 }
 
 __attribute__((weak)) void mb_board_init_cookies(void)

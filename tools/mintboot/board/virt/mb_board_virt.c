@@ -71,7 +71,7 @@ static void mb_virt_parse_bootinfo(void)
 
 		if (rec->tag == MB_LINUX_BI_MEMCHUNK) {
 			const struct mb_linux_bootinfo_memchunk *mem;
-			uint32_t end;
+			uint32_t st_size;
 
 			if (rec->size < sizeof(*mem)) {
 				mb_panic("bootinfo memchunk too small: %u",
@@ -84,10 +84,13 @@ static void mb_virt_parse_bootinfo(void)
 					 mem->addr);
 			}
 
-			end = mem->addr + mem->size_bytes;
-			*mb_lm_phystop() = end;
-			/* mb_log_printf("mintboot virt: phystop=0x%08x\r\n",
-				      end); */
+			if (mem->size_bytes < 0x04000000u) {
+				mb_panic("bootinfo memchunk too small: %u",
+					 mem->size_bytes);
+			}
+
+			st_size = 0x03f00000u;
+			mb_portable_set_st_ram(mem->addr, st_size);
 		}
 
 		if (rec->tag == MB_LINUX_BI_CPUTYPE) {

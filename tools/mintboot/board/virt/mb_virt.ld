@@ -11,13 +11,13 @@ PHDRS
 
 SECTIONS
 {
-	. = 0x00000000;
+    . = 0x03f00000;
 
 	.vectors : {
 		*(.vectors)
 	} :text
 
-	. = 0x00000800;
+    . = 0x03f00800;
 
 	.text : {
 		*(.text*)

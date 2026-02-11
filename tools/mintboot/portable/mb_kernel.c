@@ -171,13 +171,15 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	tpa_start = mb_board_kernel_tpa_start();
 	if (tpa_start == 0)
 		tpa_start = MB_PRG_BASE_ADDR;
-	if (_mb_image_end) {
+	tpa_end = *mb_lm_memtop();
+	if (tpa_end == 0)
+		tpa_end = *mb_lm_phystop();
+	if (_mb_image_end && (uint32_t)(uintptr_t)_mb_image_end < tpa_end) {
 		uint32_t end_addr = (uint32_t)(uintptr_t)_mb_image_end;
 		end_addr = (end_addr + 3u) & ~3u;
 		if (end_addr > tpa_start)
 			tpa_start = end_addr;
 	}
-	tpa_end = *mb_lm_phystop();
 	if (tpa_end <= tpa_start + MB_PRG_STACK_RESERVE) {
 		mb_rom_fclose(handle);
 		return -1;

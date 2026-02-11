@@ -22,6 +22,7 @@ void mb_portable_boot(struct mb_boot_info *info);
 int mb_portable_load_kernel(const char *path, int do_jump);
 uint32_t mb_portable_last_basepage(void);
 void mb_portable_kernel_bounds(uint32_t *base, uint32_t *end);
+void mb_portable_set_st_ram(uint32_t base, uint32_t size);
 
 uint16_t mb_portable_boot_drive(void);
 
