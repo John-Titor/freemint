@@ -21,7 +21,8 @@ static int mb_fat_valid_cluster(uint32_t cluster)
 
 static int mb_fat_chain_mark(uint32_t start_cluster, uint32_t size,
 			     uint16_t chain_id,
-			     struct mb_fat_check_report *report)
+			     struct mb_fat_check_report *report,
+			     uint32_t *clusters_seen_out)
 {
 	uint32_t cluster = start_cluster;
 	uint32_t cluster_size;
@@ -70,6 +71,9 @@ static int mb_fat_chain_mark(uint32_t start_cluster, uint32_t size,
 		if (size > max_size)
 			report->bad_chain++;
 	}
+
+	if (clusters_seen_out)
+		*clusters_seen_out = clusters_seen;
 
 	return 0;
 }
@@ -141,6 +145,13 @@ static int mb_fat_check_dir(uint32_t dir_cluster, uint16_t *chain_id,
 			if (start_lo != 0 && !mb_fat_valid_cluster(start_lo))
 				report->bad_dirent++;
 
+			if (!(attr & MB_FAT_ATTR_DIR)) {
+				if (start_lo < 2 && size > 0)
+					report->bad_dirent++;
+				if (start_lo >= 2 && size == 0)
+					report->bad_dirent++;
+			}
+
 			if ((attr & MB_FAT_ATTR_DIR) && !is_dot && !is_dotdot &&
 			    start_lo >= 2) {
 				if (mb_fat_dir_marks[start_lo] == *chain_id) {
@@ -154,8 +165,10 @@ static int mb_fat_check_dir(uint32_t dir_cluster, uint16_t *chain_id,
 			}
 
 			if (start_lo >= 2 && !is_dot && !is_dotdot) {
+				uint32_t clusters_seen = 0;
 				if (mb_fat_chain_mark(start_lo, size,
-						      (*chain_id)++, report) != 0)
+						      (*chain_id)++, report,
+						      &clusters_seen) != 0)
 					return -1;
 				if (*chain_id == 0) {
 					memset(mb_fat_cluster_marks, 0,
