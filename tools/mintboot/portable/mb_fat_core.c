@@ -60,7 +60,7 @@ int mb_fat_mount(uint16_t dev)
 		}
 	}
 
-	bpb_ptr = mb_rom_dispatch.getbpb(dev);
+	bpb_ptr = mb_rom_getbpb(dev);
 	if (bpb_ptr <= 0)
 		return -1;
 

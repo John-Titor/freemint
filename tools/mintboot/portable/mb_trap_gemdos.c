@@ -126,43 +126,43 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
 {
 	switch (fnum) {
 	case 0x01a:
-		return mb_rom_dispatch.fsetdta((void *)(uintptr_t)mb_arg32(args, 0));
+		return mb_rom_fsetdta((void *)(uintptr_t)mb_arg32(args, 0));
 	case 0x036:
-		return mb_rom_dispatch.dfree(mb_arg32(args, 0), mb_arg16(args, 1));
+		return mb_rom_dfree(mb_arg32(args, 0), mb_arg16(args, 1));
 	case 0x039:
-		return mb_rom_dispatch.dcreate((const char *)(uintptr_t)mb_arg32(args, 0));
+		return mb_rom_dcreate((const char *)(uintptr_t)mb_arg32(args, 0));
 	case 0x03a:
-		return mb_rom_dispatch.ddelete((const char *)(uintptr_t)mb_arg32(args, 0));
+		return mb_rom_ddelete((const char *)(uintptr_t)mb_arg32(args, 0));
 	case 0x03c:
-		return mb_rom_dispatch.fcreate((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+		return mb_rom_fcreate((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
 	case 0x03d:
-		return mb_rom_dispatch.fopen((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+		return mb_rom_fopen((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
 	case 0x03e:
-		return mb_rom_dispatch.fclose(mb_arg16(args, 0));
+		return mb_rom_fclose(mb_arg16(args, 0));
 	case 0x03f:
-		return mb_rom_dispatch.fread(mb_arg16(args, 0), mb_arg32(args, 1),
+		return mb_rom_fread(mb_arg16(args, 0), mb_arg32(args, 1),
 					     (void *)(uintptr_t)mb_arg32(args, 2));
 	case 0x040:
-		return mb_rom_dispatch.fwrite(mb_arg16(args, 0), mb_arg32(args, 1),
+		return mb_rom_fwrite(mb_arg16(args, 0), mb_arg32(args, 1),
 					      (void *)(uintptr_t)mb_arg32(args, 2));
 	case 0x041:
-		return mb_rom_dispatch.fdelete((const char *)(uintptr_t)mb_arg32(args, 0));
+		return mb_rom_fdelete((const char *)(uintptr_t)mb_arg32(args, 0));
 	case 0x042:
-		return mb_rom_dispatch.fseek((int32_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+		return mb_rom_fseek((int32_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
 	case 0x043:
-		return mb_rom_dispatch.fattrib((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+		return mb_rom_fattrib((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
 	case 0x04e:
-		return mb_rom_dispatch.fsfirst((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+		return mb_rom_fsfirst((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
 	case 0x04f:
-		return mb_rom_dispatch.fsnext();
+		return mb_rom_fsnext();
 	case 0x056:
-		return mb_rom_dispatch.frename(mb_arg16(args, 0), (const char *)(uintptr_t)mb_arg32(args, 1), (const char *)(uintptr_t)mb_arg32(args, 2));
+		return mb_rom_frename(mb_arg16(args, 0), (const char *)(uintptr_t)mb_arg32(args, 1), (const char *)(uintptr_t)mb_arg32(args, 2));
 	case 0x057:
-		return mb_rom_dispatch.fdatime(mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+		return mb_rom_fdatime(mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
 	case 0x05c:
-		return mb_rom_dispatch.flock(mb_arg16(args, 0), mb_arg16(args, 1), (int32_t)mb_arg32(args, 2), (int32_t)mb_arg32(args, 3));
+		return mb_rom_flock(mb_arg16(args, 0), mb_arg16(args, 1), (int32_t)mb_arg32(args, 2), (int32_t)mb_arg32(args, 3));
 	case 0x104:
-		return mb_rom_dispatch.fcntl(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg16(args, 2));
+		return mb_rom_fcntl(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg16(args, 2));
 	default:
 		mb_panic("gemdos: unhandled 0x%04x", (uint32_t)fnum);
 	}

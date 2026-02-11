@@ -90,7 +90,7 @@ static long mb_bconmap_bconout(uint16_t dev, uint16_t c)
 static long mb_bconmap_rsconf(uint16_t baud, uint16_t flow, uint16_t uc,
 			      uint16_t rs, uint16_t ts, uint16_t sc)
 {
-	return mb_rom_dispatch.rsconf(baud, flow, uc, rs, ts, sc);
+	return mb_rom_rsconf(baud, flow, uc, rs, ts, sc);
 }
 
 static struct mb_ext_iorec *mb_bconmap_iorec(void)
@@ -282,7 +282,7 @@ long mb_rom_bcostat(uint16_t dev)
 
 long mb_rom_drvmap(void)
 {
-	return 1u << 2;
+	return 0;
 }
 
 long mb_rom_kbshift(uint16_t data)
@@ -495,15 +495,15 @@ long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
 					     mb_arg16(args, 2), mb_arg16(args, 3),
 					     mb_arg16(args, 4));
 	case 0x05:
-		return mb_rom_dispatch.setexc(mb_arg16(args, 0), mb_arg32(args, 1));
+		return mb_rom_setexc(mb_arg16(args, 0), mb_arg32(args, 1));
 	case 0x07:
-		return mb_rom_dispatch.getbpb(mb_arg16(args, 0));
+		return mb_rom_getbpb(mb_arg16(args, 0));
 	case 0x08:
 		return mb_rom_dispatch.bcostat(mb_arg16(args, 0));
 	case 0x0a:
 		return mb_rom_dispatch.drvmap();
 	case 0x0b:
-		return mb_rom_dispatch.kbshift(mb_arg16(args, 0));
+		return mb_rom_kbshift(mb_arg16(args, 0));
 	default:
 		mb_panic("bios: unhandled 0x%04x", (uint32_t)fnum);
 	}
@@ -515,39 +515,39 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args)
 {
 	switch (fnum) {
 	case 0x00:
-		return mb_rom_dispatch.initmous(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_initmous(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
 	case 0x04:
-		return mb_rom_dispatch.getrez();
+		return mb_rom_getrez();
 	case 0x0e:
-		return mb_rom_dispatch.iorec(mb_arg16(args, 0));
+		return mb_rom_iorec(mb_arg16(args, 0));
 	case 0x0f:
-		return mb_rom_dispatch.rsconf(mb_arg16(args, 0), mb_arg16(args, 1), mb_arg16(args, 2), mb_arg16(args, 3), mb_arg16(args, 4), mb_arg16(args, 5));
+		return mb_rom_rsconf(mb_arg16(args, 0), mb_arg16(args, 1), mb_arg16(args, 2), mb_arg16(args, 3), mb_arg16(args, 4), mb_arg16(args, 5));
 	case 0x10:
-		return mb_rom_dispatch.keytbl(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_keytbl(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
 	case 0x15:
-		return mb_rom_dispatch.cursconf(mb_arg16(args, 0), mb_arg16(args, 1));
+		return mb_rom_cursconf(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x16:
-		return mb_rom_dispatch.settime(mb_arg32(args, 0));
+		return mb_rom_settime(mb_arg32(args, 0));
 	case 0x17:
-		return mb_rom_dispatch.gettime();
+		return mb_rom_gettime();
 	case 0x18:
-		return mb_rom_dispatch.bioskeys();
+		return mb_rom_bioskeys();
 	case 0x1d:
-		return mb_rom_dispatch.offgibit(mb_arg16(args, 0));
+		return mb_rom_offgibit(mb_arg16(args, 0));
 	case 0x1e:
-		return mb_rom_dispatch.ongibit(mb_arg16(args, 0));
+		return mb_rom_ongibit(mb_arg16(args, 0));
 	case 0x20:
-		return mb_rom_dispatch.dosound(mb_arg32(args, 0));
+		return mb_rom_dosound(mb_arg32(args, 0));
 	case 0x22:
-		return mb_rom_dispatch.kbdvbase();
+		return mb_rom_kbdvbase();
 	case 0x23:
-		return mb_rom_dispatch.kbrate(mb_arg16(args, 0), mb_arg16(args, 1));
+		return mb_rom_kbrate(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x25:
-		return mb_rom_dispatch.vsync();
+		return mb_rom_vsync();
 	case 0x2c:
-		return mb_rom_dispatch.bconmap(mb_arg16(args, 0));
+		return mb_rom_bconmap(mb_arg16(args, 0));
 	case 0x05:
-		return mb_rom_dispatch.vsetscreen(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg16(args, 2), mb_arg16(args, 3));
+		return mb_rom_vsetscreen(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg16(args, 2), mb_arg16(args, 3));
 	default:
 		mb_panic("xbios: unhandled 0x%04x", (uint32_t)fnum);
 	}
