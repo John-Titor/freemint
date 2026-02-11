@@ -1,6 +1,7 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_lowmem.h"
 
 #include <stdint.h>
 
@@ -122,6 +123,7 @@ static const char *mb_vector_name(uint16_t vec)
 	}
 }
 
+static struct mb_exception_context mb_last_ctx_storage;
 static struct mb_exception_context *mb_last_ctx;
 
 struct mb_exception_context *mb_last_exception_context(void)
@@ -129,10 +131,37 @@ struct mb_exception_context *mb_last_exception_context(void)
 	return mb_last_ctx;
 }
 
+static int mb_decode_vector(uint16_t fmt, uint16_t *vec)
+{
+	uint16_t off = fmt & 0x0fff;
+
+	if ((off & 3u) != 0 || off > 0x3fcu)
+		return 0;
+	*vec = (uint16_t)(off >> 2);
+	return 1;
+}
+
 void mb_default_exception_handler(struct mb_exception_context *ctx)
 {
 	uint16_t fmt = ctx->frame.format;
-	uint16_t vec = (fmt & 0x0fff) >> 2;
+	uint16_t vec = 0xffffu;
+	uint32_t sp = ctx->sp;
+	uint32_t phystop = *mb_lm_phystop();
+
+	mb_last_ctx_storage = *ctx;
+	ctx = &mb_last_ctx_storage;
+
+	if (sp >= phystop) {
+		vec = 0xffffu;
+	} else if (!mb_decode_vector(fmt, &vec) && sp + 8 <= phystop) {
+		uint16_t *raw = (uint16_t *)(uintptr_t)sp;
+		uint16_t alt = raw[3];
+
+		if (mb_decode_vector(alt, &vec))
+			fmt = alt;
+	}
+
+	ctx->frame.format = fmt;
 
 	mb_last_ctx = ctx;
 

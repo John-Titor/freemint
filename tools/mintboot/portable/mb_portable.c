@@ -14,6 +14,7 @@
 #include <stddef.h>
 
 extern void mb_install_vector_base(void);
+extern uint8_t _mb_image_end[] __attribute__((weak));
 
 struct mb_cookie_jar mb_cookie_jar;
 char mb_cmdline[128];
@@ -54,6 +55,20 @@ static void mb_etv_timer_stub(void)
 
 static void mb_portable_init_lowmem(void)
 {
+	uint32_t membot;
+	uint32_t memtop;
+
+	*mb_lm_memvalid() = 0x752019f3u;
+	*mb_lm_memval2() = 0x237698aau;
+
+	membot = (uint32_t)(uintptr_t)_mb_image_end;
+	membot = (membot + 3u) & ~3u;
+	memtop = *mb_lm_phystop();
+	if (membot > memtop)
+		membot = memtop;
+
+	*mb_lm_membot() = membot;
+	*mb_lm_memtop() = memtop;
 	*mb_lm_etv_critic() = (uint32_t)(uintptr_t)mb_etv_critic_stub;
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
 	*mb_lm_etv_timer() = (uint32_t)(uintptr_t)mb_etv_timer_stub;

@@ -9,6 +9,8 @@
  */
 #define MB_LM_MEMVALID_ADDR   0x00000420u
 #define MB_LM_PHYSTOP_ADDR    0x0000042eu
+#define MB_LM_MEMBOT_ADDR     0x00000432u
+#define MB_LM_MEMTOP_ADDR     0x00000436u
 #define MB_LM_MEMVAL2_ADDR    0x0000043au
 #define MB_LM_BOOTDEV_ADDR    0x00000446u
 #define MB_LM_TMR_MS_ADDR     0x00000442u
@@ -28,6 +30,16 @@ static inline volatile uint32_t *mb_lm_memvalid(void)
 static inline volatile uint32_t *mb_lm_phystop(void)
 {
 	return (volatile uint32_t *)MB_LM_PHYSTOP_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_membot(void)
+{
+	return (volatile uint32_t *)MB_LM_MEMBOT_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_memtop(void)
+{
+	return (volatile uint32_t *)MB_LM_MEMTOP_ADDR;
 }
 
 static inline volatile uint32_t *mb_lm_memval2(void)

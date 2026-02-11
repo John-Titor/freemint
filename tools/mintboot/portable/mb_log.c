@@ -1,7 +1,11 @@
 #include "mintboot/mb_board.h"
+#include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_portable.h"
+#include "mintboot/mb_kernel.h"
 
 #include <stdarg.h>
+
+extern uint8_t _mb_image_end[] __attribute__((weak));
 
 static void mb_log_putc(int ch)
 {
@@ -198,8 +202,8 @@ void mb_panic(const char *fmt, ...)
 	uint32_t ssp = 0;
 
 	__asm__ volatile("andiw #0xf8ff, %%sr" : : : "cc");
-	__asm__ volatile("move.l %%usp, %0" : "=r"(usp));
-	__asm__ volatile("move.l %%sp, %0" : "=r"(ssp));
+	__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
 
 	mb_log_puts("\r\nmintboot panic: ");
 	va_start(ap, fmt);
@@ -210,10 +214,43 @@ void mb_panic(const char *fmt, ...)
 	ctx = mb_last_exception_context();
 	mb_log_printf("  USP=%08x SSP=%08x\r\n", usp, ssp);
 	if (ctx) {
+		uint32_t pc = ctx->frame.pc;
+		uint32_t kbase = 0;
+		uint32_t kend = 0;
+		uint32_t mb_end = 0;
+		const char *where = "elsewhere";
+		uint16_t *raw = (uint16_t *)(uintptr_t)ctx->sp;
+		uint32_t phystop = *mb_lm_phystop();
+		uint32_t sp = ctx->sp;
+		int i;
+
+		mb_portable_kernel_bounds(&kbase, &kend);
+		if (_mb_image_end)
+			mb_end = (uint32_t)(uintptr_t)_mb_image_end;
+		if (kbase && kend && pc >= kbase && pc < kend) {
+			where = "kernel";
+		} else if (pc < mb_end) {
+			where = "mintboot";
+		}
 		mb_log_printf("  SR=%04x PC=%08x FMT=%04x\r\n",
 			      (uint32_t)ctx->frame.sr,
-			      ctx->frame.pc,
+			      pc,
 			      (uint32_t)ctx->frame.format);
+		mb_log_printf("  PC region: %s\r\n", where);
+		mb_log_printf("  PHYTOP=%08x SP=%08x\r\n", phystop, sp);
+		mb_log_printf("  SP region: %s\r\n",
+			      (sp < phystop) ? "st-ram" : "invalid");
+		if (sp + 2u * 12u <= phystop) {
+			mb_log_puts("  Frame words:");
+			for (i = 0; i < 12; i++) {
+				if ((i % 6) == 0)
+					mb_log_puts("\r\n   ");
+				mb_log_printf(" %04x", (uint32_t)raw[i]);
+			}
+			mb_log_puts("\r\n");
+		} else {
+			mb_log_puts("  Frame words: unavailable\r\n");
+		}
 		mb_log_printf("  D0=%08x (%d)\r\n", ctx->d[0], (int32_t)ctx->d[0]);
 		mb_log_printf("  D1=%08x (%d)\r\n", ctx->d[1], (int32_t)ctx->d[1]);
 		mb_log_printf("  D2=%08x (%d)\r\n", ctx->d[2], (int32_t)ctx->d[2]);

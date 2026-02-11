@@ -14,10 +14,20 @@
 extern uint8_t _mb_image_end[] __attribute__((weak));
 
 static struct mb_basepage *mb_kernel_last_basepage;
+static uint32_t mb_kernel_base;
+static uint32_t mb_kernel_end;
 
 uint32_t mb_portable_last_basepage(void)
 {
 	return (uint32_t)(uintptr_t)mb_kernel_last_basepage;
+}
+
+void mb_portable_kernel_bounds(uint32_t *base, uint32_t *end)
+{
+	if (base)
+		*base = mb_kernel_base;
+	if (end)
+		*end = mb_kernel_end;
 }
 
 struct mb_prg_header {
@@ -88,6 +98,9 @@ static int mb_relocate_prg(uint16_t handle, uint8_t *tbase,
 
 	if (relst == 0)
 		return 0;
+
+	mb_log_printf("mintboot: PRG relocation base=%08x\r\n",
+		      (uint32_t)(uintptr_t)tbase);
 
 	offset = relst;
 	if (offset >= text_data_len)
@@ -181,6 +194,8 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	tbase = (uint8_t *)(bp + 1);
 	dbase = tbase + hdr.tlen;
 	bbase = dbase + hdr.dlen;
+	mb_kernel_base = (uint32_t)(uintptr_t)tbase;
+	mb_kernel_end = (uint32_t)(uintptr_t)(bbase + hdr.blen);
 
 	memset(bp, 0, sizeof(*bp));
 	bp->p_lowtpa = (uint8_t *)bp;
