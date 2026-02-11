@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #define MB_FAT_MAX_SEARCH 4
+#define MB_FAT_MAX_VOLS 8
 
 #define MB_FAT_ATTR_RDONLY 0x01
 #define MB_FAT_ATTR_HIDDEN 0x02
@@ -90,7 +91,8 @@ struct mb_fat_dta {
 	char dta_name[14];
 };
 
-extern struct mb_fat_volume mb_fat_vol;
+extern struct mb_fat_volume *mb_fat_vol;
+extern struct mb_fat_volume mb_fat_vols[MB_FAT_MAX_VOLS];
 extern struct mb_fat_search mb_fat_search[MB_FAT_MAX_SEARCH];
 extern struct mb_fat_open mb_fat_open[MB_FAT_MAX_OPEN];
 

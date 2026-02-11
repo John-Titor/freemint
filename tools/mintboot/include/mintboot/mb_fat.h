@@ -16,6 +16,7 @@ long mb_fat_fseek(uint16_t handle, int32_t where, uint16_t how);
 long mb_fat_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag);
 long mb_fat_fattrib(const char *fn, uint16_t rwflag, uint16_t attr);
 long mb_fat_dfree(uint32_t buf, uint16_t d);
+long mb_fat_dcreate(const char *path);
 long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname);
 long mb_fat_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length);
 

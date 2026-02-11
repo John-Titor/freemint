@@ -15,6 +15,18 @@ struct mb_test_dta {
 	char dta_name[14];
 };
 
+struct mb_test_bpb {
+	uint16_t recsiz;
+	int16_t clsiz;
+	uint16_t clsizb;
+	int16_t rdlen;
+	int16_t fsiz;
+	int16_t fatrec;
+	int16_t datrec;
+	uint16_t numcl;
+	int16_t bflags;
+};
+
 static int mb_tests_strcmp(const char *a, const char *b)
 {
 	while (*a && *a == *b) {
@@ -48,6 +60,43 @@ static void mb_tests_drain_search(void)
 	}
 }
 
+static void mb_tests_set_readonly(const char name83[11])
+{
+	const struct mb_test_bpb *bpb;
+	uint8_t sector[512];
+	uint32_t root_start;
+	uint32_t entries_per_sector;
+	uint32_t total_entries;
+	uint32_t i;
+
+	bpb = (const struct mb_test_bpb *)(uintptr_t)mb_rom_getbpb(2);
+	if (!bpb || bpb->recsiz != 512)
+		mb_panic("FAT test: BPB invalid");
+
+	root_start = (uint32_t)bpb->datrec - (uint32_t)bpb->rdlen;
+	entries_per_sector = bpb->recsiz / 32u;
+	total_entries = (uint32_t)bpb->rdlen * entries_per_sector;
+
+	for (i = 0; i < total_entries; i++) {
+		uint32_t sector_idx = root_start + (i / entries_per_sector);
+		uint32_t offset = (i % entries_per_sector) * 32u;
+		if (mb_rom_dispatch.rwabs(0, sector, 1, (uint16_t)sector_idx, 2) != 0)
+			mb_panic("FAT test: rwabs read root");
+		if (sector[offset] == 0x00)
+			break;
+		if (sector[offset] == 0xe5)
+			continue;
+		if (mb_tests_memcmp(&sector[offset], (const uint8_t *)name83, 11) != 0)
+			continue;
+		sector[offset + 11] |= 0x01;
+		if (mb_rom_dispatch.rwabs(1, sector, 1, (uint16_t)sector_idx, 2) != 0)
+			mb_panic("FAT test: rwabs write root");
+		return;
+	}
+
+	mb_panic("FAT test: readonly target not found");
+}
+
 void mb_fat_run_tests(void)
 {
 	char spec[] = "C:\\*.*";
@@ -63,6 +112,7 @@ void mb_fat_run_tests(void)
 	const char *missing_dir = "C:\\NOSUCH\\HELLO.TXT";
 	const char *missing_dir_spec = "C:\\NOSUCH\\*.*";
 	const char *wrong_drive = "D:\\HELLO.TXT";
+	const char *bad_drive = "1:\\HELLO.TXT";
 	const char *inner_path = "C:\\SUBDIR\\INNER.TXT";
 	const char *inner_missing = "C:\\SUBDIR\\NOFILE.TXT";
 	const char *inner_spec = "C:\\SUBDIR\\*.*";
@@ -79,6 +129,14 @@ void mb_fat_run_tests(void)
 	const char *renamed_spec = "C:\\RENAMED.TXT";
 	const char *moved_spec = "C:\\SUBDIR\\MOVED.TXT";
 	const char *newdir_spec = "C:\\NEWDIR";
+	const char *dcreate_missing_parent = "C:\\NOSUCH\\NEW.DIR";
+	const char *dcreate_root = "C:\\NEWDIR2";
+	const char *rename_exist_src = "C:\\RENAMED.TXT";
+	const char *rename_exist_dst = "C:\\HELLO.TXT";
+	const char *rename_readonly_src = "C:\\HELLO.TXT";
+	const char *rename_readonly_dst = "C:\\HELLO2.TXT";
+	const char *rename_readonly_target_src = "C:\\NEWDIR\\INNER.TXT";
+	const char *rename_readonly_target_dst = "C:\\HELLO.TXT";
 	int found_inner = 0;
 	uint16_t dfree[4];
 	uint32_t free_bytes;
@@ -115,12 +173,12 @@ void mb_fat_run_tests(void)
 	for (i = 0; i < MB_FAT_MAX_OPEN; i++) {
 		handles[i] = mb_rom_fopen("C:\\HELLO.TXT", 0);
 		if (handles[i] < 0)
-			mb_panic("FAT test: Fopen bulk rc=%ld at %d", handles[i],
-				 i);
+			mb_panic("FAT test: Fopen bulk rc=%d at %d",
+				 (int)handles[i], i);
 	}
 	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
 	if (fh != MB_ERR_NMFIL)
-		mb_panic("FAT test: Fopen ENMFIL rc=%ld expected %d", fh,
+		mb_panic("FAT test: Fopen ENMFIL rc=%d expected %d", (int)fh,
 			 MB_ERR_NMFIL);
 	for (i = 0; i < MB_FAT_MAX_OPEN; i++) {
 		mb_rom_fclose((uint16_t)handles[i]);
@@ -135,12 +193,12 @@ void mb_fat_run_tests(void)
 
 	rc = mb_rom_fclose(1);
 	if (rc != MB_ERR_BADF)
-		mb_panic("FAT test: Fclose badf rc=%ld expected %d", rc,
+		mb_panic("FAT test: Fclose badf rc=%d expected %d", (int)rc,
 			 MB_ERR_BADF);
 
 	rc = mb_rom_fread(1, sizeof(buf), buf);
 	if (rc != MB_ERR_BADF)
-		mb_panic("FAT test: Fread badf rc=%ld expected %d", rc,
+		mb_panic("FAT test: Fread badf rc=%d expected %d", (int)rc,
 			 MB_ERR_BADF);
 
 	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
@@ -148,25 +206,25 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fopen HELLO.TXT for lock failed");
 	rc = mb_rom_flock((uint16_t)fh, 1, 0, 0);
 	if (rc != 0)
-		mb_panic("FAT test: Flock rc=%ld expected 0", rc);
+		mb_panic("FAT test: Flock rc=%d expected 0", (int)rc);
 	rc = mb_rom_fread((uint16_t)fh, 1, buf);
 	if (rc != MB_ERR_LOCKED)
-		mb_panic("FAT test: Fread locked rc=%ld expected %d", rc,
+		mb_panic("FAT test: Fread locked rc=%d expected %d", (int)rc,
 			 MB_ERR_LOCKED);
 	rc = mb_rom_flock((uint16_t)fh, 0, 0, 0);
 	if (rc != 0)
-		mb_panic("FAT test: Funlock rc=%ld expected 0", rc);
+		mb_panic("FAT test: Funlock rc=%d expected 0", (int)rc);
 	mb_rom_fclose((uint16_t)fh);
 
 	fh = mb_rom_fopen(missing, 0);
 	if (fh != MB_ERR_FNF)
-		mb_panic("FAT test: Fopen missing rc=%ld expected %d", fh,
+		mb_panic("FAT test: Fopen missing rc=%d expected %d", (int)fh,
 			 MB_ERR_FNF);
 
 	fh = mb_rom_fopen(missing_dir, 0);
 	if (fh != MB_ERR_FNF)
-		mb_panic("FAT test: Fopen missing dir rc=%ld expected %d", fh,
-			 MB_ERR_FNF);
+		mb_panic("FAT test: Fopen missing dir rc=%d expected %d",
+			 (int)fh, MB_ERR_FNF);
 
 	mb_rom_fsetdta(&dta);
 	rc = mb_rom_fsfirst(missing_dir_spec, 0x17);
@@ -183,7 +241,7 @@ void mb_fat_run_tests(void)
 			break;
 	}
 	if (rc2 != MB_ERR_NMFIL)
-		mb_panic("FAT test: Fsnext end rc=%ld expected %d", rc2,
+		mb_panic("FAT test: Fsnext end rc=%d expected %d", (int)rc2,
 			 MB_ERR_NMFIL);
 
 	rc = mb_tests_fsfirst(inner_spec, 0x17, &dta);
@@ -218,8 +276,8 @@ void mb_fat_run_tests(void)
 
 	fh = mb_rom_fopen(inner_missing, 0);
 	if (fh != MB_ERR_FNF)
-		mb_panic("FAT test: Fopen inner missing rc=%ld expected %d", fh,
-			 MB_ERR_FNF);
+		mb_panic("FAT test: Fopen inner missing rc=%d expected %d",
+			 (int)fh, MB_ERR_FNF);
 
 	rc = mb_tests_fsfirst(wrong_drive, 0x17, &dta);
 	if (rc != MB_ERR_FNF)
@@ -228,8 +286,18 @@ void mb_fat_run_tests(void)
 
 	fh = mb_rom_fopen(wrong_drive, 0);
 	if (fh != MB_ERR_FNF)
-		mb_panic("FAT test: Fopen wrong drive rc=%ld expected %d", fh,
-			 MB_ERR_FNF);
+		mb_panic("FAT test: Fopen wrong drive rc=%d expected %d",
+			 (int)fh, MB_ERR_FNF);
+
+	rc = mb_tests_fsfirst(bad_drive, 0x17, &dta);
+	if (rc != MB_ERR_DRIVE)
+		mb_panic("FAT test: Fsfirst bad drive rc=%d expected %d",
+			 (int)rc, MB_ERR_DRIVE);
+
+	fh = mb_rom_fopen(bad_drive, 0);
+	if (fh != MB_ERR_FNF)
+		mb_panic("FAT test: Fopen bad drive rc=%d expected %d",
+			 (int)fh, MB_ERR_FNF);
 
 	if (mb_rom_dfree((uint32_t)(uintptr_t)dfree, 2) != 0)
 		mb_panic("FAT test: Dfree failed");
@@ -246,7 +314,7 @@ void mb_fat_run_tests(void)
 	mb_tests_drain_search();
 	fh = mb_rom_fopen(rename_src, 0);
 	if (fh < 0)
-		mb_panic("FAT test: Fopen rename src rc=%ld", fh);
+		mb_panic("FAT test: Fopen rename src rc=%d", (int)fh);
 	mb_rom_fclose((uint16_t)fh);
 
 	rc = mb_rom_frename(0, rename_src, rename_dst);
@@ -324,9 +392,35 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: missing dst dir rename rc=%d expected %d",
 			 (int)rc, MB_ERR_PTH);
 
+	rc = mb_rom_frename(0, rename_exist_src, rename_exist_dst);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: rename exists rc=%d expected %d", (int)rc,
+			 MB_ERR_ACCDN);
+
+	mb_tests_set_readonly("HELLO   TXT");
+	rc = mb_rom_frename(0, rename_readonly_src, rename_readonly_dst);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: rename readonly rc=%d expected %d",
+			 (int)rc, MB_ERR_ACCDN);
+
+	rc = mb_rom_frename(0, rename_readonly_target_src, rename_readonly_target_dst);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: rename readonly target rc=%d expected %d",
+			 (int)rc, MB_ERR_ACCDN);
+
 	rc = mb_rom_fattrib("C:\\HELLO.TXT", 1, 0);
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Fattrib accdn rc=%d expected %d", (int)rc,
+			 MB_ERR_ACCDN);
+
+	rc = mb_rom_dcreate(dcreate_missing_parent);
+	if (rc != MB_ERR_PTH)
+		mb_panic("FAT test: Dcreate missing parent rc=%d expected %d",
+			 (int)rc, MB_ERR_PTH);
+
+	rc = mb_rom_dcreate(dcreate_root);
+	if (rc != MB_ERR_ACCDN)
+		mb_panic("FAT test: Dcreate accdn rc=%d expected %d", (int)rc,
 			 MB_ERR_ACCDN);
 
 	mb_log_puts("mintboot: FAT test done\r\n");

@@ -48,6 +48,9 @@ long mb_rom_bconout(uint16_t dev, uint16_t c)
 long mb_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno,
 		  uint16_t dev)
 {
+	if (dev > 25)
+		return MB_ERR_DRIVE;
+
 	(void)rwflag;
 	(void)buf;
 	(void)count;
@@ -91,6 +94,9 @@ long mb_rom_getbpb(uint16_t dev)
 	uint32_t numcl;
 	struct mb_rom_bpb *bpb;
 	static struct mb_rom_bpb mb_bpb;
+
+	if (dev > 25)
+		return MB_ERR_DRIVE;
 
 	if (mb_rom_dispatch.rwabs(0, sector, 1, 0, dev) != 0)
 		return 0;

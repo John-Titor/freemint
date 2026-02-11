@@ -55,6 +55,8 @@ int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
 		char drive = p[0];
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
+		if (drive < 'A' || drive > 'Z')
+			return MB_ERR_DRIVE;
 		dev = (uint16_t)(drive - 'A');
 		p += 2;
 	}
@@ -71,8 +73,11 @@ int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
 		while (*p == '\\' || *p == '/')
 			p++;
 
-		if (mb_fat_mount(dev) != 0)
-			return -1;
+		{
+			int rc = mb_fat_mount(dev);
+			if (rc != 0)
+				return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : -1;
+		}
 
 		mb_fat_pattern_83(part, pat);
 
@@ -117,6 +122,8 @@ int mb_fat_setup_search(const char *filespec, uint16_t attr,
 		char drive = p[0];
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
+		if (drive < 'A' || drive > 'Z')
+			return MB_ERR_DRIVE;
 		dev = (uint16_t)(drive - 'A');
 		p += 2;
 	}
@@ -133,8 +140,11 @@ int mb_fat_setup_search(const char *filespec, uint16_t attr,
 		while (*p == '\\' || *p == '/')
 			p++;
 
-		if (mb_fat_mount(dev) != 0)
-			return -1;
+		{
+			int rc = mb_fat_mount(dev);
+			if (rc != 0)
+				return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : -1;
+		}
 
 		mb_fat_pattern_83(part[0] ? part : "*", pat);
 
@@ -184,6 +194,8 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 		char drive = p[0];
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
+		if (drive < 'A' || drive > 'Z')
+			return MB_ERR_DRIVE;
 		dev = (uint16_t)(drive - 'A');
 		p += 2;
 	}
@@ -200,8 +212,11 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 		while (*p == '\\' || *p == '/')
 			p++;
 
-		if (mb_fat_mount(dev) != 0)
-			return MB_ERR_FNF;
+		{
+			int rc = mb_fat_mount(dev);
+			if (rc != 0)
+				return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FNF;
+		}
 
 		if (!*p) {
 			if (part[0] == '\0')
@@ -260,8 +275,11 @@ long mb_fat_fsfirst(const char *filespec, uint16_t attr)
 	if (!dta)
 		return -1;
 
-	if (mb_fat_setup_search(filespec, attr, &search) != 0)
-		return MB_ERR_FNF;
+	{
+		int rc = mb_fat_setup_search(filespec, attr, &search);
+		if (rc != 0)
+			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FNF;
+	}
 
 	idx = search->entry_index;
 	if (mb_fat_find_in_dir(search->dir_cluster, search->pattern, search->attr,

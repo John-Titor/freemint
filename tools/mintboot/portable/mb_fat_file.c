@@ -18,7 +18,7 @@ struct mb_fat_open *mb_fat_get_open(uint16_t handle)
 int mb_fat_cluster_for_offset(const struct mb_fat_open *op, uint32_t offset,
 			      uint32_t *cluster_out, uint32_t *cluster_off_out)
 {
-	uint32_t cluster_size = mb_fat_vol.spc * mb_fat_vol.recsiz;
+	uint32_t cluster_size = mb_fat_vol->spc * mb_fat_vol->recsiz;
 	uint32_t cluster_index;
 	uint32_t cluster;
 	uint32_t i;
@@ -52,15 +52,18 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 	if (mode != 0)
 		return -1;
 
-	if (mb_fat_find_path(2, path, &ent) != 0)
-		return MB_ERR_FNF;
+	{
+		int rc = mb_fat_find_path(2, path, &ent);
+		if (rc != 0)
+			return MB_ERR_FNF;
+	}
 	if (ent.attr & MB_FAT_ATTR_DIR)
 		return -1;
 
 	for (idx = 0; idx < MB_FAT_MAX_OPEN; idx++) {
 		if (!mb_fat_open[idx].in_use) {
 			mb_fat_open[idx].in_use = 1;
-			mb_fat_open[idx].dev = mb_fat_vol.dev;
+			mb_fat_open[idx].dev = mb_fat_vol->dev;
 			mb_fat_open[idx].size = ent.size;
 			mb_fat_open[idx].start_cluster = ent.start_lo;
 			mb_fat_open[idx].offset = 0;
@@ -106,7 +109,7 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 	while (remaining > 0) {
 		uint32_t cluster;
 		uint32_t cluster_off;
-		uint32_t cluster_size = mb_fat_vol.spc * mb_fat_vol.recsiz;
+		uint32_t cluster_size = mb_fat_vol->spc * mb_fat_vol->recsiz;
 		uint32_t sector_in_cluster;
 		uint32_t sector_off;
 		uint32_t sector_idx;
@@ -116,15 +119,15 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 					      &cluster_off) != 0)
 			break;
 
-		sector_in_cluster = cluster_off / mb_fat_vol.recsiz;
-		sector_off = cluster_off % mb_fat_vol.recsiz;
+		sector_in_cluster = cluster_off / mb_fat_vol->recsiz;
+		sector_off = cluster_off % mb_fat_vol->recsiz;
 		sector_idx = mb_fat_cluster_sector(cluster) + sector_in_cluster;
 
 		if (mb_fat_rwabs(0, sector, 1, sector_idx,
-				 mb_fat_vol.dev) != 0)
+				 mb_fat_vol->dev) != 0)
 			break;
 
-		chunk = mb_fat_vol.recsiz - sector_off;
+		chunk = mb_fat_vol->recsiz - sector_off;
 		if (chunk > remaining)
 			chunk = remaining;
 
@@ -137,10 +140,10 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 		if (op->offset >= op->size)
 			break;
 
-		if (sector_off + chunk < mb_fat_vol.recsiz)
+		if (sector_off + chunk < mb_fat_vol->recsiz)
 			continue;
 
-		if ((sector_in_cluster + 1) >= mb_fat_vol.spc) {
+		if ((sector_in_cluster + 1) >= mb_fat_vol->spc) {
 			uint32_t next = mb_fat_read_fat(cluster);
 			if (next >= 0xfff8u)
 				break;
@@ -160,7 +163,7 @@ long mb_fat_fseek(uint16_t handle, int32_t where, uint16_t how)
 
 	op = mb_fat_get_open(handle);
 	if (!op)
-		return -1;
+		return MB_ERR_BADF;
 
 	switch (how) {
 	case 0:
@@ -173,7 +176,7 @@ long mb_fat_fseek(uint16_t handle, int32_t where, uint16_t how)
 		base = (int32_t)op->size;
 		break;
 	default:
-		return -1;
+		return MB_ERR_INVFN;
 	}
 
 	newpos = base + where;
@@ -223,8 +226,11 @@ long mb_fat_fattrib(const char *fn, uint16_t rwflag, uint16_t attr)
 	if (rwflag != 0)
 		return MB_ERR_ACCDN;
 
-	if (mb_fat_find_path(2, fn, &ent) != 0)
-		return MB_ERR_FNF;
+	{
+		int rc = mb_fat_find_path(2, fn, &ent);
+		if (rc != 0)
+			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FNF;
+	}
 
 	return (long)ent.attr;
 }
@@ -238,7 +244,7 @@ long mb_fat_dfree(uint32_t buf, uint16_t d)
 	if (mb_fat_mount(d) != 0)
 		return -1;
 
-	for (cluster = 2; cluster < (uint32_t)mb_fat_vol.total_clusters + 2u;
+	for (cluster = 2; cluster < (uint32_t)mb_fat_vol->total_clusters + 2u;
 	     cluster++) {
 		if (mb_fat_read_fat(cluster) == 0)
 			free_clusters++;
@@ -246,10 +252,22 @@ long mb_fat_dfree(uint32_t buf, uint16_t d)
 
 	out = (uint16_t *)(uintptr_t)buf;
 	out[0] = (uint16_t)free_clusters;
-	out[1] = (uint16_t)mb_fat_vol.total_clusters;
-	out[2] = (uint16_t)mb_fat_vol.recsiz;
-	out[3] = (uint16_t)mb_fat_vol.spc;
+	out[1] = (uint16_t)mb_fat_vol->total_clusters;
+	out[2] = (uint16_t)mb_fat_vol->recsiz;
+	out[3] = (uint16_t)mb_fat_vol->spc;
 	return 0;
+}
+
+long mb_fat_dcreate(const char *path)
+{
+	uint16_t dev;
+	uint32_t dir_cluster;
+	uint8_t name83[11];
+
+	if (mb_fat_locate_parent(path, &dev, &dir_cluster, name83) != 0)
+		return MB_ERR_PTH;
+
+	return MB_ERR_ACCDN;
 }
 
 long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname)
@@ -291,8 +309,11 @@ long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname)
 	if (mb_fat_find_in_dir(dir_src, name_src, 0xffffu, &ent, &idx_src) != 0)
 		return MB_ERR_FNF;
 
+	if (ent.attr & MB_FAT_ATTR_RDONLY)
+		return MB_ERR_ACCDN;
+
 	if (mb_fat_find_in_dir(dir_dst, name_dst, 0xffffu, &ent, &idx_dst) == 0)
-		return MB_ERR_EXIST;
+		return MB_ERR_ACCDN;
 
 	if (mb_fat_read_dirent_raw(dir_src, idx_src, raw) != 0)
 		return MB_ERR_FNF;

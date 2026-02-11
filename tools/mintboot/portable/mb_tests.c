@@ -14,23 +14,23 @@ static void mb_setexc_tests(void)
 	prev = mb_rom_setexc(vnum, 0xffffffffu);
 	cur = mb_rom_setexc(vnum, new_vec);
 	if (cur != prev)
-		mb_panic("Setexc: prev mismatch %ld vs %ld", cur, prev);
+		mb_panic("Setexc: prev mismatch %d vs %d", (int)cur, (int)prev);
 
 	cur = mb_rom_setexc(vnum, 0xffffffffu);
 	if ((uint32_t)cur != new_vec)
-		mb_panic("Setexc: query mismatch %ld vs %u", cur, new_vec);
+		mb_panic("Setexc: query mismatch %d vs %u", (int)cur, new_vec);
 
 	cur = mb_rom_setexc(vnum, alt_vec);
 	if ((uint32_t)cur != new_vec)
-		mb_panic("Setexc: swap mismatch %ld vs %u", cur, new_vec);
+		mb_panic("Setexc: swap mismatch %d vs %u", (int)cur, new_vec);
 
 	cur = mb_rom_setexc(vnum, prev);
 	if ((uint32_t)cur != alt_vec)
-		mb_panic("Setexc: restore mismatch %ld vs %u", cur, alt_vec);
+		mb_panic("Setexc: restore mismatch %d vs %u", (int)cur, alt_vec);
 
 	rc = mb_rom_setexc(256, 0xffffffffu);
 	if (rc != 0)
-		mb_panic("Setexc: vnum range rc=%ld expected 0", rc);
+		mb_panic("Setexc: vnum range rc=%d expected 0", (int)rc);
 }
 
 static void mb_gettime_tests(void)
@@ -65,9 +65,28 @@ static void mb_gettime_tests(void)
 			 (uint32_t)year, (uint32_t)month, (uint32_t)day);
 }
 
+static void mb_drive_range_tests(void)
+{
+	uint8_t sector[512];
+	long rc;
+
+	rc = mb_rom_rwabs(0, sector, 1, 0, 26);
+	if (rc != MB_ERR_DRIVE)
+	mb_panic("Rwabs drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
+
+	rc = mb_rom_getbpb(26);
+	if (rc != MB_ERR_DRIVE)
+	mb_panic("Getbpb drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
+
+	rc = mb_rom_dfree((uint32_t)(uintptr_t)sector, 26);
+	if (rc != MB_ERR_DRIVE)
+	mb_panic("Dfree drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
+}
+
 void mb_portable_run_tests(void)
 {
 	mb_fat_run_tests();
 	mb_setexc_tests();
 	mb_gettime_tests();
+	mb_drive_range_tests();
 }

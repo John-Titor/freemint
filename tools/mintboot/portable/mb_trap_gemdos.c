@@ -24,14 +24,14 @@ void *mb_rom_fgetdta(void)
 }
 long mb_rom_dfree(uint32_t buf, uint16_t d)
 {
+	if (d > 25)
+		return MB_ERR_DRIVE;
 	return mb_fat_dfree(buf, d);
 }
 
 long mb_rom_dcreate(const char *path)
 {
-	mb_panic("Dcreate(path=%08x, \"%s\")", (uint32_t)(uintptr_t)path,
-		 mb_guarded_str(path));
-	return -1;
+	return mb_fat_dcreate(path);
 }
 
 long mb_rom_ddelete(const char *path)
