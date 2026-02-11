@@ -4,34 +4,34 @@
 
 #include <stdint.h>
 
-long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args);
-long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args);
-long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args);
+long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args);
+long mb_rom_bios_dispatch(uint16_t fnum, uint16_t *args);
+long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args);
 
-static inline uint32_t *mb_trap_args(struct mb_exception_context *ctx)
+static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 {
-	return (uint32_t *)(uintptr_t)(ctx->sp + sizeof(struct mb_exception_frame));
+	return (uint16_t *)(uintptr_t)(ctx->sp + sizeof(struct mb_exception_frame));
 }
 
 void mb_trap1_handler(struct mb_exception_context *ctx)
 {
-	uint32_t *args = mb_trap_args(ctx);
-	uint16_t fnum = (uint16_t)ctx->d[0];
-	ctx->d[0] = (uint32_t)mb_rom_gemdos_dispatch(fnum, args);
+	uint16_t *args = mb_trap_args(ctx);
+	uint16_t fnum = args[0];
+	ctx->d[0] = (uint32_t)mb_rom_gemdos_dispatch(fnum, args + 1);
 }
 
 void mb_trap13_handler(struct mb_exception_context *ctx)
 {
-	uint32_t *args = mb_trap_args(ctx);
-	uint16_t fnum = (uint16_t)ctx->d[0];
-	ctx->d[0] = (uint32_t)mb_rom_bios_dispatch(fnum, args);
+	uint16_t *args = mb_trap_args(ctx);
+	uint16_t fnum = args[0];
+	ctx->d[0] = (uint32_t)mb_rom_bios_dispatch(fnum, args + 1);
 }
 
 void mb_trap14_handler(struct mb_exception_context *ctx)
 {
-	uint32_t *args = mb_trap_args(ctx);
-	uint16_t fnum = (uint16_t)ctx->d[0];
-	ctx->d[0] = (uint32_t)mb_rom_xbios_dispatch(fnum, args);
+	uint16_t *args = mb_trap_args(ctx);
+	uint16_t fnum = args[0];
+	ctx->d[0] = (uint32_t)mb_rom_xbios_dispatch(fnum, args + 1);
 }
 
 void mb_spurious_irq_handler(void)

@@ -10,6 +10,7 @@ RAMDISK_SIZE_MIB=32
 RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
 CMDLINE=${CMDLINE:-}
+QEMU_TRACE=${QEMU_TRACE:-}
 VERSION_H="$ROOT/../../sys/buildinfo/version.h"
 KERNEL_SRC="$ROOT/../../sys/compile.040/mint040.prg"
 if [ ! -f "$KERNEL_SRC" ]; then
@@ -111,4 +112,5 @@ exec "$QEMU" \
 	-serial mon:stdio \
 	-kernel "$ELF" \
 	-initrd "$RAMDISK" \
+	${QEMU_TRACE:+$QEMU_TRACE} \
 	${CMDLINE:+-append "$CMDLINE"}

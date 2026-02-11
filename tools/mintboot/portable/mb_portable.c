@@ -221,10 +221,10 @@ void mb_portable_boot(struct mb_boot_info *info)
 		char kernel_path[384];
 		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
 			mb_log_printf("mintboot: kernel candidate %s\r\n", kernel_path);
-			if (mb_portable_load_kernel(kernel_path, 0) != 0)
+			if (mb_portable_load_kernel(kernel_path, 1) != 0)
 				mb_log_puts("mintboot: kernel load failed\r\n");
 			else
-				mb_log_puts("mintboot: kernel loaded (no jump)\r\n");
+				mb_log_puts("mintboot: kernel loaded (jump)\r\n");
 		} else {
 			mb_log_puts("mintboot: kernel not found\r\n");
 		}

@@ -120,7 +120,14 @@ long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd)
 	return -1;
 }
 
-long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
+long mb_rom_mshrink(uint16_t zero, uint32_t base, uint32_t len)
+{
+	mb_log_printf("Mshrink(zero=%u, base=%08x, len=%u)\r\n",
+		      (uint32_t)zero, base, len);
+	return MB_ERR_INVFN;
+}
+
+long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
 {
 	switch (fnum) {
 	case 0x01a:
@@ -149,6 +156,8 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
 		return mb_rom_fseek((int32_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
 	case 0x043:
 		return mb_rom_fattrib((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+	case 0x04a:
+		return mb_rom_mshrink(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
 	case 0x04e:
 		return mb_rom_fsfirst((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
 	case 0x04f:

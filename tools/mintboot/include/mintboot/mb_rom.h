@@ -39,6 +39,7 @@ long mb_rom_frename(uint16_t zero, const char *oldname, const char *newname);
 long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag);
 long mb_rom_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length);
 long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd);
+long mb_rom_mshrink(uint16_t zero, uint32_t base, uint32_t len);
 
 long mb_rom_bconstat(uint16_t dev);
 long mb_rom_bconin(uint16_t dev);
@@ -68,8 +69,8 @@ long mb_rom_bconmap(uint16_t dev);
 long mb_rom_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode);
 long mb_rom_kbrate(uint16_t delay, uint16_t rate);
 
-long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args);
-long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args);
-long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args);
+long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args);
+long mb_rom_bios_dispatch(uint16_t fnum, uint16_t *args);
+long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args);
 
 #endif /* MINTBOOT_MB_ROM_H */

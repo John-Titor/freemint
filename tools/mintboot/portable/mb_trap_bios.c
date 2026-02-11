@@ -480,7 +480,7 @@ long mb_rom_kbrate(uint16_t delay, uint16_t rate)
 	return 0;
 }
 
-long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
+long mb_rom_bios_dispatch(uint16_t fnum, uint16_t *args)
 {
 	switch (fnum) {
 	case 0x01:
@@ -510,7 +510,7 @@ long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
 	}
 }
 
-long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args)
+long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args)
 {
 	switch (fnum) {
 	case 0x00:
