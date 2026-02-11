@@ -109,7 +109,11 @@ long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
 
 long mb_rom_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length)
 {
-	return mb_fat_flock(handle, mode, start, length);
+	(void)handle;
+	(void)mode;
+	(void)start;
+	(void)length;
+	return MB_ERR_INVFN;
 }
 
 long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd)

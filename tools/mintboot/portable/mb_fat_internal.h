@@ -69,7 +69,6 @@ struct mb_fat_search {
 
 struct mb_fat_open {
 	uint8_t in_use;
-	uint8_t locked;
 	uint8_t dev;
 	uint32_t size;
 	uint32_t start_cluster;

@@ -177,9 +177,9 @@ void mb_fat_run_tests(void)
 				 (int)handles[i], i);
 	}
 	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
-	if (fh != MB_ERR_NMFIL)
-		mb_panic("FAT test: Fopen ENMFIL rc=%d expected %d", (int)fh,
-			 MB_ERR_NMFIL);
+	if (fh != MB_ERR_HNDL)
+		mb_panic("FAT test: Fopen ENHNDL rc=%d expected %d", (int)fh,
+			 MB_ERR_HNDL);
 	for (i = 0; i < MB_FAT_MAX_OPEN; i++) {
 		mb_rom_fclose((uint16_t)handles[i]);
 	}
@@ -204,16 +204,6 @@ void mb_fat_run_tests(void)
 	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen HELLO.TXT for lock failed");
-	rc = mb_rom_flock((uint16_t)fh, 1, 0, 0);
-	if (rc != 0)
-		mb_panic("FAT test: Flock rc=%d expected 0", (int)rc);
-	rc = mb_rom_fread((uint16_t)fh, 1, buf);
-	if (rc != MB_ERR_LOCKED)
-		mb_panic("FAT test: Fread locked rc=%d expected %d", (int)rc,
-			 MB_ERR_LOCKED);
-	rc = mb_rom_flock((uint16_t)fh, 0, 0, 0);
-	if (rc != 0)
-		mb_panic("FAT test: Funlock rc=%d expected 0", (int)rc);
 	mb_rom_fclose((uint16_t)fh);
 
 	fh = mb_rom_fopen(missing, 0);

@@ -70,12 +70,11 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 			mb_fat_open[idx].time = ent.wr_time;
 			mb_fat_open[idx].date = ent.wr_date;
 			mb_fat_open[idx].attr = ent.attr;
-			mb_fat_open[idx].locked = 0;
 			return (long)(idx + 3);
 		}
 	}
 
-	return MB_ERR_NMFIL;
+	return MB_ERR_HNDL;
 }
 
 long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
@@ -89,9 +88,6 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 	op = mb_fat_get_open(handle);
 	if (!op)
 		return MB_ERR_BADF;
-
-	if (op->locked)
-		return MB_ERR_LOCKED;
 
 	if (mb_fat_mount(op->dev) != 0)
 		return -1;
@@ -195,7 +191,6 @@ long mb_fat_fclose(uint16_t handle)
 		return MB_ERR_BADF;
 
 	op->in_use = 0;
-	op->locked = 0;
 	return 0;
 }
 
@@ -334,20 +329,5 @@ long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname)
 	if (mb_fat_write_dirent_raw(dir_src, idx_src, raw) != 0)
 		return -1;
 
-	return 0;
-}
-
-long mb_fat_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length)
-{
-	struct mb_fat_open *op;
-
-	(void)start;
-	(void)length;
-
-	op = mb_fat_get_open(handle);
-	if (!op)
-		return MB_ERR_BADF;
-
-	op->locked = (mode != 0);
 	return 0;
 }
