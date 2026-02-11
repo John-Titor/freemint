@@ -1,0 +1,222 @@
+#include "mintboot/mb_portable.h"
+#include "mintboot/mb_rom.h"
+#include <stdint.h>
+
+static inline uint32_t mb_arg32(uint32_t *args, int idx)
+{
+	return args[idx];
+}
+
+static inline uint16_t mb_arg16(uint32_t *args, int idx)
+{
+	return (uint16_t)args[idx];
+}
+
+/* BIOS (trap #13) stubs */
+long mb_rom_bconstat(uint16_t dev)
+{
+	mb_panic("Bconstat(dev=%u)", (uint32_t)dev);
+	return -1;
+}
+
+long mb_rom_bconin(uint16_t dev)
+{
+	mb_panic("Bconin(dev=%u)", (uint32_t)dev);
+	return -1;
+}
+
+long mb_rom_bconout(uint16_t dev, uint16_t c)
+{
+	mb_panic("Bconout(dev=%u, c=%u)", (uint32_t)dev, (uint32_t)c);
+	return -1;
+}
+
+long mb_rom_setexc(uint16_t vnum, uint32_t vptr)
+{
+	mb_panic("Setexc(vnum=%u, vptr=%08x)", (uint32_t)vnum, vptr);
+	return -1;
+}
+
+long mb_rom_bcostat(uint16_t dev)
+{
+	mb_panic("Bcostat(dev=%u)", (uint32_t)dev);
+	return -1;
+}
+
+long mb_rom_kbshift(uint16_t data)
+{
+	mb_panic("Kbshift(data=%u)", (uint32_t)data);
+	return -1;
+}
+
+/* XBIOS (trap #14) stubs */
+long mb_rom_initmous(uint16_t type, uint32_t param, uint32_t vptr)
+{
+	mb_panic("Initmous(type=%u, param=%08x, vptr=%08x)", (uint32_t)type, param, vptr);
+	return -1;
+}
+
+long mb_rom_getrez(void)
+{
+	mb_panic("Getrez()");
+	return -1;
+}
+
+long mb_rom_iorec(uint16_t io_dev)
+{
+	mb_panic("Iorec(dev=%u)", (uint32_t)io_dev);
+	return -1;
+}
+
+long mb_rom_rsconf(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs, uint16_t ts, uint16_t sc)
+{
+	(void)baud; (void)flow; (void)uc; (void)rs; (void)ts; (void)sc;
+	mb_panic("Rsconf(baud=%u, flow=%u, uc=%u, rs=%u, ts=%u, sc=%u)",
+		 (uint32_t)baud, (uint32_t)flow, (uint32_t)uc, (uint32_t)rs,
+		 (uint32_t)ts, (uint32_t)sc);
+	return -1;
+}
+long mb_rom_keytbl(uint32_t nrml, uint32_t shft, uint32_t caps)
+{
+	mb_panic("Keytbl(nrml=%08x, shft=%08x, caps=%08x)", nrml, shft, caps);
+	return -1;
+}
+
+long mb_rom_cursconf(uint16_t rate, uint16_t attr)
+{
+	mb_panic("Cursconf(rate=%u, attr=%u)", (uint32_t)rate, (uint32_t)attr);
+	return -1;
+}
+
+long mb_rom_settime(uint32_t time)
+{
+	mb_panic("Settime(time=%08x)", time);
+	return -1;
+}
+
+long mb_rom_gettime(void)
+{
+	mb_panic("Gettime()");
+	return -1;
+}
+
+long mb_rom_bioskeys(void)
+{
+	mb_panic("Bioskeys()");
+	return -1;
+}
+
+long mb_rom_offgibit(uint16_t ormask)
+{
+	mb_panic("Offgibit(mask=%u)", (uint32_t)ormask);
+	return -1;
+}
+
+long mb_rom_ongibit(uint16_t andmask)
+{
+	mb_panic("Ongibit(mask=%u)", (uint32_t)andmask);
+	return -1;
+}
+
+long mb_rom_dosound(uint32_t ptr)
+{
+	mb_panic("Dosound(ptr=%08x)", ptr);
+	return -1;
+}
+
+long mb_rom_kbdvbase(void)
+{
+	mb_panic("Kbdvbase()");
+	return -1;
+}
+
+long mb_rom_vsync(void)
+{
+	mb_panic("Vsync()");
+	return -1;
+}
+
+long mb_rom_bconmap(uint16_t dev)
+{
+	mb_panic("Bconmap(dev=%u)", (uint32_t)dev);
+	return -1;
+}
+
+long mb_rom_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode)
+{
+	(void)lscrn; (void)pscrn; (void)rez; (void)mode;
+	mb_panic("VsetScreen(ls=%08x, ps=%08x, rez=%u, mode=%u)",
+		 lscrn, pscrn, (uint32_t)rez, (uint32_t)mode);
+	return -1;
+}
+long mb_rom_kbrate(uint16_t delay, uint16_t rate)
+{
+	mb_panic("Kbrate(delay=%u, rate=%u)", (uint32_t)delay, (uint32_t)rate);
+	return -1;
+}
+
+long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
+{
+	switch (fnum) {
+	case 0x01:
+		return mb_rom_dispatch.bconstat(mb_arg16(args, 0));
+	case 0x02:
+		return mb_rom_dispatch.bconin(mb_arg16(args, 0));
+	case 0x03:
+		return mb_rom_dispatch.bconout(mb_arg16(args, 0), mb_arg16(args, 1));
+	case 0x05:
+		return mb_rom_dispatch.setexc(mb_arg16(args, 0), mb_arg32(args, 1));
+	case 0x08:
+		return mb_rom_dispatch.bcostat(mb_arg16(args, 0));
+	case 0x0b:
+		return mb_rom_dispatch.kbshift(mb_arg16(args, 0));
+	default:
+		mb_panic("bios: unhandled 0x%04x", (uint32_t)fnum);
+	}
+
+	return -1;
+}
+
+long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args)
+{
+	switch (fnum) {
+	case 0x00:
+		return mb_rom_dispatch.initmous(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+	case 0x04:
+		return mb_rom_dispatch.getrez();
+	case 0x0e:
+		return mb_rom_dispatch.iorec(mb_arg16(args, 0));
+	case 0x0f:
+		return mb_rom_dispatch.rsconf(mb_arg16(args, 0), mb_arg16(args, 1), mb_arg16(args, 2), mb_arg16(args, 3), mb_arg16(args, 4), mb_arg16(args, 5));
+	case 0x10:
+		return mb_rom_dispatch.keytbl(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+	case 0x15:
+		return mb_rom_dispatch.cursconf(mb_arg16(args, 0), mb_arg16(args, 1));
+	case 0x16:
+		return mb_rom_dispatch.settime(mb_arg32(args, 0));
+	case 0x17:
+		return mb_rom_dispatch.gettime();
+	case 0x18:
+		return mb_rom_dispatch.bioskeys();
+	case 0x1d:
+		return mb_rom_dispatch.offgibit(mb_arg16(args, 0));
+	case 0x1e:
+		return mb_rom_dispatch.ongibit(mb_arg16(args, 0));
+	case 0x20:
+		return mb_rom_dispatch.dosound(mb_arg32(args, 0));
+	case 0x22:
+		return mb_rom_dispatch.kbdvbase();
+	case 0x23:
+		return mb_rom_dispatch.kbrate(mb_arg16(args, 0), mb_arg16(args, 1));
+	case 0x25:
+		return mb_rom_dispatch.vsync();
+	case 0x2c:
+		return mb_rom_dispatch.bconmap(mb_arg16(args, 0));
+	case 0x05:
+		return mb_rom_dispatch.vsetscreen(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg16(args, 2), mb_arg16(args, 3));
+	default:
+		mb_panic("xbios: unhandled 0x%04x", (uint32_t)fnum);
+	}
+
+	return -1;
+}

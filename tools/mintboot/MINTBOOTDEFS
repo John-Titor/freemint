@@ -1,0 +1,19 @@
+ifeq ($(mintboot),generic)
+TARGET = ../libmintboot-generic.a
+CPU = 000
+COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c board/mb_board.c
+SOBJS = portable/mb_vectors.S
+endif
+
+MINTBOOT_CROSSPREFIX ?= m68k-atari-mintelf-
+
+ifeq ($(mintboot),virt)
+TARGET = ../mintboot-virt.elf
+CPU = 040
+BUILD_ELF = yes
+COBJS = portable/mb_portable.c portable/mb_cookie.c portable/mb_traps.c portable/mb_trap_gemdos.c portable/mb_trap_bios.c portable/mb_log.c board/virt/mb_board_virt.c
+SOBJS = portable/mb_vectors.S board/virt/mb_entry.S
+LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
+endif
+
+mintboottargets = generic virt

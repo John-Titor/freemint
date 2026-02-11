@@ -12,6 +12,7 @@ SUBDIRS = \
 	lpflush \
 	mgw \
 	minix \
+	mintboot \
 	mintload \
 	mkfatfs \
 	mktbl \

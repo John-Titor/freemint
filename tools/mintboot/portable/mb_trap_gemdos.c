@@ -1,0 +1,220 @@
+#include "mintboot/mb_portable.h"
+#include "mintboot/mb_rom.h"
+
+#include <stdint.h>
+#include <stddef.h>
+
+static inline uint32_t mb_arg32(uint32_t *args, int idx)
+{
+	return args[idx];
+}
+
+static inline uint16_t mb_arg16(uint32_t *args, int idx)
+{
+	return (uint16_t)args[idx];
+}
+
+#define MB_PATH_DUMP_MAX 64
+
+static const char *mb_guarded_str(const char *s)
+{
+	static char buf[MB_PATH_DUMP_MAX + 4];
+	size_t i = 0;
+
+	if (!s)
+		return "(null)";
+
+	for (; i < MB_PATH_DUMP_MAX; i++) {
+		unsigned char c = (unsigned char)s[i];
+
+		if (c == '\0') {
+			buf[i] = '\0';
+			return buf;
+		}
+		if (c < 0x20 || c > 0x7e)
+			c = '.';
+		buf[i] = (char)c;
+	}
+
+	buf[i++] = '.';
+	buf[i++] = '.';
+	buf[i++] = '.';
+	buf[i] = '\0';
+	return buf;
+}
+
+/* GEMDOS (trap #1) stubs */
+#define MB_EMUTOS_DTA_SIZE 44
+
+static uint8_t mb_default_dta[MB_EMUTOS_DTA_SIZE];
+static void *mb_gemdos_dta = mb_default_dta;
+
+long mb_rom_fsetdta(void *dta)
+{
+	mb_gemdos_dta = dta;
+	return 0;
+}
+
+void *mb_rom_fgetdta(void)
+{
+	return mb_gemdos_dta;
+}
+long mb_rom_dfree(uint32_t buf, uint16_t d)
+{
+	mb_panic("Dfree(buf=%08x, d=%u)", buf, (uint32_t)d);
+	return -1;
+}
+
+long mb_rom_dcreate(const char *path)
+{
+	mb_panic("Dcreate(path=%08x, \"%s\")", (uint32_t)(uintptr_t)path,
+		 mb_guarded_str(path));
+	return -1;
+}
+
+long mb_rom_ddelete(const char *path)
+{
+	mb_panic("Ddelete(path=%08x, \"%s\")", (uint32_t)(uintptr_t)path,
+		 mb_guarded_str(path));
+	return -1;
+}
+
+long mb_rom_fcreate(const char *fn, uint16_t mode)
+{
+	mb_panic("Fcreate(fn=%08x, mode=%u, \"%s\")", (uint32_t)(uintptr_t)fn,
+		 (uint32_t)mode, mb_guarded_str(fn));
+	return -1;
+}
+
+long mb_rom_fopen(const char *filename, uint16_t mode)
+{
+	mb_panic("Fopen(fn=%08x, mode=%u, \"%s\")", (uint32_t)(uintptr_t)filename,
+		 (uint32_t)mode, mb_guarded_str(filename));
+	return -1;
+}
+
+long mb_rom_fclose(uint16_t handle)
+{
+	mb_panic("Fclose(handle=%u)", (uint32_t)handle);
+	return -1;
+}
+
+long mb_rom_fread(uint16_t handle, uint32_t cnt, uint32_t buf)
+{
+	mb_panic("Fread(handle=%u, cnt=%u, buf=%08x)", (uint32_t)handle, cnt, buf);
+	return -1;
+}
+
+long mb_rom_fwrite(uint16_t handle, uint32_t cnt, uint32_t buf)
+{
+	mb_panic("Fwrite(handle=%u, cnt=%u, buf=%08x)", (uint32_t)handle, cnt, buf);
+	return -1;
+}
+
+long mb_rom_fdelete(const char *fn)
+{
+	mb_panic("Fdelete(fn=%08x, \"%s\")", (uint32_t)(uintptr_t)fn,
+		 mb_guarded_str(fn));
+	return -1;
+}
+
+long mb_rom_fseek(int32_t where, uint16_t handle, uint16_t how)
+{
+	mb_panic("Fseek(where=%d, handle=%u, how=%u)", where, (uint32_t)handle, (uint32_t)how);
+	return -1;
+}
+
+long mb_rom_fattrib(const char *fn, uint16_t rwflag, uint16_t attr)
+{
+	mb_panic("Fattrib(fn=%08x, rw=%u, attr=%u, \"%s\")",
+		 (uint32_t)(uintptr_t)fn, (uint32_t)rwflag, (uint32_t)attr,
+		 mb_guarded_str(fn));
+	return -1;
+}
+
+long mb_rom_fsfirst(const char *filespec, uint16_t attr)
+{
+	mb_panic("Fsfirst(spec=%08x, attr=%u, \"%s\")",
+		 (uint32_t)(uintptr_t)filespec, (uint32_t)attr,
+		 mb_guarded_str(filespec));
+	return -1;
+}
+
+long mb_rom_fsnext(void)
+{
+	mb_panic("Fsnext()");
+	return -1;
+}
+
+long mb_rom_frename(uint16_t zero, const char *oldname, const char *newname)
+{
+	mb_panic("Frename(zero=%u, old=%08x \"%s\", new=%08x \"%s\")",
+		 (uint32_t)zero, (uint32_t)(uintptr_t)oldname,
+		 mb_guarded_str(oldname), (uint32_t)(uintptr_t)newname,
+		 mb_guarded_str(newname));
+	return -1;
+}
+
+long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
+{
+	mb_panic("Fdatime(time=%08x, handle=%u, rw=%u)", timeptr, (uint32_t)handle, (uint32_t)rwflag);
+	return -1;
+}
+
+long mb_rom_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length)
+{
+	mb_panic("Flock(handle=%u, mode=%u, start=%d, len=%d)", (uint32_t)handle, (uint32_t)mode, start, length);
+	return -1;
+}
+
+long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd)
+{
+	mb_panic("Fcntl(f=%u, arg=%08x, cmd=%u)", (uint32_t)f, arg, (uint32_t)cmd);
+	return -1;
+}
+
+long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
+{
+	switch (fnum) {
+	case 0x01a:
+		return mb_rom_dispatch.fsetdta((void *)(uintptr_t)mb_arg32(args, 0));
+	case 0x036:
+		return mb_rom_dispatch.dfree(mb_arg32(args, 0), mb_arg16(args, 1));
+	case 0x039:
+		return mb_rom_dispatch.dcreate((const char *)(uintptr_t)mb_arg32(args, 0));
+	case 0x03a:
+		return mb_rom_dispatch.ddelete((const char *)(uintptr_t)mb_arg32(args, 0));
+	case 0x03c:
+		return mb_rom_dispatch.fcreate((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+	case 0x03d:
+		return mb_rom_dispatch.fopen((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+	case 0x03e:
+		return mb_rom_dispatch.fclose(mb_arg16(args, 0));
+	case 0x03f:
+		return mb_rom_dispatch.fread(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+	case 0x040:
+		return mb_rom_dispatch.fwrite(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+	case 0x041:
+		return mb_rom_dispatch.fdelete((const char *)(uintptr_t)mb_arg32(args, 0));
+	case 0x042:
+		return mb_rom_dispatch.fseek((int32_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+	case 0x043:
+		return mb_rom_dispatch.fattrib((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+	case 0x04e:
+		return mb_rom_dispatch.fsfirst((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1));
+	case 0x04f:
+		return mb_rom_dispatch.fsnext();
+	case 0x056:
+		return mb_rom_dispatch.frename(mb_arg16(args, 0), (const char *)(uintptr_t)mb_arg32(args, 1), (const char *)(uintptr_t)mb_arg32(args, 2));
+	case 0x057:
+		return mb_rom_dispatch.fdatime(mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+	case 0x05c:
+		return mb_rom_dispatch.flock(mb_arg16(args, 0), mb_arg16(args, 1), (int32_t)mb_arg32(args, 2), (int32_t)mb_arg32(args, 3));
+	case 0x104:
+		return mb_rom_dispatch.fcntl(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg16(args, 2));
+	default:
+		mb_panic("gemdos: unhandled 0x%04x", (uint32_t)fnum);
+	}
+
+	return -1;
+}

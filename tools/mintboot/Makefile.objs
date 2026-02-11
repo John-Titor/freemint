@@ -1,0 +1,63 @@
+#
+# Makefile for mintboot
+#
+
+SHELL = /bin/sh
+SUBDIRS =
+
+srcdir = ..
+top_srcdir = ../..
+subdir = $(compile_dir)
+
+default: all
+
+include $(srcdir)/MINTBOOTDEFS
+
+include $(top_srcdir)/CONFIGVARS
+include $(top_srcdir)/RULES
+include $(top_srcdir)/PHONY
+
+ifdef MINTBOOT_CROSSPREFIX
+CC = $(MINTBOOT_CROSSPREFIX)gcc
+AS = $(CC)
+AR = $(MINTBOOT_CROSSPREFIX)ar
+RANLIB = $(MINTBOOT_CROSSPREFIX)ranlib
+STRIP = $(MINTBOOT_CROSSPREFIX)strip
+OBJDUMP = $(MINTBOOT_CROSSPREFIX)objdump
+endif
+
+all-here: build
+
+# default overwrites
+
+# default definitions
+OBJS = $(COBJS:.c=.o) $(SOBJS:.S=.o)
+GENFILES = $(TARGET)
+INCLUDES += -I$(srcdir)/include
+DEPDIRS = $(sort $(dir $(addprefix .deps/,$(OBJS:.o=.P))))
+OBJDIRS = $(sort $(addprefix ./,$(dir $(OBJS))))
+MKDIR_MAGIC := $(shell $(MKDIR) -p $(OBJDIRS) $(DEPDIRS) > /dev/null 2>&1 || :)
+
+VPATH = ..
+
+#
+# main target
+#
+build: $(TARGET)
+
+ifeq ($(BUILD_ELF),yes)
+LD = $(CC) $(CFLAGS) -nostdlib -Wl,--entry=mb_entry -Wl,-m,m68kelf -Wl,-T,$(LDSCRIPT)
+LIBS = -lgcc
+
+$(TARGET): $(OBJS)
+	$(LD) -o $@ -Wall $^ $(LIBS)
+	$(STRIP) $@
+else
+$(TARGET): $(OBJS)
+	$(AR) rcs $@.$$$$ $(OBJS) && mv $@.$$$$ $@ || { $(RM) $@.$$$$; false; }
+endif
+
+
+# default dependencies
+# must be included last
+include $(top_srcdir)/DEPENDENCIES

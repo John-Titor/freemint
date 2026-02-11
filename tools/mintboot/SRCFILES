@@ -1,0 +1,29 @@
+HEADER = \
+	include/mintboot/mb_portable.h \
+	include/mintboot/mb_board.h \
+	include/mintboot/mb_rom.h \
+	include/mintboot/mb_cookie.h \
+	include/mintboot/mb_lowmem.h
+
+COBJS_SRC = \
+	portable/mb_portable.c \
+	portable/mb_cookie.c \
+	portable/mb_traps.c \
+	portable/mb_trap_gemdos.c \
+	portable/mb_trap_bios.c \
+	portable/mb_log.c \
+	board/mb_board.c \
+	board/virt/mb_board_virt.c
+
+SOBJS_SRC = \
+	portable/mb_vectors.S \
+	board/virt/mb_entry.S
+
+DOCS = \
+	README.md \
+	portable/README.md \
+	board/README.md \
+	board/virt/README.md \
+	board/virt/mb_virt.ld
+
+SRCFILES = $(HEADER) $(COBJS_SRC) $(SOBJS_SRC) $(DOCS)
