@@ -505,10 +505,9 @@ long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
 	case 0x0b:
 		return mb_rom_kbshift(mb_arg16(args, 0));
 	default:
-		mb_panic("bios: unhandled 0x%04x", (uint32_t)fnum);
+		mb_log_printf("bios: unhandled 0x%04x", (uint32_t)fnum);
+		return MB_ERR_INVFN;
 	}
-
-	return -1;
 }
 
 long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args)
@@ -549,8 +548,7 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint32_t *args)
 	case 0x05:
 		return mb_rom_vsetscreen(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg16(args, 2), mb_arg16(args, 3));
 	default:
-		mb_panic("xbios: unhandled 0x%04x", (uint32_t)fnum);
+		mb_log_printf("xbios: unhandled 0x%04x", (uint32_t)fnum);
+		return MB_ERR_INVFN;
 	}
-
-	return -1;
 }

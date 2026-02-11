@@ -214,7 +214,7 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 	uint32_t dir_cluster = 0;
 
 	if (!path)
-		return MB_ERR_PTH;
+		return MB_ERR_PTHNF;
 
 	if (p[1] == ':') {
 		char drive = p[0];
@@ -241,14 +241,14 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 		{
 			int rc = mb_fat_mount(dev);
 			if (rc != 0)
-				return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FNF;
+				return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FILNF;
 		}
 
 		if (!*p) {
 			if (part[0] == '\0')
-				return MB_ERR_PTH;
+				return MB_ERR_PTHNF;
 			if (mb_fat_has_wildcards(part))
-				return MB_ERR_FNF;
+				return MB_ERR_FILNF;
 			mb_fat_pattern_83(part, name83);
 			*dev_out = dev;
 			*dir_cluster_out = dir_cluster;
@@ -261,13 +261,13 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 			uint32_t search_idx = 0;
 
 			if (mb_fat_has_wildcards(part))
-				return MB_ERR_PTH;
+				return MB_ERR_PTHNF;
 			mb_fat_pattern_83(part, pat);
 			if (mb_fat_find_in_dir(dir_cluster, pat, MB_FAT_ATTR_DIR,
 					       &dirent, &search_idx) != 0)
-				return MB_ERR_PTH;
+				return MB_ERR_PTHNF;
 			if (!(dirent.attr & MB_FAT_ATTR_DIR))
-				return MB_ERR_PTH;
+				return MB_ERR_PTHNF;
 			dir_cluster = dirent.start_lo;
 		}
 	}
@@ -304,14 +304,14 @@ long mb_fat_fsfirst(const char *filespec, uint16_t attr)
 	{
 		int rc = mb_fat_setup_search(filespec, attr, &search);
 		if (rc != 0)
-			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FNF;
+			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FILNF;
 	}
 
 	idx = search->entry_index;
 	if (mb_fat_find_in_dir(search->dir_cluster, search->pattern, search->attr,
 			       &ent, &idx) != 0) {
 		search->in_use = 0;
-		return MB_ERR_FNF;
+		return MB_ERR_FILNF;
 	}
 
 	search->entry_index = idx + 1;
@@ -340,13 +340,13 @@ long mb_fat_fsnext(void)
 
 	dta = (struct mb_fat_dta *)mb_rom_fgetdta();
 	if (!dta || dta->magic != MB_FAT_DTA_VALID)
-		return MB_ERR_FNF;
+		return MB_ERR_FILNF;
 
 	if (dta->index >= MB_FAT_MAX_SEARCH)
-		return MB_ERR_FNF;
+		return MB_ERR_FILNF;
 	search = &mb_fat_search[dta->index];
 	if (!search->in_use)
-		return MB_ERR_FNF;
+		return MB_ERR_FILNF;
 
 	idx = search->entry_index;
 	if (mb_fat_find_in_dir(search->dir_cluster, search->pattern, search->attr,

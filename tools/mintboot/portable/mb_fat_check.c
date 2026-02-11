@@ -206,7 +206,7 @@ long mb_fat_check(uint16_t dev, struct mb_fat_check_report *report)
 		return MB_ERR_DRIVE;
 
 	if (mb_fat_mount(dev) != 0)
-		return MB_ERR_FNF;
+		return MB_ERR_FILNF;
 
 	if (mb_fat_vol->recsiz != 512 || mb_fat_vol->spc == 0 ||
 	    mb_fat_vol->num_fats == 0 || mb_fat_vol->fat_sectors == 0 ||

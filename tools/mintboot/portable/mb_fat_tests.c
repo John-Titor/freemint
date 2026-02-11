@@ -354,9 +354,9 @@ void mb_fat_run_tests(void)
 				 (int)handles[i], i);
 	}
 	fh = mb_rom_fopen(ddelete_file, 0);
-	if (fh != MB_ERR_HNDL)
+	if (fh != MB_ERR_NHNDL)
 		mb_panic("FAT test: Fopen ENHNDL rc=%d expected %d", (int)fh,
-			 MB_ERR_HNDL);
+			 MB_ERR_NHNDL);
 	for (i = 0; i < MB_FAT_MAX_OPEN; i++) {
 		mb_rom_fclose((uint16_t)handles[i]);
 	}
@@ -369,14 +369,14 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: HELLO.TXT contents mismatch");
 
 	rc = mb_rom_fclose(1);
-	if (rc != MB_ERR_BADF)
+	if (rc != MB_ERR_IHNDL)
 		mb_panic("FAT test: Fclose badf rc=%d expected %d", (int)rc,
-			 MB_ERR_BADF);
+			 MB_ERR_IHNDL);
 
 	rc = mb_rom_fread(1, sizeof(buf), buf);
-	if (rc != MB_ERR_BADF)
+	if (rc != MB_ERR_IHNDL)
 		mb_panic("FAT test: Fread badf rc=%d expected %d", (int)rc,
-			 MB_ERR_BADF);
+			 MB_ERR_IHNDL);
 
 	fh = mb_rom_fopen(ddelete_file, 0);
 	if (fh < 0)
@@ -384,20 +384,20 @@ void mb_fat_run_tests(void)
 	mb_rom_fclose((uint16_t)fh);
 
 	fh = mb_rom_fopen(missing, 0);
-	if (fh != MB_ERR_FNF)
+	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen missing rc=%d expected %d", (int)fh,
-			 MB_ERR_FNF);
+			 MB_ERR_FILNF);
 
 	fh = mb_rom_fopen(missing_dir, 0);
-	if (fh != MB_ERR_FNF)
+	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen missing dir rc=%d expected %d",
-			 (int)fh, MB_ERR_FNF);
+			 (int)fh, MB_ERR_FILNF);
 
 	mb_rom_fsetdta(&dta);
 	rc = mb_rom_fsfirst(missing_dir_spec, 0x17);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: Fsfirst missing dir rc=%d expected %d",
-			 (int)rc, MB_ERR_FNF);
+			 (int)rc, MB_ERR_FILNF);
 
 	rc = mb_tests_fsfirst(spec, 0x17, &dta);
 	if (rc != 0)
@@ -442,19 +442,19 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: INNER.TXT contents mismatch");
 
 	fh = mb_rom_fopen(inner_missing, 0);
-	if (fh != MB_ERR_FNF)
+	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen inner missing rc=%d expected %d",
-			 (int)fh, MB_ERR_FNF);
+			 (int)fh, MB_ERR_FILNF);
 
 	rc = mb_tests_fsfirst(wrong_drive, 0x17, &dta);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: Fsfirst wrong drive rc=%d expected %d",
-			 (int)rc, MB_ERR_FNF);
+			 (int)rc, MB_ERR_FILNF);
 
 	fh = mb_rom_fopen(wrong_drive, 0);
-	if (fh != MB_ERR_FNF)
+	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen wrong drive rc=%d expected %d",
-			 (int)fh, MB_ERR_FNF);
+			 (int)fh, MB_ERR_FILNF);
 
 	rc = mb_tests_fsfirst(bad_drive, 0x17, &dta);
 	if (rc != MB_ERR_DRIVE)
@@ -462,9 +462,9 @@ void mb_fat_run_tests(void)
 			 (int)rc, MB_ERR_DRIVE);
 
 	fh = mb_rom_fopen(bad_drive, 0);
-	if (fh != MB_ERR_FNF)
+	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen bad drive rc=%d expected %d",
-			 (int)fh, MB_ERR_FNF);
+			 (int)fh, MB_ERR_FILNF);
 
 	if (mb_rom_dfree((uint32_t)(uintptr_t)dfree, mb_tests_drive_dev) != 0)
 		mb_panic("FAT test: Dfree failed");
@@ -500,9 +500,9 @@ void mb_fat_run_tests(void)
 	if (rc != 0)
 		mb_panic("FAT test: Frename rc=%d expected 0", (int)rc);
 	rc = mb_tests_fsfirst(rename_src, 0x17, &dta);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: old rename rc=%d expected %d", (int)rc,
-			 MB_ERR_FNF);
+			 MB_ERR_FILNF);
 	rc = mb_tests_fsfirst(renamed_spec, 0x17, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: new rename rc=%d expected 0", (int)rc);
@@ -512,9 +512,9 @@ void mb_fat_run_tests(void)
 	if (rc != 0)
 		mb_panic("FAT test: move rename rc=%d expected 0", (int)rc);
 	rc = mb_tests_fsfirst(move_src, 0x17, &dta);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: old move rc=%d expected %d", (int)rc,
-			 MB_ERR_FNF);
+			 MB_ERR_FILNF);
 	rc = mb_tests_fsfirst(moved_spec, 0x17, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: new move rc=%d expected 0", (int)rc);
@@ -543,33 +543,33 @@ void mb_fat_run_tests(void)
 	if (rc != 0)
 		mb_panic("FAT test: dir rename rc=%d expected 0", (int)rc);
 	rc = mb_tests_fsfirst(rename_dir_src, 0x17, &dta);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: old dir rc=%d expected %d", (int)rc,
-			 MB_ERR_FNF);
+			 MB_ERR_FILNF);
 	rc = mb_tests_fsfirst(newdir_spec, 0x17, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: new dir rc=%d expected 0", (int)rc);
 	mb_tests_drain_search();
 
 	rc = mb_rom_frename(0, rename_dst, wrong_drive_rename);
-	if (rc != MB_ERR_XDEV)
+	if (rc != MB_ERR_NSAME)
 		mb_panic("FAT test: xdev rename rc=%d expected %d", (int)rc,
-			 MB_ERR_XDEV);
+			 MB_ERR_NSAME);
 
 	rc = mb_rom_frename(0, missing_rename, renamed_spec);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: missing file rename rc=%d expected %d",
-			 (int)rc, MB_ERR_FNF);
+			 (int)rc, MB_ERR_FILNF);
 
 	rc = mb_rom_frename(0, missing_dir_rename, renamed_spec);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: missing dir rename rc=%d expected %d",
-			 (int)rc, MB_ERR_FNF);
+			 (int)rc, MB_ERR_FILNF);
 
 	rc = mb_rom_frename(0, renamed_spec, missing_dst_dir);
-	if (rc != MB_ERR_PTH)
+	if (rc != MB_ERR_PTHNF)
 		mb_panic("FAT test: missing dst dir rename rc=%d expected %d",
-			 (int)rc, MB_ERR_PTH);
+			 (int)rc, MB_ERR_PTHNF);
 
 	rc = mb_rom_frename(0, rename_exist_src, rename_exist_dst);
 	if (rc != MB_ERR_ACCDN)
@@ -671,9 +671,9 @@ void mb_fat_run_tests(void)
 	}
 
 	rc = mb_rom_dcreate(dcreate_missing_parent);
-	if (rc != MB_ERR_PTH)
+	if (rc != MB_ERR_PTHNF)
 		mb_panic("FAT test: Dcreate missing parent rc=%d expected %d",
-			 (int)rc, MB_ERR_PTH);
+			 (int)rc, MB_ERR_PTHNF);
 
 	rc = mb_rom_dcreate(dcreate_root);
 	if (rc != 0)
@@ -688,17 +688,17 @@ void mb_fat_run_tests(void)
 	if (rc != 0)
 		mb_panic("FAT test: Ddelete dir rc=%d expected 0", (int)rc);
 	rc = mb_rom_ddelete(ddelete_missing);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: Ddelete missing rc=%d expected %d", (int)rc,
-			 MB_ERR_FNF);
+			 MB_ERR_FILNF);
 	rc = mb_rom_ddelete(ddelete_file);
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Ddelete file rc=%d expected %d", (int)rc,
 			 MB_ERR_ACCDN);
 	rc = mb_rom_ddelete(ddelete_missing_dir);
-	if (rc != MB_ERR_FNF)
+	if (rc != MB_ERR_FILNF)
 		mb_panic("FAT test: Ddelete missing dir rc=%d expected %d",
-			 (int)rc, MB_ERR_FNF);
+			 (int)rc, MB_ERR_FILNF);
 	rc = mb_rom_ddelete(ddelete_nonempty);
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Ddelete nonempty rc=%d expected %d",

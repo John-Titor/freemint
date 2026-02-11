@@ -401,7 +401,7 @@ int mb_fat_parse_drive(const char *path, uint16_t *dev_out)
 	uint16_t dev = 2;
 
 	if (!path)
-		return MB_ERR_PTH;
+		return MB_ERR_PTHNF;
 
 	if (path[1] == ':') {
 		char drive = path[0];

@@ -162,8 +162,7 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
 	case 0x104:
 		return mb_rom_fcntl(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg16(args, 2));
 	default:
-		mb_panic("gemdos: unhandled 0x%04x", (uint32_t)fnum);
+		mb_log_printf("gemdos: unhandled 0x%04x", (uint32_t)fnum);
+		return MB_ERR_INVFN;
 	}
-
-	return -1;
 }
