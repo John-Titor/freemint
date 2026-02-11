@@ -1,5 +1,6 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_fat.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -88,21 +89,17 @@ long mb_rom_fcreate(const char *fn, uint16_t mode)
 
 long mb_rom_fopen(const char *filename, uint16_t mode)
 {
-	mb_panic("Fopen(fn=%08x, mode=%u, \"%s\")", (uint32_t)(uintptr_t)filename,
-		 (uint32_t)mode, mb_guarded_str(filename));
-	return -1;
+	return mb_fat_fopen(filename, mode);
 }
 
 long mb_rom_fclose(uint16_t handle)
 {
-	mb_panic("Fclose(handle=%u)", (uint32_t)handle);
-	return -1;
+	return mb_fat_fclose(handle);
 }
 
 long mb_rom_fread(uint16_t handle, uint32_t cnt, uint32_t buf)
 {
-	mb_panic("Fread(handle=%u, cnt=%u, buf=%08x)", (uint32_t)handle, cnt, buf);
-	return -1;
+	return mb_fat_fread(handle, cnt, buf);
 }
 
 long mb_rom_fwrite(uint16_t handle, uint32_t cnt, uint32_t buf)
@@ -120,30 +117,22 @@ long mb_rom_fdelete(const char *fn)
 
 long mb_rom_fseek(int32_t where, uint16_t handle, uint16_t how)
 {
-	mb_panic("Fseek(where=%d, handle=%u, how=%u)", where, (uint32_t)handle, (uint32_t)how);
-	return -1;
+	return mb_fat_fseek(handle, where, how);
 }
 
 long mb_rom_fattrib(const char *fn, uint16_t rwflag, uint16_t attr)
 {
-	mb_panic("Fattrib(fn=%08x, rw=%u, attr=%u, \"%s\")",
-		 (uint32_t)(uintptr_t)fn, (uint32_t)rwflag, (uint32_t)attr,
-		 mb_guarded_str(fn));
-	return -1;
+	return mb_fat_fattrib(fn, rwflag, attr);
 }
 
 long mb_rom_fsfirst(const char *filespec, uint16_t attr)
 {
-	mb_panic("Fsfirst(spec=%08x, attr=%u, \"%s\")",
-		 (uint32_t)(uintptr_t)filespec, (uint32_t)attr,
-		 mb_guarded_str(filespec));
-	return -1;
+	return mb_fat_fsfirst(filespec, attr);
 }
 
 long mb_rom_fsnext(void)
 {
-	mb_panic("Fsnext()");
-	return -1;
+	return mb_fat_fsnext();
 }
 
 long mb_rom_frename(uint16_t zero, const char *oldname, const char *newname)
@@ -157,8 +146,7 @@ long mb_rom_frename(uint16_t zero, const char *oldname, const char *newname)
 
 long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
 {
-	mb_panic("Fdatime(time=%08x, handle=%u, rw=%u)", timeptr, (uint32_t)handle, (uint32_t)rwflag);
-	return -1;
+	return mb_fat_fdatime(timeptr, handle, rwflag);
 }
 
 long mb_rom_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length)

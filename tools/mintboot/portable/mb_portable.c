@@ -57,10 +57,13 @@ void mb_portable_setup_traps(void)
 	/* TODO: install ROM_* trap emulation handlers. */
 }
 
+void mb_portable_run_tests(void);
+
 void mb_portable_boot(struct mb_boot_info *info)
 {
 	(void)info;
 
+	mb_portable_run_tests();
 	mb_cmdline[0] = '\0';
 	mb_portable_init_lowmem();
 	mb_portable_init_cookies();

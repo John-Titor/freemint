@@ -90,18 +90,18 @@ long mb_rom_getbpb(uint16_t dev)
 	static struct mb_rom_bpb mb_bpb;
 
 	if (mb_rom_dispatch.rwabs(0, (uint32_t)(uintptr_t)sector, 1, 0, dev) != 0)
-		return -1;
+		return 0;
 
 	if (sector[510] != 0x55 || sector[511] != 0xaa)
-		return -1;
+		return 0;
 
 	part_lba = mb_rom_le32(&sector[0x1be + 8]);
 	if (part_lba == 0)
-		return -1;
+		return 0;
 
 	if (mb_rom_dispatch.rwabs(0, (uint32_t)(uintptr_t)sector, 1,
 				  (uint16_t)part_lba, dev) != 0)
-		return -1;
+		return 0;
 
 	bytes_per_sec = mb_rom_le16(&sector[0x0b]);
 	sec_per_clus = sector[0x0d];
@@ -113,17 +113,17 @@ long mb_rom_getbpb(uint16_t dev)
 	total_secs32 = mb_rom_le32(&sector[0x20]);
 
 	if (bytes_per_sec == 0 || sec_per_clus == 0 || fatsz == 0)
-		return -1;
+		return 0;
 
 	total_secs = total_secs16 ? total_secs16 : total_secs32;
 	if (total_secs == 0)
-		return -1;
+		return 0;
 
 	rdlen = (uint16_t)((root_entries * 32u + (bytes_per_sec - 1u)) /
 			   bytes_per_sec);
 	data_start = rsvd_secs + (uint32_t)num_fats * fatsz + rdlen;
 	if (data_start >= total_secs)
-		return -1;
+		return 0;
 
 	numcl = (total_secs - data_start) / sec_per_clus;
 

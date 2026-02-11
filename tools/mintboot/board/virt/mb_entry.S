@@ -3,7 +3,6 @@
 	.type mb_entry, @function
 
 mb_entry:
-	movel %a0, mb_virt_bootinfo_ptr
 	/* Set up a temporary stack and jump into C. */
 	lea _mb_stack_top, %sp
 	jsr mb_virt_start
@@ -17,13 +16,10 @@ mb_entry:
 	.align 4
 	.globl _mb_stack
 _mb_stack:
-	.space 4096
+	.space 16384
 	.globl _mb_stack_top
 _mb_stack_top:
 	.space 4
 
-	.globl mb_virt_bootinfo_ptr
-mb_virt_bootinfo_ptr:
-	.space 4
 
 	.section .note.GNU-stack,"",@progbits

@@ -1,6 +1,7 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include <string.h>
 
 extern struct mb_boot_info mb_virt_boot;
 
@@ -21,14 +22,6 @@ static long mb_virt_rom_bconin(uint16_t dev)
 {
 	(void)dev;
 	return mb_board_console_getc();
-}
-
-static void mb_virt_memcpy(uint8_t *dst, const uint8_t *src, uint32_t len)
-{
-	uint32_t i;
-
-	for (i = 0; i < len; i++)
-		dst[i] = src[i];
 }
 
 static long mb_virt_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count,
@@ -55,9 +48,9 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count,
 
 	data = (uint8_t *)(uintptr_t)buf;
 	if ((rwflag & 1u) == 0)
-		mb_virt_memcpy(data, ramdisk + offset, end - offset);
+		memcpy(data, ramdisk + offset, end - offset);
 	else
-		mb_virt_memcpy(ramdisk + offset, data, end - offset);
+		memcpy(ramdisk + offset, data, end - offset);
 
 	return 0;
 }

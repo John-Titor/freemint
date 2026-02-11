@@ -34,6 +34,8 @@ void mb_panic(const char *fmt, ...);
 
 struct mb_exception_context *mb_last_exception_context(void);
 
+void mb_portable_run_tests(void);
+
 struct mb_exception_frame {
 	uint16_t sr;
 	uint32_t pc;

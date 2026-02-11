@@ -63,7 +63,7 @@ if [ "$regen_ramdisk" -eq 1 ]; then
 	printf "%b%b%b" "$entry" "$start_le" "$size_le" | dd of="$RAMDISK" bs=1 seek=446 conv=notrunc 2>/dev/null
 	printf '\x55\xaa' | dd of="$RAMDISK" bs=1 seek=510 conv=notrunc 2>/dev/null
 
-	mformat -i "$RAMDISK@@$part_offset" -F 16 ::
+	mformat -i "$RAMDISK@@$part_offset" ::
 
 	if find "$RAMDISK_DIR" -type f -print -quit | grep -q .; then
 		mcopy -i "$RAMDISK@@$part_offset" -s "$RAMDISK_DIR"/* ::

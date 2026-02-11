@@ -51,7 +51,6 @@ static inline uint32_t mb_mmio_read32(uintptr_t addr)
 
 static uint8_t mb_virt_rx;
 static uint32_t mb_virt_tmr_ms = 20;
-extern uint32_t mb_virt_bootinfo_ptr;
 
 struct mb_boot_info mb_virt_boot;
 
@@ -94,12 +93,8 @@ static void mb_virt_parse_bootinfo(void)
 
 	extern uint8_t _mb_image_end[];
 
-	if (mb_virt_bootinfo_ptr) {
-		addr = (uintptr_t)mb_virt_bootinfo_ptr;
-	} else {
-		addr = (uintptr_t)_mb_image_end;
-		addr = (addr + 3u) & ~3u;
-	}
+	addr = (uintptr_t)_mb_image_end;
+	addr = (addr + 3u) & ~3u;
 	rec = (const struct mb_linux_bootinfo *)addr;
 
 	/* mb_log_printf("mintboot virt: bootinfo @ 0x%08x\r\n",
