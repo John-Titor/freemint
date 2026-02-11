@@ -2,6 +2,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_lowmem.h"
+#include "mintboot/mb_trap_helpers.h"
 
 #include <stdint.h>
 
@@ -18,7 +19,48 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
+
+	if (fnum == 0x20) {
+		uint32_t newsp = mb_arg32(args + 1, 0);
+		uint16_t *frame = (uint16_t *)(uintptr_t)ctx->sp;
+		uint16_t sr = frame[0];
+		uint16_t sbit = (uint16_t)(sr & 0x2000u);
+		uint32_t oldssp = ctx->sp;
+		uint32_t usp = 0;
+
+		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+
+		if (newsp == 1u) {
+			ctx->d[0] = sbit ? 0xffffffffu : 0u;
+			return;
+		}
+
+		if (newsp == 0u) {
+			if (!sbit) {
+				frame[0] = (uint16_t)(sr | 0x2000u);
+			}
+			ctx->d[0] = oldssp;
+			return;
+		}
+
+		__asm__ volatile("move.l %0, %%usp" : : "a"(newsp));
+		frame[0] = (uint16_t)(sr & 0xdfffu);
+		ctx->d[0] = oldssp ? oldssp : usp;
+		return;
+	}
+
 	ctx->d[0] = (uint32_t)mb_rom_gemdos_dispatch(fnum, args + 1);
+}
+
+void mb_trap2_handler(struct mb_exception_context *ctx)
+{
+	uint16_t fnum = (uint16_t)ctx->d[0];
+
+	if (fnum == 0) {
+		ctx->d[0] = (uint32_t)mb_rom_pterm0();
+		return;
+	}
+	ctx->d[0] = (uint32_t)MB_ERR_INVFN;
 }
 
 void mb_trap13_handler(struct mb_exception_context *ctx)

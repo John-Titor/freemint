@@ -40,7 +40,7 @@ mb_vector_table:
 	/* trap vectors 0-15 (vectors 32-47) */
 	.long mb_default_exception_stub /* trap0 */
 	.long mb_trap1_stub             /* trap1 */
-	.long mb_default_exception_stub /* trap2 */
+	.long mb_trap2_stub             /* trap2 */
 	.long mb_default_exception_stub /* trap3 */
 	.long mb_default_exception_stub /* trap4 */
 	.long mb_default_exception_stub /* trap5 */
@@ -131,6 +131,27 @@ mb_trap14_stub:
 	add.l #MB_CTX_SIZE, %sp
 	rte
 	.size mb_trap14_stub, .-mb_trap14_stub
+
+	.globl mb_trap2_stub
+	.type mb_trap2_stub, @function
+mb_trap2_stub:
+	move.l %sp, %a0
+	sub.l #MB_CTX_SIZE, %sp
+	lea (%sp), %a1
+	move.l %a0, (%a1)
+	movem.l %d0-%d7/%a0-%a6, 4(%a1)
+	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
+	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
+	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
+	move.l %sp, %a0
+	move.l %a0, -(%sp)
+	jsr mb_trap2_handler
+	add.l #4, %sp
+	lea (%sp), %a1
+	movem.l 4(%a1), %d0-%d7/%a0-%a6
+	add.l #MB_CTX_SIZE, %sp
+	rte
+	.size mb_trap2_stub, .-mb_trap2_stub
 
 
 	.globl mb_spurious_stub
