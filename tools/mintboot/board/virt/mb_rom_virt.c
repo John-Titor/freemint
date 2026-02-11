@@ -1,18 +1,10 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mb_virt_mmio.h"
 #include <string.h>
 
 extern struct mb_boot_info mb_virt_boot;
-
-#define VIRT_GF_RTC_MMIO_BASE  0xff006000u
-#define GOLDFISH_RTC_TIME_LOW  0x00
-#define GOLDFISH_RTC_TIME_HIGH 0x04
-
-static inline uint32_t mb_mmio_read32(uintptr_t addr)
-{
-	return *(volatile uint32_t *)addr;
-}
 
 static int mb_is_leap(int year)
 {

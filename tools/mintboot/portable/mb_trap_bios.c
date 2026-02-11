@@ -1,16 +1,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_trap_helpers.h"
 #include <stdint.h>
-
-static inline uint32_t mb_arg32(uint32_t *args, int idx)
-{
-	return args[idx];
-}
-
-static inline uint16_t mb_arg16(uint32_t *args, int idx)
-{
-	return (uint16_t)args[idx];
-}
 
 struct mb_rom_bpb {
 	uint16_t recsiz;

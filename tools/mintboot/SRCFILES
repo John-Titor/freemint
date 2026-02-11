@@ -2,9 +2,15 @@ HEADER = \
 	include/mintboot/mb_portable.h \
 	include/mintboot/mb_board.h \
 	include/mintboot/mb_rom.h \
+	include/mintboot/mb_errors.h \
+	include/mintboot/mb_tests.h \
+	include/mintboot/mb_trap_helpers.h \
+	include/mintboot/mb_util.h \
 	include/mintboot/mb_cookie.h \
 	include/mintboot/mb_lowmem.h \
-	include/mintboot/mb_fat.h
+	include/mintboot/mb_fat.h \
+	portable/mb_fat_internal.h \
+	board/virt/mb_virt_mmio.h
 
 COBJS_SRC = \
 	portable/mb_portable.c \
@@ -13,8 +19,12 @@ COBJS_SRC = \
 	portable/mb_trap_gemdos.c \
 	portable/mb_trap_bios.c \
 	portable/mb_log.c \
-	portable/mb_fat.c \
+	portable/mb_fat_core.c \
+	portable/mb_fat_dir.c \
+	portable/mb_fat_file.c \
+	portable/mb_util.c \
 	portable/mb_lib.c \
+	portable/mb_fat_tests.c \
 	portable/mb_tests.c \
 	board/mb_board.c \
 	board/virt/mb_board_virt.c \

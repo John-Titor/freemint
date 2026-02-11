@@ -1,6 +1,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_fat.h"
+#include "mintboot/mb_tests.h"
 
 struct mb_test_dta {
 	uint16_t index;

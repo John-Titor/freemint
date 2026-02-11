@@ -1,4 +1,5 @@
 #include "mintboot/mb_portable.h"
+#include "mintboot/mb_tests.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_cookie.h"
 #include "mintboot/mb_lowmem.h"

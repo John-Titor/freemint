@@ -1,48 +1,10 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_fat.h"
+#include "mintboot/mb_trap_helpers.h"
+#include "mintboot/mb_util.h"
 
 #include <stdint.h>
-#include <stddef.h>
-
-static inline uint32_t mb_arg32(uint32_t *args, int idx)
-{
-	return args[idx];
-}
-
-static inline uint16_t mb_arg16(uint32_t *args, int idx)
-{
-	return (uint16_t)args[idx];
-}
-
-#define MB_PATH_DUMP_MAX 64
-
-static const char *mb_guarded_str(const char *s)
-{
-	static char buf[MB_PATH_DUMP_MAX + 4];
-	size_t i = 0;
-
-	if (!s)
-		return "(null)";
-
-	for (; i < MB_PATH_DUMP_MAX; i++) {
-		unsigned char c = (unsigned char)s[i];
-
-		if (c == '\0') {
-			buf[i] = '\0';
-			return buf;
-		}
-		if (c < 0x20 || c > 0x7e)
-			c = '.';
-		buf[i] = (char)c;
-	}
-
-	buf[i++] = '.';
-	buf[i++] = '.';
-	buf[i++] = '.';
-	buf[i] = '\0';
-	return buf;
-}
 
 /* GEMDOS (trap #1) stubs */
 #define MB_EMUTOS_DTA_SIZE 44

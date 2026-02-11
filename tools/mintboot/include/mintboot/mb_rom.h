@@ -3,14 +3,7 @@
 
 #include <stdint.h>
 
-#define MB_ERR_FNF (-33)
-#define MB_ERR_PTH (-34)
-#define MB_ERR_ACCDN (-36)
-#define MB_ERR_XDEV (-48)
-#define MB_ERR_NMFIL (-49)
-#define MB_ERR_LOCKED (-58)
-#define MB_ERR_EXIST (-85)
-#define MB_ERR_BADF (-32)
+#include "mintboot/mb_errors.h"
 
 struct mb_rom_dispatch {
 	long (*fsetdta)(void *dta);

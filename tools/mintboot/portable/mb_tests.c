@@ -1,5 +1,6 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_tests.h"
 
 static void mb_setexc_tests(void)
 {
