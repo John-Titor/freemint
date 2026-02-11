@@ -172,7 +172,11 @@ long mb_rom_mshrink(uint16_t zero, uint32_t base, uint32_t len)
 {
 	mb_log_printf("Mshrink(zero=%u, base=%08x, len=%u)\r\n",
 		      (uint32_t)zero, base, len);
-	return MB_ERR_INVFN;
+	if (zero != 0)
+		return MB_ERR_INVFN;
+	if (len == 0)
+		return MB_ERR_INVFN;
+	return 0;
 }
 
 long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
