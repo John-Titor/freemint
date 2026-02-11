@@ -20,4 +20,15 @@ long mb_fat_dcreate(const char *path);
 long mb_fat_ddelete(const char *path);
 long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname);
 
+struct mb_fat_check_report {
+	uint32_t bad_bpb;
+	uint32_t bad_dirent;
+	uint32_t bad_chain;
+	uint32_t bad_fat;
+	uint32_t lost_clusters;
+	uint32_t cross_links;
+};
+
+long mb_fat_check(uint16_t dev, struct mb_fat_check_report *report);
+
 #endif /* MINTBOOT_MB_FAT_H */

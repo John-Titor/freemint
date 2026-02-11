@@ -1,6 +1,5 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_rom.h"
-
 #include <stddef.h>
 #include <string.h>
 

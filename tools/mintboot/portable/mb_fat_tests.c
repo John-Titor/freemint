@@ -162,6 +162,7 @@ void mb_fat_run_tests(void)
 	const struct mb_test_bpb *bpb;
 	uint16_t timebuf[2];
 	uint16_t timebuf2[2];
+	struct mb_fat_check_report report;
 
 	mb_log_puts("mintboot: FAT test start\r\n");
 	bpb = mb_tests_getbpb();
@@ -547,6 +548,18 @@ void mb_fat_run_tests(void)
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Ddelete nonempty rc=%d expected %d",
 			 (int)rc, MB_ERR_ACCDN);
+
+	rc = mb_fat_check(2, &report);
+	if (rc != 0)
+		mb_panic("FAT test: integrity rc=%d bad_bpb=%u bad_dirent=%u bad_chain=%u bad_fat=%u lost=%u cross=%u",
+			 (int)rc, report.bad_bpb, report.bad_dirent,
+			 report.bad_chain, report.bad_fat, report.lost_clusters,
+			 report.cross_links);
+	if (report.bad_bpb || report.bad_dirent || report.bad_chain ||
+	    report.bad_fat || report.lost_clusters || report.cross_links)
+		mb_panic("FAT test: integrity bad_bpb=%u bad_dirent=%u bad_chain=%u bad_fat=%u lost=%u cross=%u",
+			 report.bad_bpb, report.bad_dirent, report.bad_chain,
+			 report.bad_fat, report.lost_clusters, report.cross_links);
 
 	mb_log_puts("mintboot: FAT test done\r\n");
 }
