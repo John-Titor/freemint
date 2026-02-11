@@ -10,5 +10,6 @@
 #define MB_ERR_DRIVE  (-46)
 #define MB_ERR_XDEV   (-48)
 #define MB_ERR_NMFIL  (-49)
+#define MB_ERR_RANGE  (-64)
 
 #endif /* MINTBOOT_MB_ERRORS_H */

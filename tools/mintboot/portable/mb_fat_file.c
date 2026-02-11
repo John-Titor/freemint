@@ -176,8 +176,8 @@ long mb_fat_fseek(uint16_t handle, int32_t where, uint16_t how)
 	}
 
 	newpos = base + where;
-	if (newpos < 0)
-		return -1;
+	if (newpos < 0 || newpos > (int32_t)op->size)
+		return MB_ERR_RANGE;
 	op->offset = (uint32_t)newpos;
 	return (long)op->offset;
 }

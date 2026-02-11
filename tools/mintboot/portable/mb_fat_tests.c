@@ -60,6 +60,16 @@ static void mb_tests_drain_search(void)
 	}
 }
 
+static const struct mb_test_bpb *mb_tests_getbpb(void)
+{
+	const struct mb_test_bpb *bpb;
+
+	bpb = (const struct mb_test_bpb *)(uintptr_t)mb_rom_getbpb(2);
+	if (!bpb || bpb->recsiz != 512)
+		mb_panic("FAT test: BPB invalid");
+	return bpb;
+}
+
 static void mb_tests_set_readonly(const char name83[11])
 {
 	const struct mb_test_bpb *bpb;
@@ -69,9 +79,7 @@ static void mb_tests_set_readonly(const char name83[11])
 	uint32_t total_entries;
 	uint32_t i;
 
-	bpb = (const struct mb_test_bpb *)(uintptr_t)mb_rom_getbpb(2);
-	if (!bpb || bpb->recsiz != 512)
-		mb_panic("FAT test: BPB invalid");
+	bpb = mb_tests_getbpb();
 
 	root_start = (uint32_t)bpb->datrec - (uint32_t)bpb->rdlen;
 	entries_per_sector = bpb->recsiz / 32u;
@@ -144,8 +152,17 @@ void mb_fat_run_tests(void)
 	long rc2;
 	int i;
 	long handles[MB_FAT_MAX_OPEN];
+	struct mb_test_dta dta2;
+	const struct mb_test_bpb *bpb;
+	uint16_t timebuf[2];
+	uint16_t timebuf2[2];
 
 	mb_log_puts("mintboot: FAT test start\r\n");
+	bpb = mb_tests_getbpb();
+	if (bpb->clsiz <= 0 || bpb->rdlen <= 0 || bpb->datrec <= 0 ||
+	    bpb->numcl == 0)
+		mb_panic("FAT test: BPB fields invalid");
+
 	rc = mb_tests_fsfirst(spec, 0x17, &dta);
 	if (rc != 0)
 		mb_panic("FAT test: Fsfirst rc=%d", (int)rc);
@@ -307,6 +324,18 @@ void mb_fat_run_tests(void)
 		mb_panic("FAT test: Fopen rename src rc=%d", (int)fh);
 	mb_rom_fclose((uint16_t)fh);
 
+	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen HELLO.TXT for fdatime rc=%d", (int)fh);
+	if (mb_rom_fdatime((uint32_t)(uintptr_t)timebuf, (uint16_t)fh, 0) != 0)
+		mb_panic("FAT test: Fdatime failed");
+	if (mb_rom_fdatime((uint32_t)(uintptr_t)timebuf2, (uint16_t)fh, 0) != 0)
+		mb_panic("FAT test: Fdatime repeat failed");
+	mb_rom_fclose((uint16_t)fh);
+	if ((timebuf[0] == 0 && timebuf[1] == 0) ||
+	    timebuf[0] != timebuf2[0] || timebuf[1] != timebuf2[1])
+		mb_panic("FAT test: Fdatime mismatch");
+
 	rc = mb_rom_frename(0, rename_src, rename_dst);
 	if (rc != 0)
 		mb_panic("FAT test: Frename rc=%d expected 0", (int)rc);
@@ -402,6 +431,82 @@ void mb_fat_run_tests(void)
 	if (rc != MB_ERR_ACCDN)
 		mb_panic("FAT test: Fattrib accdn rc=%d expected %d", (int)rc,
 			 MB_ERR_ACCDN);
+
+	mb_rom_fsetdta(&dta2);
+	rc = mb_rom_fsfirst("C:\\H*.TXT", 0x07);
+	if (rc != 0)
+		mb_panic("FAT test: Fsfirst wildcard rc=%d", (int)rc);
+	if (mb_tests_strcmp(dta2.dta_name, "HELLO.TXT") != 0)
+		mb_panic("FAT test: wildcard name %s", dta2.dta_name);
+	mb_tests_drain_search();
+	mb_rom_fsetdta(&dta);
+
+	rc = mb_tests_fsfirst("C:\\*.*", 0x07, &dta);
+	if (rc != 0)
+		mb_panic("FAT test: Fsfirst attr filter rc=%d", (int)rc);
+	for (;;) {
+		if (mb_tests_strcmp(dta.dta_name, "SUBDIR") == 0)
+			mb_panic("FAT test: SUBDIR should not match");
+		rc = mb_rom_fsnext();
+		if (rc != 0)
+			break;
+	}
+	if (rc != MB_ERR_NMFIL)
+		mb_panic("FAT test: Fsnext end rc=%d expected %d", (int)rc,
+			 MB_ERR_NMFIL);
+
+	rc = mb_tests_fsfirst("C:\\*.*", 0x17, &dta);
+	if (rc != 0)
+		mb_panic("FAT test: Fsfirst dir attr rc=%d", (int)rc);
+	for (;;) {
+		if (mb_tests_strcmp(dta.dta_name, "NEWDIR") == 0)
+			break;
+		rc = mb_rom_fsnext();
+		if (rc != 0)
+			break;
+	}
+	if (rc != 0)
+		mb_panic("FAT test: NEWDIR not found rc=%d", (int)rc);
+	mb_tests_drain_search();
+
+	fh = mb_rom_fopen("C:HELLO.TXT", 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen no slash rc=%d", (int)fh);
+	mb_rom_fclose((uint16_t)fh);
+
+	fh = mb_rom_fopen("C:/NEWDIR\\INNER.TXT", 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen mixed slashes rc=%d", (int)fh);
+	mb_rom_fclose((uint16_t)fh);
+
+	fh = mb_rom_fopen("C:\\HELLO.TXT", 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen seek rc=%d", (int)fh);
+	rc = mb_rom_fseek(-1, (uint16_t)fh, 0);
+	if (rc != MB_ERR_RANGE)
+		mb_panic("FAT test: Fseek before rc=%d expected %d", (int)rc,
+			 MB_ERR_RANGE);
+	rc = mb_rom_fseek(0, (uint16_t)fh, 2);
+	if (rc < 0)
+		mb_panic("FAT test: Fseek end rc=%d", (int)rc);
+	rc = mb_rom_fread((uint16_t)fh, sizeof(buf), buf);
+	if (rc != 0)
+		mb_panic("FAT test: Fread eof rc=%d expected 0", (int)rc);
+	rc = mb_rom_fseek(1, (uint16_t)fh, 2);
+	if (rc != MB_ERR_RANGE)
+		mb_panic("FAT test: Fseek past end rc=%d expected %d", (int)rc,
+			 MB_ERR_RANGE);
+	mb_rom_fclose((uint16_t)fh);
+
+	{
+		uint8_t sector[512];
+		if (mb_rom_dispatch.rwabs(0, sector, 1, 0, 2) != 0)
+			mb_panic("FAT test: rwabs mbr read");
+		if (sector[510] != 0x55 || sector[511] != 0xaa)
+			mb_panic("FAT test: mbr signature");
+	if (mb_rom_dispatch.rwabs(0, sector, 2, 0xffffu, 2) == 0)
+		mb_panic("FAT test: rwabs range");
+	}
 
 	rc = mb_rom_dcreate(dcreate_missing_parent);
 	if (rc != MB_ERR_PTH)
