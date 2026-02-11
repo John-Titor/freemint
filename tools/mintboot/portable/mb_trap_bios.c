@@ -133,8 +133,8 @@ long mb_rom_getbpb(uint16_t dev)
 	bpb->clsizb = bytes_per_sec * sec_per_clus;
 	bpb->rdlen = (int16_t)rdlen;
 	bpb->fsiz = (int16_t)fatsz;
-	bpb->fatrec = (int16_t)(rsvd_secs + fatsz);
-	bpb->datrec = (int16_t)data_start;
+	bpb->fatrec = (int16_t)(part_lba + rsvd_secs + fatsz);
+	bpb->datrec = (int16_t)(part_lba + data_start);
 	bpb->numcl = (uint16_t)numcl;
 	bpb->bflags = 0;
 	if (num_fats == 1)

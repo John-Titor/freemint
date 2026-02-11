@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 /*
  * FAT16 filesystem (portable layer)
@@ -25,6 +26,7 @@
 #define MB_FAT_ATTR_LFN    0x0f
 
 #define MB_FAT_DTA_VALID 0x1234fedcUL
+#define MB_ERR_FNF (-33)
 
 struct mb_fat_bpb {
 	uint16_t recsiz;
@@ -64,7 +66,7 @@ struct mb_fat_dirent {
 	uint16_t wr_date;
 	uint16_t start_lo;
 	uint32_t size;
-};
+} __attribute__((packed));
 
 struct mb_fat_search {
 	uint8_t in_use;
@@ -107,22 +109,13 @@ static uint16_t mb_fat_le16(const uint8_t *ptr)
 	return (uint16_t)ptr[0] | ((uint16_t)ptr[1] << 8);
 }
 
-
-static void mb_fat_memcpy(uint8_t *dst, const uint8_t *src, uint32_t len)
+static uint32_t mb_fat_le32(const uint8_t *ptr)
 {
-	uint32_t i;
-
-	for (i = 0; i < len; i++)
-		dst[i] = src[i];
+	return (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) |
+	       ((uint32_t)ptr[2] << 16) | ((uint32_t)ptr[3] << 24);
 }
 
-static void mb_fat_memset(uint8_t *dst, uint8_t value, uint32_t len)
-{
-	uint32_t i;
 
-	for (i = 0; i < len; i++)
-		dst[i] = value;
-}
 
 
 static int mb_fat_rwabs(uint16_t rw, uint32_t buf, uint16_t count,
@@ -202,7 +195,6 @@ static void mb_fat_pattern_83(const char *pattern, uint8_t out[11])
 	uint8_t i = 0;
 	uint8_t o = 0;
 	int saw_dot = 0;
-	int star = 0;
 
 	for (; o < 11; o++)
 		out[o] = ' ';
@@ -213,7 +205,13 @@ static void mb_fat_pattern_83(const char *pattern, uint8_t out[11])
 		if (c == '/' || c == '\\')
 			break;
 		if (c == '*') {
-			star = 1;
+			if (!saw_dot) {
+				while (o < 8)
+					out[o++] = '?';
+			} else {
+				while (o < 11)
+					out[o++] = '?';
+			}
 			continue;
 		}
 		if (c == '.') {
@@ -228,11 +226,6 @@ static void mb_fat_pattern_83(const char *pattern, uint8_t out[11])
 		if (c >= 'a' && c <= 'z')
 			c = (char)(c - 'a' + 'A');
 		out[o++] = (uint8_t)c;
-	}
-
-	if (star) {
-		while (o < (saw_dot ? 11 : 8))
-			out[o++] = '?';
 	}
 }
 
@@ -275,6 +268,7 @@ static int mb_fat_read_dirent(uint32_t dir_cluster, uint32_t index,
 			      struct mb_fat_dirent *out)
 {
 	uint8_t sector[512];
+	uint8_t raw[32];
 	uint32_t sector_idx;
 	uint32_t sector_off;
 	uint32_t entry_idx;
@@ -294,7 +288,19 @@ static int mb_fat_read_dirent(uint32_t dir_cluster, uint32_t index,
 		if (mb_fat_rwabs(0, (uint32_t)(uintptr_t)sector, 1, sector_idx,
 				 mb_fat_vol.dev) != 0)
 			return -1;
-		mb_fat_memcpy((uint8_t *)out, &sector[sector_off], 32u);
+		memcpy(raw, &sector[sector_off], 32u);
+		memcpy(out->name, raw, 11u);
+		out->attr = raw[11];
+		out->ntres = raw[12];
+		out->crt_tenths = raw[13];
+		out->crt_time = mb_fat_le16(&raw[14]);
+		out->crt_date = mb_fat_le16(&raw[16]);
+		out->acc_date = mb_fat_le16(&raw[18]);
+		out->start_hi = mb_fat_le16(&raw[20]);
+		out->wr_time = mb_fat_le16(&raw[22]);
+		out->wr_date = mb_fat_le16(&raw[24]);
+		out->start_lo = mb_fat_le16(&raw[26]);
+		out->size = mb_fat_le32(&raw[28]);
 		return 0;
 	}
 
@@ -313,7 +319,19 @@ static int mb_fat_read_dirent(uint32_t dir_cluster, uint32_t index,
 	if (mb_fat_rwabs(0, (uint32_t)(uintptr_t)sector, 1, sector_idx,
 			 mb_fat_vol.dev) != 0)
 		return -1;
-	mb_fat_memcpy((uint8_t *)out, &sector[sector_off], 32u);
+	memcpy(raw, &sector[sector_off], 32u);
+	memcpy(out->name, raw, 11u);
+	out->attr = raw[11];
+	out->ntres = raw[12];
+	out->crt_tenths = raw[13];
+	out->crt_time = mb_fat_le16(&raw[14]);
+	out->crt_date = mb_fat_le16(&raw[16]);
+	out->acc_date = mb_fat_le16(&raw[18]);
+	out->start_hi = mb_fat_le16(&raw[20]);
+	out->wr_time = mb_fat_le16(&raw[22]);
+	out->wr_date = mb_fat_le16(&raw[24]);
+	out->start_lo = mb_fat_le16(&raw[26]);
+	out->size = mb_fat_le32(&raw[28]);
 	return 0;
 }
 
@@ -336,7 +354,7 @@ static int mb_fat_find_in_dir(uint32_t dir_cluster, const uint8_t pat[11],
 			continue;
 		}
 
-		mb_fat_memcpy(name83, cur.name, 11);
+		memcpy(name83, cur.name, 11);
 		if (!mb_fat_match_83(name83, pat)) {
 			idx++;
 			continue;
@@ -349,8 +367,8 @@ static int mb_fat_find_in_dir(uint32_t dir_cluster, const uint8_t pat[11],
 			continue;
 		}
 
-		mb_fat_memcpy((uint8_t *)ent, (const uint8_t *)&cur,
-			      (uint32_t)sizeof(cur));
+		memcpy((uint8_t *)ent, (const uint8_t *)&cur,
+		       (uint32_t)sizeof(cur));
 		*index = idx;
 		return 0;
 	}
@@ -473,7 +491,7 @@ static int mb_fat_setup_search(const char *filespec, uint16_t attr,
 		if (!mb_fat_search[idx].in_use) {
 			mb_fat_search[idx].in_use = 1;
 			mb_fat_search[idx].dev = (uint8_t)dev;
-			mb_fat_memcpy(mb_fat_search[idx].pattern, pat, 11);
+			memcpy(mb_fat_search[idx].pattern, pat, 11);
 			mb_fat_search[idx].attr = attr;
 			mb_fat_search[idx].dir_cluster = dir_cluster;
 			mb_fat_search[idx].entry_index = 0;
@@ -498,13 +516,13 @@ long mb_fat_fsfirst(const char *filespec, uint16_t attr)
 		return -1;
 
 	if (mb_fat_setup_search(filespec, attr, &search) != 0)
-		return -1;
+		return MB_ERR_FNF;
 
 	idx = search->entry_index;
 	if (mb_fat_find_in_dir(search->dir_cluster, search->pattern, search->attr,
 			       &ent, &idx) != 0) {
 		search->in_use = 0;
-		return -1;
+		return MB_ERR_FNF;
 	}
 
 	search->entry_index = idx + 1;
@@ -517,9 +535,9 @@ long mb_fat_fsfirst(const char *filespec, uint16_t attr)
 	dta->dta_date = ent.wr_date;
 	dta->dta_size = ent.size;
 	mb_fat_name_from_dirent(&ent, name);
-	mb_fat_memset((uint8_t *)dta->dta_name, 0, sizeof(dta->dta_name));
-	mb_fat_memcpy((uint8_t *)dta->dta_name, (const uint8_t *)name,
-		      (uint32_t)(sizeof(dta->dta_name) - 1));
+	memset((uint8_t *)dta->dta_name, 0, sizeof(dta->dta_name));
+	memcpy((uint8_t *)dta->dta_name, (const uint8_t *)name,
+	       (uint32_t)(sizeof(dta->dta_name) - 1));
 	return 0;
 }
 
@@ -533,19 +551,19 @@ long mb_fat_fsnext(void)
 
 	dta = (struct mb_fat_dta *)mb_rom_fgetdta();
 	if (!dta || dta->magic != MB_FAT_DTA_VALID)
-		return -1;
+		return MB_ERR_FNF;
 
 	if (dta->index >= MB_FAT_MAX_SEARCH)
-		return -1;
+		return MB_ERR_FNF;
 	search = &mb_fat_search[dta->index];
 	if (!search->in_use)
-		return -1;
+		return MB_ERR_FNF;
 
 	idx = search->entry_index;
 	if (mb_fat_find_in_dir(search->dir_cluster, search->pattern, search->attr,
 			       &ent, &idx) != 0) {
 		search->in_use = 0;
-		return -1;
+		return MB_ERR_FNF;
 	}
 
 	search->entry_index = idx + 1;
@@ -554,9 +572,9 @@ long mb_fat_fsnext(void)
 	dta->dta_date = ent.wr_date;
 	dta->dta_size = ent.size;
 	mb_fat_name_from_dirent(&ent, name);
-	mb_fat_memset((uint8_t *)dta->dta_name, 0, sizeof(dta->dta_name));
-	mb_fat_memcpy((uint8_t *)dta->dta_name, (const uint8_t *)name,
-		      (uint32_t)(sizeof(dta->dta_name) - 1));
+	memset((uint8_t *)dta->dta_name, 0, sizeof(dta->dta_name));
+	memcpy((uint8_t *)dta->dta_name, (const uint8_t *)name,
+	       (uint32_t)(sizeof(dta->dta_name) - 1));
 	return 0;
 }
 
@@ -569,7 +587,7 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 		return -1;
 
 	if (mb_fat_find_path(2, path, &ent) != 0)
-		return -1;
+		return MB_ERR_FNF;
 	if (ent.attr & MB_FAT_ATTR_DIR)
 		return -1;
 
@@ -685,7 +703,7 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, uint32_t buf)
 		if (chunk > remaining)
 			chunk = remaining;
 
-		mb_fat_memcpy(dst, &sector[sector_off], chunk);
+		memcpy(dst, &sector[sector_off], chunk);
 		dst += chunk;
 		op->offset += chunk;
 		read_total += chunk;
