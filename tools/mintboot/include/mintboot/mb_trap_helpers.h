@@ -16,4 +16,12 @@ static inline uint16_t mb_arg16(const uint16_t *args, int idx)
 	return args[idx];
 }
 
+static inline uint32_t mb_arg32w(const uint16_t *args, int word_idx)
+{
+	uint32_t hi = (uint32_t)args[word_idx];
+	uint32_t lo = (uint32_t)args[word_idx + 1];
+
+	return (hi << 16) | lo;
+}
+
 #endif /* MINTBOOT_MB_TRAP_HELPERS_H */

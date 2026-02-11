@@ -491,11 +491,11 @@ long mb_rom_bios_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_rom_dispatch.bconout(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x04:
 		return mb_rom_dispatch.rwabs(mb_arg16(args, 0),
-					     (void *)(uintptr_t)mb_arg32(args, 1),
-					     mb_arg16(args, 2), mb_arg16(args, 3),
-					     mb_arg16(args, 4));
+					     (void *)(uintptr_t)mb_arg32w(args, 1),
+					     mb_arg16(args, 3), mb_arg16(args, 4),
+					     mb_arg16(args, 5));
 	case 0x05:
-		return mb_rom_setexc(mb_arg16(args, 0), mb_arg32(args, 1));
+		return mb_rom_setexc(mb_arg16(args, 0), mb_arg32w(args, 1));
 	case 0x07:
 		return mb_rom_getbpb(mb_arg16(args, 0));
 	case 0x08:
@@ -514,7 +514,7 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args)
 {
 	switch (fnum) {
 	case 0x00:
-		return mb_rom_initmous(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_initmous(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
 	case 0x04:
 		return mb_rom_getrez();
 	case 0x0e:
@@ -522,11 +522,11 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args)
 	case 0x0f:
 		return mb_rom_rsconf(mb_arg16(args, 0), mb_arg16(args, 1), mb_arg16(args, 2), mb_arg16(args, 3), mb_arg16(args, 4), mb_arg16(args, 5));
 	case 0x10:
-		return mb_rom_keytbl(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_keytbl(mb_arg32w(args, 0), mb_arg32w(args, 2), mb_arg32w(args, 4));
 	case 0x15:
 		return mb_rom_cursconf(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x16:
-		return mb_rom_settime(mb_arg32(args, 0));
+		return mb_rom_settime(mb_arg32w(args, 0));
 	case 0x17:
 		return mb_rom_gettime();
 	case 0x18:
@@ -536,7 +536,7 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args)
 	case 0x1e:
 		return mb_rom_ongibit(mb_arg16(args, 0));
 	case 0x20:
-		return mb_rom_dosound(mb_arg32(args, 0));
+		return mb_rom_dosound(mb_arg32w(args, 0));
 	case 0x22:
 		return mb_rom_kbdvbase();
 	case 0x23:
@@ -546,7 +546,7 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args)
 	case 0x2c:
 		return mb_rom_bconmap(mb_arg16(args, 0));
 	case 0x05:
-		return mb_rom_vsetscreen(mb_arg32(args, 0), mb_arg32(args, 1), mb_arg16(args, 2), mb_arg16(args, 3));
+		return mb_rom_vsetscreen(mb_arg32w(args, 0), mb_arg32w(args, 2), mb_arg16(args, 4), mb_arg16(args, 5));
 	default:
 		mb_log_printf("xbios: unhandled 0x%04x", (uint32_t)fnum);
 		return MB_ERR_INVFN;
