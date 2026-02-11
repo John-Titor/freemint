@@ -1,6 +1,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_tests.h"
+#include "mintboot/mb_lowmem.h"
 
 static void mb_setexc_tests(void)
 {
@@ -83,10 +84,31 @@ static void mb_drive_range_tests(void)
 	mb_panic("Dfree drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
 }
 
+static void mb_vbclock_tests(void)
+{
+	volatile uint32_t *vbclock = mb_lm_vbclock();
+	void (*handler)(void) = (void (*)(void))(uintptr_t)*mb_lm_etv_timer();
+	uint32_t start;
+	uint32_t current;
+	uint32_t spins;
+
+	start = *vbclock;
+	for (spins = 0; spins < 5000000u; spins++) {
+		if (handler)
+			handler();
+		current = *vbclock;
+		if (current != start)
+			return;
+	}
+
+	mb_panic("VBCLOCK did not increment");
+}
+
 void mb_portable_run_tests(void)
 {
 	mb_fat_run_tests();
 	mb_setexc_tests();
 	mb_gettime_tests();
 	mb_drive_range_tests();
+	mb_vbclock_tests();
 }

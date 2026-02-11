@@ -16,6 +16,7 @@
 #define MB_LM_ETV_TERM_ADDR   0x00000408u
 #define MB_LM_ETV_TIMER_ADDR  0x0000040cu
 #define MB_LM_HZ_200_ADDR     0x000004bau
+#define MB_LM_VBCLOCK_ADDR    0x0000046cu
 #define MB_LM_DRVBITS_ADDR    0x000004c2u
 #define MB_LM_COOKIE_P_ADDR   0x000005a0u
 
@@ -62,6 +63,11 @@ static inline volatile uint32_t *mb_lm_etv_timer(void)
 static inline volatile uint32_t *mb_lm_hz_200(void)
 {
 	return (volatile uint32_t *)MB_LM_HZ_200_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_vbclock(void)
+{
+	return (volatile uint32_t *)MB_LM_VBCLOCK_ADDR;
 }
 
 static inline volatile uint32_t *mb_lm_drvbits(void)

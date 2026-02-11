@@ -39,6 +39,7 @@ static void mb_etv_term_stub(void)
 
 static void mb_etv_timer_stub(void)
 {
+	(*mb_lm_vbclock())++;
 }
 
 static void mb_portable_init_lowmem(void)
@@ -46,6 +47,7 @@ static void mb_portable_init_lowmem(void)
 	*mb_lm_etv_critic() = (uint32_t)(uintptr_t)mb_etv_critic_stub;
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
 	*mb_lm_etv_timer() = (uint32_t)(uintptr_t)mb_etv_timer_stub;
+	*mb_lm_vbclock() = 0;
 }
 
 void mb_portable_setup_vectors(void)
@@ -64,12 +66,12 @@ void mb_portable_boot(struct mb_boot_info *info)
 {
 	(void)info;
 
-	mb_portable_run_tests();
 	mb_cmdline[0] = '\0';
 	mb_portable_init_lowmem();
 	mb_portable_init_cookies();
 	mb_portable_setup_vectors();
 	mb_portable_setup_traps();
+	mb_portable_run_tests();
 	mb_log_puts("mintboot: portable init complete\r\n");
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
 }
