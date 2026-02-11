@@ -35,4 +35,7 @@ SECTIONS
 		*(.bss*)
 		*(COMMON)
 	} :data
+
+	. = ALIGN(4);
+	_mb_image_end = .;
 }

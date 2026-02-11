@@ -4,10 +4,69 @@ set -e
 QEMU=${QEMU:-qemu-system-m68k}
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ELF="$ROOT/mintboot-virt.elf"
+RAMDISK="$ROOT/ramdisk.img"
+RAMDISK_DIR="$ROOT/ramdisk.d"
+RAMDISK_SIZE_MIB=32
+RAMDISK_SECTOR_SIZE=512
+RAMDISK_FIRST_SECTOR=2048
 
 if [ ! -f "$ELF" ]; then
 	echo "mintboot-virt.elf not found: $ELF" >&2
 	exit 1
+fi
+
+if [ ! -d "$RAMDISK_DIR" ]; then
+	mkdir -p "$RAMDISK_DIR"
+fi
+
+regen_ramdisk=0
+if [ ! -f "$RAMDISK" ]; then
+	regen_ramdisk=1
+else
+	if find "$RAMDISK_DIR" -type f -newer "$RAMDISK" -print -quit | grep -q .; then
+		regen_ramdisk=1
+	fi
+fi
+
+if [ "$regen_ramdisk" -eq 1 ]; then
+	if ! command -v mformat >/dev/null 2>&1; then
+		echo "mformat not found; cannot build ramdisk image" >&2
+		exit 1
+	fi
+	if ! command -v mcopy >/dev/null 2>&1; then
+		echo "mcopy not found; cannot populate ramdisk image" >&2
+		exit 1
+	fi
+
+	ramdisk_size=$((RAMDISK_SIZE_MIB * 1024 * 1024))
+	total_sectors=$((ramdisk_size / RAMDISK_SECTOR_SIZE))
+	part_sectors=$((total_sectors - RAMDISK_FIRST_SECTOR))
+	part_offset=$((RAMDISK_FIRST_SECTOR * RAMDISK_SECTOR_SIZE))
+
+	dd if=/dev/zero of="$RAMDISK" bs=1048576 count="$RAMDISK_SIZE_MIB" 2>/dev/null
+
+	start_lba=$RAMDISK_FIRST_SECTOR
+	secs=$part_sectors
+	start_le=$(printf '\\x%02x\\x%02x\\x%02x\\x%02x' \
+		$((start_lba & 0xff)) \
+		$(((start_lba >> 8) & 0xff)) \
+		$(((start_lba >> 16) & 0xff)) \
+		$(((start_lba >> 24) & 0xff)))
+	size_le=$(printf '\\x%02x\\x%02x\\x%02x\\x%02x' \
+		$((secs & 0xff)) \
+		$(((secs >> 8) & 0xff)) \
+		$(((secs >> 16) & 0xff)) \
+		$(((secs >> 24) & 0xff)))
+
+	entry=$(printf '\\x00\\xff\\xff\\xff\\x06\\xff\\xff\\xff')
+	printf "%b%b%b" "$entry" "$start_le" "$size_le" | dd of="$RAMDISK" bs=1 seek=446 conv=notrunc 2>/dev/null
+	printf '\x55\xaa' | dd of="$RAMDISK" bs=1 seek=510 conv=notrunc 2>/dev/null
+
+	mformat -i "$RAMDISK@@$part_offset" -F 16 ::
+
+	if find "$RAMDISK_DIR" -type f -print -quit | grep -q .; then
+		mcopy -i "$RAMDISK@@$part_offset" -s "$RAMDISK_DIR"/* ::
+	fi
 fi
 
 exec "$QEMU" \
@@ -15,4 +74,5 @@ exec "$QEMU" \
 	-cpu m68040 \
 	-nographic \
 	-serial mon:stdio \
-	-kernel "$ELF"
+	-kernel "$ELF" \
+	-initrd "$RAMDISK"

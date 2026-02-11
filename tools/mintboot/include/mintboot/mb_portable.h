@@ -9,6 +9,8 @@ struct mb_boot_info {
 	void *kernel_entry;
 	void *kernel_base;
 	uint32_t kernel_size;
+	void *ramdisk_base;
+	uint32_t ramdisk_size;
 };
 
 /* Portable boot flow entry point (called from board layer). */
