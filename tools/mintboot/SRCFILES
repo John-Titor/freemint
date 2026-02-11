@@ -13,7 +13,8 @@ COBJS_SRC = \
 	portable/mb_trap_bios.c \
 	portable/mb_log.c \
 	board/mb_board.c \
-	board/virt/mb_board_virt.c
+	board/virt/mb_board_virt.c \
+	board/virt/mb_rom_virt.c
 
 SOBJS_SRC = \
 	portable/mb_vectors.S \

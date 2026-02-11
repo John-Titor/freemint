@@ -28,8 +28,11 @@ struct mb_rom_dispatch {
 	long (*bconstat)(uint16_t dev);
 	long (*bconin)(uint16_t dev);
 	long (*bconout)(uint16_t dev, uint16_t c);
+	long (*rwabs)(uint16_t rwflag, uint32_t buf, uint16_t count, uint16_t recno, uint16_t dev);
 	long (*setexc)(uint16_t vnum, uint32_t vptr);
+	long (*getbpb)(uint16_t dev);
 	long (*bcostat)(uint16_t dev);
+	long (*drvmap)(void);
 	long (*kbshift)(uint16_t data);
 
 	long (*initmous)(uint16_t type, uint32_t param, uint32_t vptr);
@@ -77,8 +80,11 @@ long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd);
 long mb_rom_bconstat(uint16_t dev);
 long mb_rom_bconin(uint16_t dev);
 long mb_rom_bconout(uint16_t dev, uint16_t c);
+long mb_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count, uint16_t recno, uint16_t dev);
 long mb_rom_setexc(uint16_t vnum, uint32_t vptr);
+long mb_rom_getbpb(uint16_t dev);
 long mb_rom_bcostat(uint16_t dev);
+long mb_rom_drvmap(void);
 long mb_rom_kbshift(uint16_t data);
 
 long mb_rom_initmous(uint16_t type, uint32_t param, uint32_t vptr);

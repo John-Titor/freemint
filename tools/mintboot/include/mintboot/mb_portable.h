@@ -13,6 +13,8 @@ struct mb_boot_info {
 	uint32_t ramdisk_size;
 };
 
+extern char mb_cmdline[128];
+
 /* Portable boot flow entry point (called from board layer). */
 void mb_portable_boot(struct mb_boot_info *info);
 

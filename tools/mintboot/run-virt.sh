@@ -9,6 +9,7 @@ RAMDISK_DIR="$ROOT/ramdisk.d"
 RAMDISK_SIZE_MIB=32
 RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
+CMDLINE=${CMDLINE:-}
 
 if [ ! -f "$ELF" ]; then
 	echo "mintboot-virt.elf not found: $ELF" >&2
@@ -69,10 +70,15 @@ if [ "$regen_ramdisk" -eq 1 ]; then
 	fi
 fi
 
+if [ $# -gt 0 ]; then
+	CMDLINE="$*"
+fi
+
 exec "$QEMU" \
 	-M virt \
 	-cpu m68040 \
 	-nographic \
 	-serial mon:stdio \
 	-kernel "$ELF" \
-	-initrd "$RAMDISK"
+	-initrd "$RAMDISK" \
+	${CMDLINE:+-append "$CMDLINE"}

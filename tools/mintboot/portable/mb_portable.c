@@ -6,6 +6,7 @@
 extern void mb_install_vector_base(void);
 
 struct mb_cookie_jar mb_cookie_jar;
+char mb_cmdline[128];
 
 #define MB_COOKIE_PTR_ADDR      0x000005a0u
 #define MB_COOKIE_STORAGE_ADDR  0x00000600u
@@ -60,6 +61,7 @@ void mb_portable_boot(struct mb_boot_info *info)
 {
 	(void)info;
 
+	mb_cmdline[0] = '\0';
 	mb_portable_init_lowmem();
 	mb_portable_init_cookies();
 	mb_portable_setup_vectors();

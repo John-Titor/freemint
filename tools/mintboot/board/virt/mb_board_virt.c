@@ -53,7 +53,7 @@ static uint8_t mb_virt_rx;
 static uint32_t mb_virt_tmr_ms = 20;
 extern uint32_t mb_virt_bootinfo_ptr;
 
-static struct mb_boot_info mb_virt_boot;
+struct mb_boot_info mb_virt_boot;
 
 struct mb_linux_bootinfo {
 	uint16_t tag;
@@ -70,6 +70,7 @@ struct mb_linux_bootinfo_memchunk {
 #define MB_LINUX_BI_MEMCHUNK 0x0005
 #define MB_LINUX_BI_CPUTYPE  0x0003
 #define MB_LINUX_BI_RAMDISK  0x0006
+#define MB_LINUX_BI_CMDLINE  0x0007
 
 struct mb_linux_bootinfo_cputype {
 	uint16_t tag;
@@ -84,7 +85,7 @@ struct mb_linux_bootinfo_ramdisk {
 	uint32_t size_bytes;
 };
 
-static void mb_virt_dump_bootinfo(void)
+static void mb_virt_parse_bootinfo(void)
 {
 	const struct mb_linux_bootinfo *rec;
 	uintptr_t addr;
@@ -101,17 +102,17 @@ static void mb_virt_dump_bootinfo(void)
 	}
 	rec = (const struct mb_linux_bootinfo *)addr;
 
-	mb_log_printf("mintboot virt: bootinfo @ 0x%08x\r\n",
-		      (uint32_t)addr);
+	/* mb_log_printf("mintboot virt: bootinfo @ 0x%08x\r\n",
+		      (uint32_t)addr); */
 
 	for (idx = 0; idx < 128; idx++) {
 		if (rec->tag == 0) {
-			mb_log_printf("mintboot virt: bootinfo end tag\r\n");
+			/* mb_log_printf("mintboot virt: bootinfo end tag\r\n"); */
 			break;
 		}
 
-		mb_log_printf("mintboot virt: bootinfo tag=0x%04x\r\n",
-			      rec->tag);
+		/* mb_log_printf("mintboot virt: bootinfo tag=0x%04x\r\n",
+			      rec->tag); */
 
 		if (rec->tag == MB_LINUX_BI_MEMCHUNK) {
 			const struct mb_linux_bootinfo_memchunk *mem;
@@ -130,8 +131,8 @@ static void mb_virt_dump_bootinfo(void)
 
 			end = mem->addr + mem->size_bytes;
 			*mb_lm_phystop() = end;
-			mb_log_printf("mintboot virt: phystop=0x%08x\r\n",
-				      end);
+			/* mb_log_printf("mintboot virt: phystop=0x%08x\r\n",
+				      end); */
 		}
 
 		if (rec->tag == MB_LINUX_BI_CPUTYPE) {
@@ -143,8 +144,8 @@ static void mb_virt_dump_bootinfo(void)
 			}
 
 			cpu = (const struct mb_linux_bootinfo_cputype *)rec;
-			mb_log_printf("mintboot virt: cputype=%u\r\n",
-				      cpu->cpu_type);
+			/* mb_log_printf("mintboot virt: cputype=%u\r\n",
+				      cpu->cpu_type); */
 			if (cpu->cpu_type != 4) {
 				mb_panic("bootinfo cputype=%u expected=4",
 					 cpu->cpu_type);
@@ -163,12 +164,32 @@ static void mb_virt_dump_bootinfo(void)
 			mb_virt_boot.ramdisk_base = (void *)(uintptr_t)rd->addr;
 			mb_virt_boot.ramdisk_size = rd->size_bytes;
 			saw_ramdisk = 1;
-			mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\r\n",
-				      rd->addr, rd->size_bytes);
+			/* mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\r\n",
+				      rd->addr, rd->size_bytes); */
+		}
+
+		if (rec->tag == MB_LINUX_BI_CMDLINE) {
+			uint32_t len;
+			uint32_t i;
+			const uint8_t *src;
+
+			if (rec->size < sizeof(*rec)) {
+				mb_panic("bootinfo cmdline too small: %u",
+					 rec->size);
+			}
+
+			len = rec->size - (uint32_t)sizeof(*rec);
+			if (len > sizeof(mb_cmdline) - 1)
+				len = sizeof(mb_cmdline) - 1;
+
+			src = (const uint8_t *)(rec + 1);
+			for (i = 0; i < len; i++)
+				mb_cmdline[i] = (char)src[i];
+			mb_cmdline[len] = '\0';
 		}
 
 		if (rec->size == 0) {
-			mb_log_printf("mintboot virt: bootinfo size=0, stop\r\n");
+			/* mb_log_printf("mintboot virt: bootinfo size=0, stop\r\n"); */
 			break;
 		}
 
@@ -179,70 +200,6 @@ static void mb_virt_dump_bootinfo(void)
 	if (!saw_ramdisk)
 		mb_panic("bootinfo missing ramdisk tag");
 }
-static long mb_virt_rom_bconout(uint16_t dev, uint16_t c)
-{
-	(void)dev;
-	mb_board_console_putc((int)(c & 0xff));
-	return 0;
-}
-
-static long mb_virt_rom_bconstat(uint16_t dev)
-{
-	(void)dev;
-	return mb_board_console_poll() ? 1 : 0;
-}
-
-static long mb_virt_rom_bconin(uint16_t dev)
-{
-	(void)dev;
-	return mb_board_console_getc();
-}
-
-const struct mb_rom_dispatch mb_rom_dispatch = {
-	.fsetdta = mb_rom_fsetdta,
-	.fgetdta = mb_rom_fgetdta,
-	.dfree = mb_rom_dfree,
-	.dcreate = mb_rom_dcreate,
-	.ddelete = mb_rom_ddelete,
-	.fcreate = mb_rom_fcreate,
-	.fopen = mb_rom_fopen,
-	.fclose = mb_rom_fclose,
-	.fread = mb_rom_fread,
-	.fwrite = mb_rom_fwrite,
-	.fdelete = mb_rom_fdelete,
-	.fseek = mb_rom_fseek,
-	.fattrib = mb_rom_fattrib,
-	.fsfirst = mb_rom_fsfirst,
-	.fsnext = mb_rom_fsnext,
-	.frename = mb_rom_frename,
-	.fdatime = mb_rom_fdatime,
-	.flock = mb_rom_flock,
-	.fcntl = mb_rom_fcntl,
-	.bconstat = mb_virt_rom_bconstat,
-	.bconin = mb_virt_rom_bconin,
-	.bconout = mb_virt_rom_bconout,
-	.setexc = mb_rom_setexc,
-	.bcostat = mb_rom_bcostat,
-	.kbshift = mb_rom_kbshift,
-	.initmous = mb_rom_initmous,
-	.getrez = mb_rom_getrez,
-	.iorec = mb_rom_iorec,
-	.rsconf = mb_rom_rsconf,
-	.keytbl = mb_rom_keytbl,
-	.cursconf = mb_rom_cursconf,
-	.settime = mb_rom_settime,
-	.gettime = mb_rom_gettime,
-	.bioskeys = mb_rom_bioskeys,
-	.offgibit = mb_rom_offgibit,
-	.ongibit = mb_rom_ongibit,
-	.dosound = mb_rom_dosound,
-	.kbdvbase = mb_rom_kbdvbase,
-	.vsync = mb_rom_vsync,
-	.bconmap = mb_rom_bconmap,
-	.vsetscreen = mb_rom_vsetscreen,
-	.kbrate = mb_rom_kbrate,
-};
-
 static void mb_virt_init_rtc_50hz(void)
 {
 	uint64_t now;
@@ -289,7 +246,7 @@ void mb_virt_start(void)
 
 void mb_board_early_init(void)
 {
-	mb_virt_dump_bootinfo();
+	mb_virt_parse_bootinfo();
 	*mb_lm_tmr_ms() = mb_virt_tmr_ms;
 	mb_virt_enable_pic_irq(5, 1);
 	mb_virt_init_rtc_50hz();
