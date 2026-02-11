@@ -81,7 +81,9 @@ mb_trap1_stub:
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
+	move.l %a0, -(%sp)
 	jsr mb_trap1_handler
+	add.l #4, %sp
 	lea (%sp), %a1
 	movem.l 4(%a1), %d0-%d7/%a0-%a6
 	add.l #MB_CTX_SIZE, %sp
@@ -100,7 +102,9 @@ mb_trap13_stub:
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
+	move.l %a0, -(%sp)
 	jsr mb_trap13_handler
+	add.l #4, %sp
 	lea (%sp), %a1
 	movem.l 4(%a1), %d0-%d7/%a0-%a6
 	add.l #MB_CTX_SIZE, %sp
@@ -119,7 +123,9 @@ mb_trap14_stub:
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
+	move.l %a0, -(%sp)
 	jsr mb_trap14_handler
+	add.l #4, %sp
 	lea (%sp), %a1
 	movem.l 4(%a1), %d0-%d7/%a0-%a6
 	add.l #MB_CTX_SIZE, %sp
@@ -166,7 +172,9 @@ mb_spurious_stub:
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
+	move.l %a0, -(%sp)
 	jsr mb_default_exception_handler
+	add.l #4, %sp
 	lea (%sp), %a1
 	movem.l 4(%a1), %d0-%d7/%a0-%a6
 	add.l #MB_CTX_SIZE, %sp
@@ -186,7 +194,9 @@ mb_default_exception_stub:
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
+	move.l %a0, -(%sp)
 	jsr mb_default_exception_handler
+	add.l #4, %sp
 	add.l #MB_CTX_SIZE, %sp
 1:
 	bra 1b
