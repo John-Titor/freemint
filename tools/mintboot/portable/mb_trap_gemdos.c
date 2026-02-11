@@ -1,8 +1,10 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_fat.h"
+#include "mintboot/mb_board.h"
 #include "mintboot/mb_trap_helpers.h"
 #include "mintboot/mb_util.h"
+#include "mintboot/mb_lowmem.h"
 
 #include <stdint.h>
 
@@ -37,6 +39,52 @@ long mb_rom_dcreate(const char *path)
 long mb_rom_ddelete(const char *path)
 {
 	return mb_fat_ddelete(path);
+}
+
+long mb_rom_pterm0(void)
+{
+	mb_log_puts("Pterm0\r\n");
+	mb_board_exit(0);
+	return 0;
+}
+
+long mb_rom_cconin(void)
+{
+	return mb_rom_dispatch.bconin(2);
+}
+
+long mb_rom_cconws(const char *buf)
+{
+	const char *s = mb_guarded_str(buf);
+
+	mb_log_puts(s);
+	return 0;
+}
+
+long mb_rom_mxalloc(int32_t amount, uint16_t mode)
+{
+	uint32_t membot = *mb_lm_membot();
+	uint32_t memtop = *mb_lm_memtop();
+	uint32_t avail = 0;
+	uint32_t alloc;
+
+	if (memtop > membot)
+		avail = memtop - membot;
+
+	if (amount < 0) {
+		if (mode == 1 || mode == 3)
+			return 0;
+		return (long)avail;
+	}
+
+	if (amount == 0)
+		return 0;
+	alloc = (uint32_t)amount;
+	alloc = (alloc + 3u) & ~3u;
+	if (alloc > avail)
+		return MB_ERR_NHNDL;
+	*mb_lm_membot() = membot + alloc;
+	return 0;
 }
 
 long mb_rom_fcreate(const char *fn, uint16_t mode)
@@ -130,6 +178,12 @@ long mb_rom_mshrink(uint16_t zero, uint32_t base, uint32_t len)
 long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
 {
 	switch (fnum) {
+	case 0x000:
+		return mb_rom_pterm0();
+	case 0x001:
+		return mb_rom_cconin();
+	case 0x009:
+		return mb_rom_cconws((const char *)(uintptr_t)mb_arg32(args, 0));
 	case 0x01a:
 		return mb_rom_fsetdta((void *)(uintptr_t)mb_arg32(args, 0));
 	case 0x036:
@@ -156,6 +210,8 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_rom_fseek((int32_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
 	case 0x043:
 		return mb_rom_fattrib((const char *)(uintptr_t)mb_arg32(args, 0), mb_arg16(args, 1), mb_arg16(args, 2));
+	case 0x03b:
+		return mb_rom_mxalloc((int32_t)mb_arg32(args, 0), mb_arg16(args, 2));
 	case 0x04a:
 		return mb_rom_mshrink(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
 	case 0x04e:
