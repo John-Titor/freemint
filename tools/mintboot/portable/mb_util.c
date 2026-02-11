@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#define MB_PATH_DUMP_MAX 64
+#define MB_PATH_DUMP_MAX 256
 
 const char *mb_guarded_str(const char *s)
 {
@@ -19,7 +19,7 @@ const char *mb_guarded_str(const char *s)
 			buf[i] = '\0';
 			return buf;
 		}
-		if (c < 0x20 || c > 0x7e)
+		if ((c < 0x20 && c != '\r' && c != '\n') || c > 0x7e)
 			c = '.';
 		buf[i] = (char)c;
 	}
