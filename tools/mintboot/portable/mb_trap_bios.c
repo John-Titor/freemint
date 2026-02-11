@@ -1,6 +1,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_trap_helpers.h"
+#include <stddef.h>
 #include <stdint.h>
 
 struct mb_rom_bpb {
@@ -28,6 +29,122 @@ static uint32_t mb_rom_le32(const uint8_t *ptr)
 
 static void mb_kbdvec_stub(void)
 {
+}
+
+struct mb_iorec {
+	uint8_t *buf;
+	uint16_t size;
+	volatile uint16_t head;
+	volatile uint16_t tail;
+	uint16_t low;
+	uint16_t high;
+} __attribute__((packed));
+
+struct mb_ext_iorec {
+	struct mb_iorec in;
+	struct mb_iorec out;
+	uint8_t baudrate;
+	uint8_t flowctrl;
+	uint8_t ucr;
+	uint8_t datamask;
+	uint8_t wr5;
+} __attribute__((packed));
+
+struct mb_maptab {
+	long (*bconstat)(void);
+	long (*bconin)(void);
+	long (*bcostat)(void);
+	long (*bconout)(uint16_t dev, uint16_t c);
+	long (*rsconf)(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs,
+		       uint16_t ts, uint16_t sc);
+	struct mb_ext_iorec *iorec;
+} __attribute__((packed));
+
+struct mb_bconmap {
+	struct mb_maptab *maptab;
+	uint16_t maptabsize;
+	uint16_t mapped_device;
+} __attribute__((packed));
+
+static long mb_bconmap_bconstat(void)
+{
+	return mb_rom_dispatch.bconstat(6);
+}
+
+static long mb_bconmap_bconin(void)
+{
+	return mb_rom_dispatch.bconin(6);
+}
+
+static long mb_bconmap_bcostat(void)
+{
+	return mb_rom_dispatch.bcostat(6);
+}
+
+static long mb_bconmap_bconout(uint16_t dev, uint16_t c)
+{
+	(void)dev;
+	return mb_rom_dispatch.bconout(6, c);
+}
+
+static long mb_bconmap_rsconf(uint16_t baud, uint16_t flow, uint16_t uc,
+			      uint16_t rs, uint16_t ts, uint16_t sc)
+{
+	return mb_rom_dispatch.rsconf(baud, flow, uc, rs, ts, sc);
+}
+
+static struct mb_ext_iorec *mb_bconmap_iorec(void)
+{
+	enum { mb_rs232_bufsize = 256 };
+	static uint8_t mb_iorec_ibuf[mb_rs232_bufsize];
+	static uint8_t mb_iorec_obuf[mb_rs232_bufsize];
+	static struct mb_ext_iorec mb_iorec;
+	static int inited;
+
+	if (!inited) {
+		mb_iorec.in.buf = mb_iorec_ibuf;
+		mb_iorec.in.size = mb_rs232_bufsize;
+		mb_iorec.in.head = 0;
+		mb_iorec.in.tail = 0;
+		mb_iorec.in.low = mb_rs232_bufsize / 4;
+		mb_iorec.in.high = (mb_rs232_bufsize * 3) / 4;
+		mb_iorec.out.buf = mb_iorec_obuf;
+		mb_iorec.out.size = mb_rs232_bufsize;
+		mb_iorec.out.head = 0;
+		mb_iorec.out.tail = 0;
+		mb_iorec.out.low = mb_rs232_bufsize / 4;
+		mb_iorec.out.high = (mb_rs232_bufsize * 3) / 4;
+		mb_iorec.baudrate = 0;
+		mb_iorec.flowctrl = 0;
+		mb_iorec.ucr = 0;
+		mb_iorec.datamask = 0;
+		mb_iorec.wr5 = 0;
+		inited = 1;
+	}
+
+	return &mb_iorec;
+}
+
+static struct mb_bconmap *mb_bconmap_root(void)
+{
+	static struct mb_maptab map = {
+		.bconstat = mb_bconmap_bconstat,
+		.bconin = mb_bconmap_bconin,
+		.bcostat = mb_bconmap_bcostat,
+		.bconout = mb_bconmap_bconout,
+		.rsconf = mb_bconmap_rsconf,
+		.iorec = NULL,
+	};
+	static struct mb_bconmap root = {
+		.maptab = &map,
+		.maptabsize = 1,
+		.mapped_device = 6,
+	};
+
+	if (!map.iorec)
+		map.iorec = mb_bconmap_iorec();
+
+	return &root;
 }
 
 /* BIOS (trap #13) stubs */
@@ -190,12 +307,21 @@ long mb_rom_getrez(void)
 
 long mb_rom_iorec(uint16_t io_dev)
 {
-	mb_panic("Iorec(dev=%u)", (uint32_t)io_dev);
+	if (io_dev == 0)
+		return (long)(uintptr_t)mb_bconmap_iorec();
 	return -1;
 }
 
 long mb_rom_rsconf(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs, uint16_t ts, uint16_t sc)
 {
+	struct mb_ext_iorec *iorec = mb_bconmap_iorec();
+
+	if (baud != 0xffffu)
+		iorec->baudrate = (uint8_t)baud;
+	if (flow != 0xffffu)
+		iorec->flowctrl = (uint8_t)flow;
+	if (uc != 0xffffu)
+		iorec->ucr = (uint8_t)uc;
 	(void)baud;
 	(void)flow;
 	(void)uc;
@@ -323,8 +449,20 @@ long mb_rom_vsync(void)
 
 long mb_rom_bconmap(uint16_t dev)
 {
-	mb_panic("Bconmap(dev=%u)", (uint32_t)dev);
-	return -1;
+	struct mb_bconmap *root = mb_bconmap_root();
+	uint16_t old_dev = root->mapped_device;
+
+	if (dev == 0xffffu)
+		return old_dev;
+
+	if (dev == 0xfffeu)
+		return (long)(uintptr_t)root;
+
+	if (dev != 6)
+		return 0;
+
+	root->mapped_device = 6;
+	return old_dev;
 }
 
 long mb_rom_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode)
