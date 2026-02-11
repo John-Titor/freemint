@@ -24,14 +24,13 @@ static long mb_virt_rom_bconin(uint16_t dev)
 	return mb_board_console_getc();
 }
 
-static long mb_virt_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count,
+static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 			      uint16_t recno, uint16_t dev)
 {
 	uint32_t offset;
 	uint32_t size;
 	uint32_t end;
 	uint8_t *ramdisk;
-	uint8_t *data;
 
 	ramdisk = (uint8_t *)mb_virt_boot.ramdisk_base;
 	if (!ramdisk)
@@ -46,11 +45,10 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count,
 	if (end > size)
 		return -1;
 
-	data = (uint8_t *)(uintptr_t)buf;
 	if ((rwflag & 1u) == 0)
-		memcpy(data, ramdisk + offset, end - offset);
+		memcpy(buf, ramdisk + offset, end - offset);
 	else
-		memcpy(ramdisk + offset, data, end - offset);
+		memcpy(ramdisk + offset, buf, end - offset);
 
 	return 0;
 }

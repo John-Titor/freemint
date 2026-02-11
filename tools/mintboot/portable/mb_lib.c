@@ -3,6 +3,7 @@
 
 void *memcpy(void *dst, const void *src, size_t len);
 void *memset(void *dst, int value, size_t len);
+int memcmp(const void *a, const void *b, size_t len);
 
 void *memcpy(void *dst, const void *src, size_t len)
 {
@@ -23,4 +24,17 @@ void *memset(void *dst, int value, size_t len)
 	for (i = 0; i < len; i++)
 		d[i] = (uint8_t)value;
 	return dst;
+}
+
+int memcmp(const void *a, const void *b, size_t len)
+{
+	const uint8_t *pa = (const uint8_t *)a;
+	const uint8_t *pb = (const uint8_t *)b;
+	size_t i;
+
+	for (i = 0; i < len; i++) {
+		if (pa[i] != pb[i])
+			return (int)pa[i] - (int)pb[i];
+	}
+	return 0;
 }

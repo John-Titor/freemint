@@ -62,8 +62,7 @@ void *mb_rom_fgetdta(void)
 }
 long mb_rom_dfree(uint32_t buf, uint16_t d)
 {
-	mb_panic("Dfree(buf=%08x, d=%u)", buf, (uint32_t)d);
-	return -1;
+	return mb_fat_dfree(buf, d);
 }
 
 long mb_rom_dcreate(const char *path)
@@ -97,14 +96,15 @@ long mb_rom_fclose(uint16_t handle)
 	return mb_fat_fclose(handle);
 }
 
-long mb_rom_fread(uint16_t handle, uint32_t cnt, uint32_t buf)
+long mb_rom_fread(uint16_t handle, uint32_t cnt, void *buf)
 {
 	return mb_fat_fread(handle, cnt, buf);
 }
 
-long mb_rom_fwrite(uint16_t handle, uint32_t cnt, uint32_t buf)
+long mb_rom_fwrite(uint16_t handle, uint32_t cnt, void *buf)
 {
-	mb_panic("Fwrite(handle=%u, cnt=%u, buf=%08x)", (uint32_t)handle, cnt, buf);
+	mb_panic("Fwrite(handle=%u, cnt=%u, buf=%08x)", (uint32_t)handle, cnt,
+		 (uint32_t)(uintptr_t)buf);
 	return -1;
 }
 
@@ -137,11 +137,7 @@ long mb_rom_fsnext(void)
 
 long mb_rom_frename(uint16_t zero, const char *oldname, const char *newname)
 {
-	mb_panic("Frename(zero=%u, old=%08x \"%s\", new=%08x \"%s\")",
-		 (uint32_t)zero, (uint32_t)(uintptr_t)oldname,
-		 mb_guarded_str(oldname), (uint32_t)(uintptr_t)newname,
-		 mb_guarded_str(newname));
-	return -1;
+	return mb_fat_frename(zero, oldname, newname);
 }
 
 long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
@@ -151,8 +147,7 @@ long mb_rom_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
 
 long mb_rom_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length)
 {
-	mb_panic("Flock(handle=%u, mode=%u, start=%d, len=%d)", (uint32_t)handle, (uint32_t)mode, start, length);
-	return -1;
+	return mb_fat_flock(handle, mode, start, length);
 }
 
 long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd)
@@ -179,9 +174,11 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint32_t *args)
 	case 0x03e:
 		return mb_rom_dispatch.fclose(mb_arg16(args, 0));
 	case 0x03f:
-		return mb_rom_dispatch.fread(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_dispatch.fread(mb_arg16(args, 0), mb_arg32(args, 1),
+					     (void *)(uintptr_t)mb_arg32(args, 2));
 	case 0x040:
-		return mb_rom_dispatch.fwrite(mb_arg16(args, 0), mb_arg32(args, 1), mb_arg32(args, 2));
+		return mb_rom_dispatch.fwrite(mb_arg16(args, 0), mb_arg32(args, 1),
+					      (void *)(uintptr_t)mb_arg32(args, 2));
 	case 0x041:
 		return mb_rom_dispatch.fdelete((const char *)(uintptr_t)mb_arg32(args, 0));
 	case 0x042:

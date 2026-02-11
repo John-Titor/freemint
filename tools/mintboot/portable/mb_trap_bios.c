@@ -54,7 +54,8 @@ long mb_rom_bconout(uint16_t dev, uint16_t c)
 	return -1;
 }
 
-long mb_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count, uint16_t recno, uint16_t dev)
+long mb_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno,
+		  uint16_t dev)
 {
 	(void)rwflag;
 	(void)buf;
@@ -89,7 +90,7 @@ long mb_rom_getbpb(uint16_t dev)
 	struct mb_rom_bpb *bpb;
 	static struct mb_rom_bpb mb_bpb;
 
-	if (mb_rom_dispatch.rwabs(0, (uint32_t)(uintptr_t)sector, 1, 0, dev) != 0)
+	if (mb_rom_dispatch.rwabs(0, sector, 1, 0, dev) != 0)
 		return 0;
 
 	if (sector[510] != 0x55 || sector[511] != 0xaa)
@@ -99,8 +100,7 @@ long mb_rom_getbpb(uint16_t dev)
 	if (part_lba == 0)
 		return 0;
 
-	if (mb_rom_dispatch.rwabs(0, (uint32_t)(uintptr_t)sector, 1,
-				  (uint16_t)part_lba, dev) != 0)
+	if (mb_rom_dispatch.rwabs(0, sector, 1, (uint16_t)part_lba, dev) != 0)
 		return 0;
 
 	bytes_per_sec = mb_rom_le16(&sector[0x0b]);
@@ -277,7 +277,8 @@ long mb_rom_bios_dispatch(uint16_t fnum, uint32_t *args)
 	case 0x03:
 		return mb_rom_dispatch.bconout(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x04:
-		return mb_rom_dispatch.rwabs(mb_arg16(args, 0), mb_arg32(args, 1),
+		return mb_rom_dispatch.rwabs(mb_arg16(args, 0),
+					     (void *)(uintptr_t)mb_arg32(args, 1),
 					     mb_arg16(args, 2), mb_arg16(args, 3),
 					     mb_arg16(args, 4));
 	case 0x05:

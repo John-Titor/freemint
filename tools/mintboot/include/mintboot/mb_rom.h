@@ -3,6 +3,15 @@
 
 #include <stdint.h>
 
+#define MB_ERR_FNF (-33)
+#define MB_ERR_PTH (-34)
+#define MB_ERR_ACCDN (-36)
+#define MB_ERR_XDEV (-48)
+#define MB_ERR_NMFIL (-49)
+#define MB_ERR_LOCKED (-58)
+#define MB_ERR_EXIST (-85)
+#define MB_ERR_BADF (-32)
+
 struct mb_rom_dispatch {
 	long (*fsetdta)(void *dta);
 	void *(*fgetdta)(void);
@@ -13,8 +22,8 @@ struct mb_rom_dispatch {
 	long (*fcreate)(const char *fn, uint16_t mode);
 	long (*fopen)(const char *filename, uint16_t mode);
 	long (*fclose)(uint16_t handle);
-	long (*fread)(uint16_t handle, uint32_t cnt, uint32_t buf);
-	long (*fwrite)(uint16_t handle, uint32_t cnt, uint32_t buf);
+	long (*fread)(uint16_t handle, uint32_t cnt, void *buf);
+	long (*fwrite)(uint16_t handle, uint32_t cnt, void *buf);
 	long (*fdelete)(const char *fn);
 	long (*fseek)(int32_t where, uint16_t handle, uint16_t how);
 	long (*fattrib)(const char *fn, uint16_t rwflag, uint16_t attr);
@@ -28,7 +37,7 @@ struct mb_rom_dispatch {
 	long (*bconstat)(uint16_t dev);
 	long (*bconin)(uint16_t dev);
 	long (*bconout)(uint16_t dev, uint16_t c);
-	long (*rwabs)(uint16_t rwflag, uint32_t buf, uint16_t count, uint16_t recno, uint16_t dev);
+	long (*rwabs)(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno, uint16_t dev);
 	long (*setexc)(uint16_t vnum, uint32_t vptr);
 	long (*getbpb)(uint16_t dev);
 	long (*bcostat)(uint16_t dev);
@@ -65,8 +74,8 @@ long mb_rom_ddelete(const char *path);
 long mb_rom_fcreate(const char *fn, uint16_t mode);
 long mb_rom_fopen(const char *filename, uint16_t mode);
 long mb_rom_fclose(uint16_t handle);
-long mb_rom_fread(uint16_t handle, uint32_t cnt, uint32_t buf);
-long mb_rom_fwrite(uint16_t handle, uint32_t cnt, uint32_t buf);
+long mb_rom_fread(uint16_t handle, uint32_t cnt, void *buf);
+long mb_rom_fwrite(uint16_t handle, uint32_t cnt, void *buf);
 long mb_rom_fdelete(const char *fn);
 long mb_rom_fseek(int32_t where, uint16_t handle, uint16_t how);
 long mb_rom_fattrib(const char *fn, uint16_t rwflag, uint16_t attr);
@@ -80,7 +89,7 @@ long mb_rom_fcntl(uint16_t f, uint32_t arg, uint16_t cmd);
 long mb_rom_bconstat(uint16_t dev);
 long mb_rom_bconin(uint16_t dev);
 long mb_rom_bconout(uint16_t dev, uint16_t c);
-long mb_rom_rwabs(uint16_t rwflag, uint32_t buf, uint16_t count, uint16_t recno, uint16_t dev);
+long mb_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno, uint16_t dev);
 long mb_rom_setexc(uint16_t vnum, uint32_t vptr);
 long mb_rom_getbpb(uint16_t dev);
 long mb_rom_bcostat(uint16_t dev);
