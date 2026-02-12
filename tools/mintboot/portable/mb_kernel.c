@@ -352,6 +352,16 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	}
 
 	if (do_jump) {
+		mb_log_printf("mintboot: kernel launch disabled\r\n");
+		return 0;
+	}
+
+	if (do_jump) {
+		mb_log_printf("mintboot: kernel launch disabled\r\n");
+		return 0;
+	}
+
+	if (do_jump) {
 		void (*entry)(void) = (void (*)(void))(tbase + entry_off);
 		uint32_t ssp = tpa_end & ~3u;
 		uint32_t user_sp = (tpa_end - MB_PRG_STACK_SUP) & ~3u;

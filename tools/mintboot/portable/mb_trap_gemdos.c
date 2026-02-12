@@ -1,11 +1,12 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
-#include "mintboot/mb_fat.h"
+#include "mb_fat_internal.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_trap_helpers.h"
 #include "mintboot/mb_util.h"
 #include "mintboot/mb_lowmem.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* GEMDOS (trap #1) stubs */
@@ -13,6 +14,18 @@
 
 static uint8_t mb_default_dta[MB_EMUTOS_DTA_SIZE];
 static void *mb_gemdos_dta = mb_default_dta;
+static uint16_t mb_current_drive;
+static char mb_current_path[26][256];
+
+static void mb_set_default_path(uint16_t drive)
+{
+	if (drive >= 26)
+		return;
+	if (mb_current_path[drive][0])
+		return;
+	mb_current_path[drive][0] = '\\';
+	mb_current_path[drive][1] = '\0';
+}
 
 long mb_rom_fsetdta(void *dta)
 {
@@ -23,6 +36,49 @@ long mb_rom_fsetdta(void *dta)
 void *mb_rom_fgetdta(void)
 {
 	return mb_gemdos_dta;
+}
+
+void mb_rom_set_current_drive(uint16_t drive)
+{
+	mb_current_drive = drive;
+	mb_set_default_path(drive);
+}
+
+uint16_t mb_rom_get_current_drive(void)
+{
+	return mb_current_drive;
+}
+
+const char *mb_rom_get_current_path(uint16_t drive)
+{
+	if (drive >= 26)
+		return "\\";
+	if (!mb_current_path[drive][0])
+		return "\\";
+	return mb_current_path[drive];
+}
+
+long mb_rom_dgetpath(char *buf, uint16_t drive)
+{
+	const char *path;
+	size_t i = 0;
+
+	if (!buf)
+		return MB_ERR_PTHNF;
+	if (drive == 0)
+		drive = mb_current_drive;
+	else
+		drive = (uint16_t)(drive - 1);
+	if (drive >= 26)
+		return MB_ERR_DRIVE;
+
+	path = mb_rom_get_current_path(drive);
+	while (path[i] && i + 1 < sizeof(mb_current_path[0])) {
+		buf[i] = path[i];
+		i++;
+	}
+	buf[i] = '\0';
+	return 0;
 }
 long mb_rom_dfree(uint32_t buf, uint16_t d)
 {
@@ -39,6 +95,106 @@ long mb_rom_dcreate(const char *path)
 long mb_rom_ddelete(const char *path)
 {
 	return mb_fat_ddelete(path);
+}
+
+long mb_rom_dsetpath(const char *path)
+{
+	struct mb_fat_dirent ent;
+	const char *p = path;
+	char resolved[256];
+	uint32_t out_idx = 0;
+	const char *base;
+	uint32_t i;
+
+	if (!path || !path[0])
+		return MB_ERR_PTHNF;
+
+	if (p[1] == ':')
+		return MB_ERR_PTHNF;
+
+	if (*p == '\\' || *p == '/')
+		goto absolute_path;
+
+	base = mb_rom_get_current_path(mb_current_drive);
+	if (!base || !base[0])
+		base = "\\";
+	for (i = 0; base[i] && out_idx + 1 < sizeof(resolved); i++)
+		resolved[out_idx++] = base[i];
+	if (out_idx == 0 || resolved[out_idx - 1] != '\\')
+		resolved[out_idx++] = '\\';
+	while (*p && out_idx + 1 < sizeof(resolved)) {
+		char c = *p++;
+		if (c == '/')
+			c = '\\';
+		resolved[out_idx++] = c;
+	}
+	if (*p)
+		return MB_ERR_PTHNF;
+	resolved[out_idx] = '\0';
+	p = resolved;
+	goto lookup_path;
+
+absolute_path:
+	while (*p == '\\' || *p == '/')
+		p++;
+	resolved[out_idx++] = '\\';
+	while (*p && out_idx + 1 < sizeof(resolved)) {
+		char c = *p++;
+		if (c == '/')
+			c = '\\';
+		resolved[out_idx++] = c;
+	}
+	if (*p)
+		return MB_ERR_PTHNF;
+	resolved[out_idx] = '\0';
+	p = resolved;
+
+lookup_path:
+	if (p[1] == '\0')
+		goto store_root;
+
+	{
+		int rc = mb_fat_find_path(mb_current_drive, p, &ent);
+		if (rc != 0)
+			return MB_ERR_PTHNF;
+	}
+
+	if (mb_current_drive >= 26)
+		return MB_ERR_PTHNF;
+
+	if (!(ent.attr & 0x10u))
+		return MB_ERR_PTHNF;
+
+	out_idx = 0;
+store_root:
+	if (p[1] == '\0') {
+		mb_current_path[mb_current_drive][0] = '\\';
+		mb_current_path[mb_current_drive][1] = '\0';
+		return 0;
+	}
+
+	mb_current_path[mb_current_drive][out_idx++] = '\\';
+	for (i = 1; p[i]; i++) {
+		if (out_idx + 1 >= sizeof(mb_current_path[0]))
+			return MB_ERR_PTHNF;
+		mb_current_path[mb_current_drive][out_idx++] = p[i];
+	}
+	mb_current_path[mb_current_drive][out_idx] = '\0';
+	return 0;
+}
+
+long mb_rom_dsetdrv(uint16_t drive)
+{
+	uint32_t map = (uint32_t)mb_rom_dispatch.drvmap();
+
+	if (drive < 26 && (map & (1u << drive)))
+		mb_current_drive = drive;
+	return map;
+}
+
+long mb_rom_dgetdrv(void)
+{
+	return mb_current_drive;
 }
 
 long mb_rom_pterm0(void)
@@ -188,14 +344,23 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_rom_cconin();
 	case 0x009:
 		return mb_rom_cconws((const char *)(uintptr_t)mb_arg32w(args, 0));
+	case 0x019:
+		return mb_rom_dgetdrv();
 	case 0x01a:
 		return mb_rom_fsetdta((void *)(uintptr_t)mb_arg32w(args, 0));
+	case 0x00e:
+		return mb_rom_dsetdrv(mb_arg16(args, 0));
+	case 0x047:
+		return mb_rom_dgetpath((char *)(uintptr_t)mb_arg32w(args, 0),
+				       mb_arg16(args, 2));
 	case 0x036:
 		return mb_rom_dfree(mb_arg32w(args, 0), mb_arg16(args, 2));
 	case 0x039:
 		return mb_rom_dcreate((const char *)(uintptr_t)mb_arg32w(args, 0));
 	case 0x03a:
 		return mb_rom_ddelete((const char *)(uintptr_t)mb_arg32w(args, 0));
+	case 0x03b:
+		return mb_rom_dsetpath((const char *)(uintptr_t)mb_arg32w(args, 0));
 	case 0x03c:
 		return mb_rom_fcreate((const char *)(uintptr_t)mb_arg32w(args, 0), mb_arg16(args, 2));
 	case 0x03d:
@@ -214,7 +379,7 @@ long mb_rom_gemdos_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_rom_fseek((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
 	case 0x043:
 		return mb_rom_fattrib((const char *)(uintptr_t)mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
-	case 0x03b:
+	case 0x044:
 		return mb_rom_mxalloc((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2));
 	case 0x04a:
 		return mb_rom_mshrink(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));

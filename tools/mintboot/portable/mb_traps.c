@@ -26,7 +26,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
-	uint32_t ret;
+	uint32_t ret = 0;
 
 	mb_log_printf("trap1: fnum=%04x args=%04x %04x %04x %04x %04x %04x\r\n",
 		      (uint32_t)fnum,
@@ -71,7 +71,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 	ctx->d[0] = ret;
 out:
 	mb_log_printf("trap1: fnum=%04x ret=%08x\r\n",
-		      (uint32_t)fnum, ret);
+		      (uint32_t)fnum, ctx->d[0]);
 }
 
 void mb_trap2_handler(struct mb_exception_context *ctx)

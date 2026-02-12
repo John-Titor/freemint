@@ -112,7 +112,10 @@ static void mb_portable_init_boot_drive(void)
 		}
 	}
 out:
-	*mb_lm_bootdev() = mb_boot_drive;
+	if (mb_boot_drive < 26)
+		*mb_lm_bootdev() = mb_boot_drive;
+	if (mb_boot_drive < 26)
+		mb_rom_set_current_drive(mb_boot_drive);
 }
 
 uint16_t mb_portable_boot_drive(void)

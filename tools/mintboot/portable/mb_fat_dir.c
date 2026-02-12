@@ -67,25 +67,77 @@ int mb_fat_dir_is_empty(uint32_t dir_cluster)
 	}
 }
 
-int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
+static const char *mb_fat_resolve_path(uint16_t dev_in, const char *path,
+				       uint16_t *dev_out, char *buf, size_t bufsz)
 {
 	const char *p = path;
-	char part[64];
-	uint8_t pat[11];
-	uint32_t dir_cluster = 0;
+	uint16_t dev = dev_in;
+	const char *cur;
+	size_t cur_len = 0;
+	size_t out = 0;
 
-	if (!path)
-		return -1;
+	if (!path || !path[0])
+		return NULL;
 
 	if (p[1] == ':') {
 		char drive = p[0];
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
-		if (drive < 'A' || drive > 'Z')
-			return MB_ERR_DRIVE;
+		if (drive < 'A' || drive > 'Z') {
+			if (dev_out)
+				*dev_out = 0xffffu;
+			return NULL;
+		}
 		dev = (uint16_t)(drive - 'A');
 		p += 2;
+	} else {
+		dev = mb_rom_get_current_drive();
 	}
+
+	if (*p == '\\' || *p == '/') {
+		if (dev_out)
+			*dev_out = dev;
+		return p;
+	}
+
+	cur = mb_rom_get_current_path(dev);
+	while (cur[cur_len])
+		cur_len++;
+
+	if (!buf || bufsz < 2)
+		return NULL;
+	if (cur_len == 0) {
+		buf[out++] = '\\';
+	} else {
+		size_t i;
+		for (i = 0; i < cur_len && out + 1 < bufsz; i++)
+			buf[out++] = cur[i];
+		if (out == 0 || buf[out - 1] != '\\')
+			buf[out++] = '\\';
+	}
+
+	while (*p && out + 1 < bufsz) {
+		char c = *p++;
+		if (c == '/')
+			c = '\\';
+		buf[out++] = c;
+	}
+	buf[out] = '\0';
+	if (dev_out)
+		*dev_out = dev;
+	return buf;
+}
+
+int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
+{
+	char resolved[256];
+	const char *p = mb_fat_resolve_path(dev, path, &dev, resolved, sizeof(resolved));
+	char part[64];
+	uint8_t pat[11];
+	uint32_t dir_cluster = 0;
+
+	if (!p)
+		return (dev == 0xffffu) ? MB_ERR_DRIVE : -1;
 
 	while (*p == '\\' || *p == '/')
 		p++;
@@ -134,25 +186,16 @@ int mb_fat_find_path(uint16_t dev, const char *path, struct mb_fat_dirent *ent)
 int mb_fat_setup_search(const char *filespec, uint16_t attr,
 			struct mb_fat_search **out)
 {
-	const char *p = filespec;
+	char resolved[256];
+	uint16_t dev = mb_rom_get_current_drive();
+	const char *p = mb_fat_resolve_path(dev, filespec, &dev, resolved, sizeof(resolved));
 	char part[64];
 	uint8_t pat[11];
-	uint16_t dev = 2;
 	uint32_t dir_cluster = 0;
 	uint32_t idx;
 
-	if (!filespec)
-		return -1;
-
-	if (p[1] == ':') {
-		char drive = p[0];
-		if (drive >= 'a' && drive <= 'z')
-			drive = (char)(drive - 'a' + 'A');
-		if (drive < 'A' || drive > 'Z')
-			return MB_ERR_DRIVE;
-		dev = (uint16_t)(drive - 'A');
-		p += 2;
-	}
+	if (!p)
+		return (dev == 0xffffu) ? MB_ERR_DRIVE : -1;
 
 	while (*p == '\\' || *p == '/')
 		p++;
@@ -208,23 +251,14 @@ int mb_fat_setup_search(const char *filespec, uint16_t attr,
 int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 			  uint32_t *dir_cluster_out, uint8_t name83[11])
 {
-	const char *p = path;
 	char part[64];
-	uint16_t dev = 2;
+	uint16_t dev = mb_rom_get_current_drive();
+	char resolved[256];
+	const char *p = mb_fat_resolve_path(dev, path, &dev, resolved, sizeof(resolved));
 	uint32_t dir_cluster = 0;
 
-	if (!path)
-		return MB_ERR_PTHNF;
-
-	if (p[1] == ':') {
-		char drive = p[0];
-		if (drive >= 'a' && drive <= 'z')
-			drive = (char)(drive - 'a' + 'A');
-		if (drive < 'A' || drive > 'Z')
-			return MB_ERR_DRIVE;
-		dev = (uint16_t)(drive - 'A');
-		p += 2;
-	}
+	if (!p)
+		return (dev == 0xffffu) ? MB_ERR_DRIVE : MB_ERR_PTHNF;
 
 	while (*p == '\\' || *p == '/')
 		p++;
