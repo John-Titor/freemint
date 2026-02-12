@@ -50,7 +50,10 @@ static void mb_etv_term_stub(void)
 
 static void mb_etv_timer_stub(void)
 {
-	(*mb_lm_vbclock())++;
+	*mb_lm_frclock() = *mb_lm_frclock() + 1u;
+	*mb_lm_hz_200() = *mb_lm_hz_200() + 4u;
+	if (*mb_lm_vblsem() == 0)
+		*mb_lm_vbclock() = *mb_lm_vbclock() + 1u;
 }
 
 static void mb_portable_init_lowmem(void)
@@ -59,6 +62,9 @@ static void mb_portable_init_lowmem(void)
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
 	*mb_lm_etv_timer() = (uint32_t)(uintptr_t)mb_etv_timer_stub;
 	*mb_lm_vbclock() = 0;
+	*mb_lm_frclock() = 0;
+	*mb_lm_hz_200() = 0;
+	*mb_lm_vblsem() = 0;
 }
 
 void mb_portable_set_st_ram(uint32_t base, uint32_t size)
@@ -77,6 +83,7 @@ void mb_portable_set_st_ram(uint32_t base, uint32_t size)
 	*mb_lm_memvalid() = 0x752019f3u;
 	*mb_lm_memval2() = 0x237698aau;
 	*mb_lm_memval3() = 0x5555aaaau;
+	*mb_lm_longframe() = 1;
 }
 
 __attribute__((weak)) void mb_board_init_cookies(void)
@@ -94,15 +101,18 @@ static void mb_portable_init_boot_drive(void)
 	uint16_t i;
 
 	mb_boot_drive = 0xffffu;
+	*mb_lm_drvbits() = map;
 	if (map == 0)
-		return;
+		goto out;
 
 	for (i = 0; i < 26; i++) {
 		if (map & (1u << i)) {
 			mb_boot_drive = i;
-			return;
+			break;
 		}
 	}
+out:
+	*mb_lm_bootdev() = mb_boot_drive;
 }
 
 uint16_t mb_portable_boot_drive(void)

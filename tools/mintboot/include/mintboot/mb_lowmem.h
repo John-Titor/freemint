@@ -15,6 +15,8 @@
 #define MB_LM_MEMVAL3_ADDR    0x0000051au
 #define MB_LM_BOOTDEV_ADDR    0x00000446u
 #define MB_LM_TMR_MS_ADDR     0x00000442u
+#define MB_LM_VBLSEM_ADDR     0x00000452u
+#define MB_LM_FRCLOCK_ADDR    0x00000466u
 #define MB_LM_ETV_CRITIC_ADDR 0x00000404u
 #define MB_LM_ETV_TERM_ADDR   0x00000408u
 #define MB_LM_ETV_TIMER_ADDR  0x0000040cu
@@ -23,6 +25,7 @@
 #define MB_LM_DRVBITS_ADDR    0x000004c2u
 #define MB_LM_SYSBASE_ADDR    0x000004f2u
 #define MB_LM_COOKIE_P_ADDR   0x000005a0u
+#define MB_LM_LONGFRAME_ADDR  0x0000059eu
 #define MB_LM_OSHDR_ADDR      0x00000680u
 #define MB_LM_OSRUN_ADDR      0x000006b0u
 
@@ -66,6 +69,16 @@ static inline volatile uint16_t *mb_lm_tmr_ms(void)
 	return (volatile uint16_t *)MB_LM_TMR_MS_ADDR;
 }
 
+static inline volatile uint16_t *mb_lm_vblsem(void)
+{
+	return (volatile uint16_t *)MB_LM_VBLSEM_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_frclock(void)
+{
+	return (volatile uint32_t *)MB_LM_FRCLOCK_ADDR;
+}
+
 static inline volatile uint32_t *mb_lm_etv_critic(void)
 {
 	return (volatile uint32_t *)MB_LM_ETV_CRITIC_ADDR;
@@ -104,6 +117,11 @@ static inline volatile void **mb_lm_sysbase(void)
 static inline volatile void **mb_lm_cookie_p(void)
 {
 	return (volatile void **)MB_LM_COOKIE_P_ADDR;
+}
+
+static inline volatile uint16_t *mb_lm_longframe(void)
+{
+	return (volatile uint16_t *)MB_LM_LONGFRAME_ADDR;
 }
 
 static inline void *mb_lm_oshdr(void)

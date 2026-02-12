@@ -26,6 +26,12 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
+	uint32_t ret;
+
+	mb_log_printf("trap1: fnum=%04x args=%04x %04x %04x %04x %04x %04x\r\n",
+		      (uint32_t)fnum,
+		      (uint32_t)args[1], (uint32_t)args[2], (uint32_t)args[3],
+		      (uint32_t)args[4], (uint32_t)args[5], (uint32_t)args[6]);
 
 	if (fnum == 0x20) {
 		uint32_t newsp = mb_arg32(args + 1, 0);
@@ -40,25 +46,32 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 			      newsp, sr, sbit ? 1u : 0u, usp);
 
 		if (newsp == 1u) {
-			ctx->d[0] = sbit ? 0xffffffffu : 0u;
-			return;
+			ret = sbit ? 0xffffffffu : 0u;
+			ctx->d[0] = ret;
+			goto out;
 		}
 
 		if (newsp == 0u) {
 			if (!sbit) {
 				frame[0] = (uint16_t)(sr | 0x2000u);
 			}
-			ctx->d[0] = usp;
-			return;
+			ret = usp;
+			ctx->d[0] = ret;
+			goto out;
 		}
 
 		__asm__ volatile("move.l %0, %%usp" : : "a"(newsp));
 		frame[0] = (uint16_t)(sr & 0xdfffu);
-		ctx->d[0] = usp;
-		return;
+		ret = usp;
+		ctx->d[0] = ret;
+		goto out;
 	}
 
-	ctx->d[0] = (uint32_t)mb_rom_gemdos_dispatch(fnum, args + 1);
+	ret = (uint32_t)mb_rom_gemdos_dispatch(fnum, args + 1);
+	ctx->d[0] = ret;
+out:
+	mb_log_printf("trap1: fnum=%04x ret=%08x\r\n",
+		      (uint32_t)fnum, ret);
 }
 
 void mb_trap2_handler(struct mb_exception_context *ctx)
@@ -222,6 +235,21 @@ void mb_default_exception_handler(struct mb_exception_context *ctx)
 	ctx->frame.format = fmt;
 
 	mb_last_ctx = ctx;
+
+	if (vec == 8) {
+		uint32_t top = phystop;
+		uint16_t *w8 = (uint16_t *)(uintptr_t)(top - 8u);
+		uint16_t *w6 = (uint16_t *)(uintptr_t)(top - 6u);
+
+		mb_log_printf("priv-viol: exc_sp=%08x phystop=%08x\r\n",
+			      sp, phystop);
+		mb_log_printf("priv-viol: top-8: %04x %04x %04x %04x\r\n",
+			      (uint32_t)w8[0], (uint32_t)w8[1],
+			      (uint32_t)w8[2], (uint32_t)w8[3]);
+		mb_log_printf("priv-viol: top-6: %04x %04x %04x\r\n",
+			      (uint32_t)w6[0], (uint32_t)w6[1],
+			      (uint32_t)w6[2]);
+	}
 
 	mb_panic("exception %u (%s)", (uint32_t)vec, mb_vector_name(vec));
 }

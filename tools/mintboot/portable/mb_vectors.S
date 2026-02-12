@@ -69,89 +69,47 @@ mb_install_vector_base:
 	rts
 	.size mb_install_vector_base, .-mb_install_vector_base
 
-	.globl mb_trap1_stub
-	.type mb_trap1_stub, @function
-mb_trap1_stub:
+	.macro MB_TRAP_STUB name, handler
+	.globl \name
+	.type \name, @function
+\name:
+	move.l %d0, -(%sp)
+	move.l %d1, -(%sp)
+	move.l %a0, -(%sp)
+	move.l %a1, -(%sp)
 	move.l %sp, %a0
+	add.l #16, %a0
 	sub.l #MB_CTX_SIZE, %sp
 	lea (%sp), %a1
 	move.l %a0, (%a1)
-	movem.l %d0-%d7/%a0-%a6, 4(%a1)
+	move.l MB_CTX_SIZE+12(%sp), 4(%a1)
+	move.l MB_CTX_SIZE+8(%sp), 8(%a1)
+	move.l MB_CTX_SIZE+4(%sp), 36(%a1)
+	move.l MB_CTX_SIZE(%sp), 40(%a1)
 	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
 	move.l %sp, %a0
 	move.l %a0, -(%sp)
-	jsr mb_trap1_handler
+	jsr \handler
 	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
+	move.l 4(%sp), %d0
 	add.l #MB_CTX_SIZE, %sp
+	move.l (%sp)+, %a1
+	move.l (%sp)+, %a0
+	move.l (%sp)+, %d1
+	add.l #4, %sp
 	rte
-	.size mb_trap1_stub, .-mb_trap1_stub
+	.size \name, .-\name
+	.endm
 
-	.globl mb_trap13_stub
-	.type mb_trap13_stub, @function
-mb_trap13_stub:
-	move.l %sp, %a0
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a1
-	move.l %a0, (%a1)
-	movem.l %d0-%d7/%a0-%a6, 4(%a1)
-	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
-	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
-	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
-	move.l %sp, %a0
-	move.l %a0, -(%sp)
-	jsr mb_trap13_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-	rte
-	.size mb_trap13_stub, .-mb_trap13_stub
+	MB_TRAP_STUB mb_trap1_stub, mb_trap1_handler
 
-	.globl mb_trap14_stub
-	.type mb_trap14_stub, @function
-mb_trap14_stub:
-	move.l %sp, %a0
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a1
-	move.l %a0, (%a1)
-	movem.l %d0-%d7/%a0-%a6, 4(%a1)
-	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
-	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
-	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
-	move.l %sp, %a0
-	move.l %a0, -(%sp)
-	jsr mb_trap14_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-	rte
-	.size mb_trap14_stub, .-mb_trap14_stub
+	MB_TRAP_STUB mb_trap13_stub, mb_trap13_handler
 
-	.globl mb_trap2_stub
-	.type mb_trap2_stub, @function
-mb_trap2_stub:
-	move.l %sp, %a0
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a1
-	move.l %a0, (%a1)
-	movem.l %d0-%d7/%a0-%a6, 4(%a1)
-	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
-	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
-	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
-	move.l %sp, %a0
-	move.l %a0, -(%sp)
-	jsr mb_trap2_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-	rte
-	.size mb_trap2_stub, .-mb_trap2_stub
+	MB_TRAP_STUB mb_trap14_stub, mb_trap14_handler
+
+	MB_TRAP_STUB mb_trap2_stub, mb_trap2_handler
 
 
 	.globl mb_spurious_stub
