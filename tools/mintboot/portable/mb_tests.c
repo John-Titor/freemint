@@ -250,6 +250,16 @@ static void mb_kernel_loader_tests(void)
 		uint32_t flags;
 		uint16_t abs;
 	} __attribute__((packed));
+	struct mb_aout_header {
+		uint32_t magic;
+		uint32_t text;
+		uint32_t data;
+		uint32_t bss;
+		uint32_t syms;
+		uint32_t entry;
+		uint32_t trsize;
+		uint32_t drsize;
+	} __attribute__((packed));
 	struct mb_basepage {
 		uint8_t *p_lowtpa;
 		uint8_t *p_hitpa;
@@ -275,12 +285,17 @@ static void mb_kernel_loader_tests(void)
 	} __attribute__((packed));
 	char kernel_path[96];
 	struct mb_prg_header hdr;
+	struct mb_aout_header aout;
 	uint16_t handle;
 	long rc;
 	uint32_t bp_addr;
 	struct mb_basepage *bp;
 	char drive = 'C';
 	uint16_t dev;
+	uint32_t tlen;
+	uint32_t dlen;
+	uint32_t blen;
+#define MB_MINT_EXT_MAGIC 0x4d694e54u
 
 	mb_cmdline[0] = '\0';
 
@@ -301,6 +316,20 @@ static void mb_kernel_loader_tests(void)
 		mb_panic("Kernel test: open failed");
 	if (mb_rom_fread(handle, sizeof(hdr), &hdr) != (long)sizeof(hdr))
 		mb_panic("Kernel test: header read");
+	tlen = hdr.tlen;
+	dlen = hdr.dlen;
+	blen = hdr.blen;
+	if (hdr.res1 == MB_MINT_EXT_MAGIC) {
+		if (mb_rom_fseek(0x24, handle, 0) < 0)
+			mb_panic("Kernel test: header seek");
+		if (mb_rom_fread(handle, sizeof(aout), &aout) != (long)sizeof(aout))
+			mb_panic("Kernel test: aout header read");
+		if (aout.magic == 0x0107u || aout.magic == 0x0108u ||
+		    aout.magic == 0x010bu) {
+			if (aout.entry + aout.text != hdr.tlen)
+				mb_panic("Kernel test: aout size mismatch");
+		}
+	}
 	mb_rom_fclose(handle);
 
 	rc = mb_portable_load_kernel(kernel_path, 0);
@@ -311,7 +340,7 @@ static void mb_kernel_loader_tests(void)
 	if (bp_addr == 0)
 		mb_panic("Kernel test: basepage missing");
 	bp = (struct mb_basepage *)(uintptr_t)bp_addr;
-	if (bp->p_tlen != hdr.tlen || bp->p_dlen != hdr.dlen || bp->p_blen != hdr.blen)
+	if (bp->p_tlen != tlen || bp->p_dlen != dlen || bp->p_blen != blen)
 		mb_panic("Kernel test: len mismatch");
 	if (bp->p_tbase != (uint8_t *)(bp + 1))
 		mb_panic("Kernel test: tbase mismatch");

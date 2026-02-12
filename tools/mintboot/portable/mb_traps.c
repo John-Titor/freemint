@@ -12,7 +12,14 @@ long mb_rom_xbios_dispatch(uint16_t fnum, uint16_t *args);
 
 static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 {
-	return (uint16_t *)(uintptr_t)(ctx->sp + sizeof(struct mb_exception_frame));
+	uint32_t sp = ctx->sp;
+
+	if ((ctx->frame.sr & 0x2000u) == 0) {
+		__asm__ volatile("move.l %%usp, %0" : "=a"(sp));
+		return (uint16_t *)(uintptr_t)sp;
+	}
+
+	return (uint16_t *)(uintptr_t)(sp + sizeof(struct mb_exception_frame));
 }
 
 void mb_trap1_handler(struct mb_exception_context *ctx)
@@ -25,10 +32,12 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 		uint16_t *frame = (uint16_t *)(uintptr_t)ctx->sp;
 		uint16_t sr = frame[0];
 		uint16_t sbit = (uint16_t)(sr & 0x2000u);
-		uint32_t oldssp = ctx->sp;
 		uint32_t usp = 0;
 
 		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+
+		mb_log_printf("Super(newsp=%08x) sr=%04x s=%u usp=%08x\r\n",
+			      newsp, sr, sbit ? 1u : 0u, usp);
 
 		if (newsp == 1u) {
 			ctx->d[0] = sbit ? 0xffffffffu : 0u;
@@ -39,13 +48,13 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 			if (!sbit) {
 				frame[0] = (uint16_t)(sr | 0x2000u);
 			}
-			ctx->d[0] = oldssp;
+			ctx->d[0] = usp;
 			return;
 		}
 
 		__asm__ volatile("move.l %0, %%usp" : : "a"(newsp));
 		frame[0] = (uint16_t)(sr & 0xdfffu);
-		ctx->d[0] = oldssp ? oldssp : usp;
+		ctx->d[0] = usp;
 		return;
 	}
 
@@ -117,6 +126,13 @@ void __attribute__((weak)) mb_autovec_level7_handler(void)
 	mb_panic("autovec level7");
 }
 
+void mb_trace_exception_handler(struct mb_exception_context *ctx)
+{
+	volatile uint16_t *frame_sr = (uint16_t *)(uintptr_t)ctx->sp;
+
+	*frame_sr = (uint16_t)(*frame_sr & 0x3fffu);
+}
+
 
 static const char *mb_vector_name(uint16_t vec)
 {
@@ -128,11 +144,11 @@ static const char *mb_vector_name(uint16_t vec)
 	case 4: return "zero divide";
 	case 5: return "chk";
 	case 6: return "trapv";
-	case 7: return "privilege violation";
-	case 8: return "trace";
-	case 9: return "line 1010";
-	case 10: return "line 1111";
-	case 11: return "reserved 11";
+	case 7: return "reserved 7";
+	case 8: return "privilege violation";
+	case 9: return "trace";
+	case 10: return "line 1010";
+	case 11: return "line 1111";
 	case 12: return "reserved 12";
 	case 13: return "reserved 13";
 	case 14: return "reserved 14";

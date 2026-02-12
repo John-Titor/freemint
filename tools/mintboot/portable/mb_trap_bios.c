@@ -193,6 +193,11 @@ long mb_rom_setexc(uint16_t vnum, uint32_t vptr)
 	vectors = (volatile uint32_t *)(uintptr_t)base;
 	prev = vectors[vnum];
 
+	if (vnum == 11) {
+		mb_log_printf("Setexc(vnum=%u, vptr=%08x) prev=%08x\r\n",
+			      (uint32_t)vnum, vptr, prev);
+	}
+
 	if (vptr != 0xffffffffu)
 		vectors[vnum] = vptr;
 

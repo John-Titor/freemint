@@ -65,6 +65,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx);
 void mb_trap2_handler(struct mb_exception_context *ctx);
 void mb_trap13_handler(struct mb_exception_context *ctx);
 void mb_trap14_handler(struct mb_exception_context *ctx);
+void mb_trace_exception_handler(struct mb_exception_context *ctx);
 
 /* IRQ handlers. */
 void mb_spurious_irq_handler(void);

@@ -200,10 +200,12 @@ void mb_panic(const char *fmt, ...)
 	struct mb_exception_context *ctx;
 	uint32_t usp = 0;
 	uint32_t ssp = 0;
+	uint32_t vbr = 0;
 
 	__asm__ volatile("andiw #0xf8ff, %%sr" : : : "cc");
 	__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
 	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
+	__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
 
 	mb_log_puts("\r\nmintboot panic: ");
 	va_start(ap, fmt);
@@ -222,6 +224,9 @@ void mb_panic(const char *fmt, ...)
 		uint16_t *raw = (uint16_t *)(uintptr_t)ctx->sp;
 		uint32_t phystop = *mb_lm_phystop();
 		uint32_t sp = ctx->sp;
+		uint16_t vec = 0xffffu;
+		uint32_t vec_entry = 0;
+		uint32_t frame_words = 0;
 		int i;
 
 		mb_portable_kernel_bounds(&kbase, &kend);
@@ -236,6 +241,31 @@ void mb_panic(const char *fmt, ...)
 			      (uint32_t)ctx->frame.sr,
 			      pc,
 			      (uint32_t)ctx->frame.format);
+		{
+			uint16_t off = (uint16_t)(ctx->frame.format & 0x0fffu);
+			if ((off & 3u) == 0 && off <= 0x3fcu)
+				vec = (uint16_t)(off >> 2);
+		}
+		mb_log_printf("  VBR=%08x VECTOR=%u\r\n", vbr, (uint32_t)vec);
+		if (vec != 0xffffu) {
+			uint32_t *vt = (uint32_t *)(uintptr_t)(vbr + ((uint32_t)vec << 2));
+			vec_entry = *vt;
+			mb_log_printf("  VEC[%u]=%08x\r\n", (uint32_t)vec, vec_entry);
+		}
+		switch (ctx->frame.format & 0xf000u) {
+		case 0x0000u:
+			frame_words = 4;
+			break;
+		case 0x2000u:
+			frame_words = 10;
+			break;
+		case 0x7000u:
+			frame_words = 29;
+			break;
+		default:
+			frame_words = 0;
+			break;
+		}
 		mb_log_printf("  PC region: %s\r\n", where);
 		mb_log_printf("  PHYTOP=%08x SP=%08x\r\n", phystop, sp);
 		mb_log_printf("  SP region: %s\r\n",
@@ -250,6 +280,70 @@ void mb_panic(const char *fmt, ...)
 			mb_log_puts("\r\n");
 		} else {
 			mb_log_puts("  Frame words: unavailable\r\n");
+		}
+		if (sp + 2u * 48u <= phystop) {
+			mb_log_puts("  SSP words:");
+			for (i = 0; i < 48; i++) {
+				if ((i % 8) == 0)
+					mb_log_puts("\r\n   ");
+				mb_log_printf(" %04x", (uint32_t)raw[i]);
+			}
+			mb_log_puts("\r\n");
+		} else {
+			mb_log_puts("  SSP words: unavailable\r\n");
+		}
+		if (frame_words && sp + 2u * (frame_words + 16u) <= phystop) {
+			uint16_t *post = raw + frame_words;
+			mb_log_puts("  Post-frame words:");
+			for (i = 0; i < 16; i++) {
+				if ((i % 8) == 0)
+					mb_log_puts("\r\n   ");
+				mb_log_printf(" %04x", (uint32_t)post[i]);
+			}
+			mb_log_puts("\r\n");
+			if (sp + 2u * (frame_words + 32u) <= phystop) {
+				uint32_t *pdw = (uint32_t *)(uintptr_t)post;
+				int printed = 0;
+
+				mb_log_puts("  Post-frame dwords (kernel range):");
+				for (i = 0; i < 16; i++) {
+					uint32_t val = pdw[i];
+					if (kbase && kend && val >= kbase && val < kend) {
+						mb_log_printf(" [%u]=%08x", i, val);
+						printed = 1;
+					}
+				}
+				if (!printed)
+					mb_log_puts(" none");
+				mb_log_puts("\r\n");
+			}
+		}
+		if (sp + 4u * 24u <= phystop) {
+			uint32_t *dw = (uint32_t *)(uintptr_t)sp;
+			int printed = 0;
+
+			mb_log_puts("  SSP dwords (kernel range):");
+			for (i = 0; i < 24; i++) {
+				uint32_t val = dw[i];
+				if (kbase && kend && val >= kbase && val < kend) {
+					mb_log_printf(" [%u]=%08x", i, val);
+					printed = 1;
+				}
+			}
+			if (!printed)
+				mb_log_puts(" none");
+			mb_log_puts("\r\n");
+		}
+		if (usp >= 2u * 16u && usp <= phystop) {
+			uint32_t start = usp - 2u * 16u;
+			uint16_t *u = (uint16_t *)(uintptr_t)start;
+			mb_log_puts("  USP words (below):");
+			for (i = 0; i < 16; i++) {
+				if ((i % 8) == 0)
+					mb_log_puts("\r\n   ");
+				mb_log_printf(" %04x", (uint32_t)u[i]);
+			}
+			mb_log_puts("\r\n");
 		}
 		mb_log_printf("  D0=%08x (%d)\r\n", ctx->d[0], (int32_t)ctx->d[0]);
 		mb_log_printf("  D1=%08x (%d)\r\n", ctx->d[1], (int32_t)ctx->d[1]);

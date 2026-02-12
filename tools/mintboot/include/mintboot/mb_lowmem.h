@@ -21,7 +21,10 @@
 #define MB_LM_HZ_200_ADDR     0x000004bau
 #define MB_LM_VBCLOCK_ADDR    0x0000046cu
 #define MB_LM_DRVBITS_ADDR    0x000004c2u
+#define MB_LM_SYSBASE_ADDR    0x000004f2u
 #define MB_LM_COOKIE_P_ADDR   0x000005a0u
+#define MB_LM_OSHDR_ADDR      0x00000680u
+#define MB_LM_OSRUN_ADDR      0x000006b0u
 
 static inline volatile uint32_t *mb_lm_memvalid(void)
 {
@@ -93,9 +96,24 @@ static inline volatile uint32_t *mb_lm_drvbits(void)
 	return (volatile uint32_t *)MB_LM_DRVBITS_ADDR;
 }
 
+static inline volatile void **mb_lm_sysbase(void)
+{
+	return (volatile void **)MB_LM_SYSBASE_ADDR;
+}
+
 static inline volatile void **mb_lm_cookie_p(void)
 {
 	return (volatile void **)MB_LM_COOKIE_P_ADDR;
+}
+
+static inline void *mb_lm_oshdr(void)
+{
+	return (void *)(uintptr_t)MB_LM_OSHDR_ADDR;
+}
+
+static inline void *mb_lm_osrun(void)
+{
+	return (void *)(uintptr_t)MB_LM_OSRUN_ADDR;
 }
 
 #endif /* MINTBOOT_MB_LOWMEM_H */
