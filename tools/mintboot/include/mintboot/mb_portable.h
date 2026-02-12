@@ -29,6 +29,7 @@ uint16_t mb_portable_boot_drive(void);
 /* Vector/trap setup helpers. */
 void mb_portable_setup_vectors(void);
 void mb_portable_setup_traps(void);
+uint32_t mb_portable_vector_base(void);
 
 /* Minimal logging helpers (portable layer). */
 void mb_log_puts(const char *s);

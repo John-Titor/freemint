@@ -13,7 +13,7 @@
 
 #include <stddef.h>
 
-extern void mb_install_vector_base(void);
+extern uint32_t mb_vector_table[];
 extern uint8_t _mb_image_end[] __attribute__((weak));
 
 struct mb_cookie_jar mb_cookie_jar;
@@ -214,7 +214,21 @@ static int mb_find_kernel_path(char *out, size_t outsz)
 
 void mb_portable_setup_vectors(void)
 {
-	mb_install_vector_base();
+	uint32_t *dst = (uint32_t *)(uintptr_t)0x8;
+	uint32_t *src = mb_vector_table + 2;
+	uint32_t i;
+
+	if (src != dst) {
+		for (i = 0; i < 254; i++)
+			dst[i] = src[i];
+	}
+
+	__asm__ volatile("movec %0, %%vbr" : : "r"(0) : "memory");
+}
+
+uint32_t mb_portable_vector_base(void)
+{
+	return 0;
 }
 
 void mb_portable_setup_traps(void)

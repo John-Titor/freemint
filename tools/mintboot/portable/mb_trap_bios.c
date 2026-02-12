@@ -184,11 +184,13 @@ long mb_rom_setexc(uint16_t vnum, uint32_t vptr)
 {
 	volatile uint32_t *vectors;
 	uint32_t prev;
+	uint32_t base;
 
 	if (vnum >= 256)
 		return 0;
 
-	vectors = (volatile uint32_t *)0x0;
+	base = mb_portable_vector_base();
+	vectors = (volatile uint32_t *)(uintptr_t)base;
 	prev = vectors[vnum];
 
 	if (vptr != 0xffffffffu)
