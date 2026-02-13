@@ -18,7 +18,6 @@
 #define MB_MINT_TEXT_OFF 0x100u
 
 extern uint8_t _mb_image_end[] __attribute__((weak));
-
 static struct mb_basepage *mb_kernel_last_basepage;
 static uint32_t mb_kernel_base;
 static uint32_t mb_kernel_end;
@@ -348,16 +347,6 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 		uint16_t *ins = (uint16_t *)(tbase + entry_off);
 		mb_log_printf("mintboot: entry off=%08x ins=%04x %04x %04x %04x\r\n",
 			      entry_off, ins[0], ins[1], ins[2], ins[3]);
-	}
-
-	if (do_jump) {
-		mb_log_printf("mintboot: kernel launch disabled\r\n");
-		return 0;
-	}
-
-	if (do_jump) {
-		mb_log_printf("mintboot: kernel launch disabled\r\n");
-		return 0;
 	}
 
 	if (do_jump) {

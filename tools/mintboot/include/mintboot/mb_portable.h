@@ -42,6 +42,9 @@ void mb_log_vprintf(const char *fmt, va_list ap);
 void mb_panic(const char *fmt, ...);
 
 struct mb_exception_context *mb_last_exception_context(void);
+uint32_t mb_last_user_usp(void);
+uint32_t mb_last_entry_usp(void);
+uint32_t mb_last_entry_sp(void);
 
 
 struct mb_exception_frame {

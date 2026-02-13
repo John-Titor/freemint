@@ -11,6 +11,9 @@ long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
 long mb_xbios_dispatch(uint16_t fnum, uint16_t *args);
 
 volatile uint16_t mb_user_mode;
+static uint32_t mb_cached_user_usp;
+volatile uint32_t mb_cached_entry_usp;
+volatile uint32_t mb_cached_entry_sp;
 
 static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 {
@@ -24,11 +27,40 @@ static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 	return (uint16_t *)(uintptr_t)(sp + sizeof(struct mb_exception_frame));
 }
 
+static int mb_super_prepare_return(struct mb_exception_context *ctx,
+				       uint32_t sp_after_rte, uint16_t sr_after_rte)
+{
+	uint32_t frame_size = (uint32_t)sizeof(struct mb_exception_frame);
+	uint32_t frame_dst;
+	struct mb_exception_frame *src;
+	struct mb_exception_frame *dst;
+
+	if (sp_after_rte < frame_size)
+		return -1;
+	frame_dst = sp_after_rte - frame_size;
+	if (frame_dst < 0x100u)
+		return -1;
+	if (frame_dst & 1u)
+		return -1;
+
+	src = (struct mb_exception_frame *)(uintptr_t)ctx->sp;
+	dst = (struct mb_exception_frame *)(uintptr_t)frame_dst;
+	*dst = *src;
+	dst->sr = sr_after_rte;
+	ctx->sp = frame_dst;
+	return 0;
+}
+
 void mb_trap1_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
 	uint32_t ret = 0;
+	uint32_t usp = 0;
+
+	mb_user_mode = (ctx->frame.sr & 0x2000u) ? 0u : 1u;
+	__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+	mb_cached_user_usp = usp;
 
 	mb_log_printf("trap1: fnum=%04x args=%04x %04x %04x %04x %04x %04x\r\n",
 		      (uint32_t)fnum,
@@ -37,12 +69,10 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 
 	if (fnum == 0x20) {
 		uint32_t newsp = mb_arg32(args + 1, 0);
-		uint16_t *frame = (uint16_t *)(uintptr_t)ctx->sp;
-		uint16_t sr = frame[0];
+		uint16_t sr = ctx->frame.sr;
 		uint16_t sbit = (uint16_t)(sr & 0x2000u);
-		uint32_t usp = 0;
-
-		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+		uint32_t old_ssp = ctx->sp + (uint32_t)sizeof(struct mb_exception_frame);
+		uint32_t sup_sp_after = old_ssp;
 
 		mb_log_printf("Super(newsp=%08x) sr=%04x s=%u usp=%08x\r\n",
 			      newsp, sr, sbit ? 1u : 0u, usp);
@@ -56,16 +86,22 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 
 		if (newsp == 0u) {
 			if (!sbit) {
-				frame[0] = (uint16_t)(sr | 0x2000u);
+				if (mb_super_prepare_return(ctx, usp,
+							    (uint16_t)(sr | 0x2000u)) < 0)
+					mb_panic("Super(0): invalid usp=%08x", usp);
 			}
-			ret = usp;
+			ret = old_ssp;
 			ctx->d[0] = ret;
 			mb_user_mode = 0u;
 			goto out;
 		}
 
-		__asm__ volatile("move.l %0, %%usp" : : "a"(newsp));
-		frame[0] = (uint16_t)(sr & 0xdfffu);
+		if (sbit) {
+			/* Return to user mode at this callsite using current supervisor stack. */
+			__asm__ volatile("move.l %0, %%usp" : : "a"(sup_sp_after));
+			if (mb_super_prepare_return(ctx, newsp, (uint16_t)(sr & 0xdfffu)) < 0)
+				mb_panic("Super(%08x): invalid ssp", newsp);
+		}
 		ret = usp;
 		ctx->d[0] = ret;
 		mb_user_mode = 1u;
@@ -83,6 +119,7 @@ void mb_trap2_handler(struct mb_exception_context *ctx)
 {
 	uint16_t fnum = (uint16_t)ctx->d[0];
 
+	mb_user_mode = (ctx->frame.sr & 0x2000u) ? 0u : 1u;
 	if (fnum == 0) {
 		ctx->d[0] = (uint32_t)mb_bdos_pterm0();
 		return;
@@ -94,6 +131,7 @@ void mb_trap13_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
+	mb_user_mode = (ctx->frame.sr & 0x2000u) ? 0u : 1u;
 	ctx->d[0] = (uint32_t)mb_bios_dispatch(fnum, args + 1);
 }
 
@@ -101,6 +139,7 @@ void mb_trap14_handler(struct mb_exception_context *ctx)
 {
 	uint16_t *args = mb_trap_args(ctx);
 	uint16_t fnum = args[0];
+	mb_user_mode = (ctx->frame.sr & 0x2000u) ? 0u : 1u;
 	ctx->d[0] = (uint32_t)mb_xbios_dispatch(fnum, args + 1);
 }
 
@@ -201,10 +240,41 @@ static const char *mb_vector_name(uint16_t vec)
 
 static struct mb_exception_context mb_last_ctx_storage;
 static struct mb_exception_context *mb_last_ctx;
+void mb_trap_return_sanity(uint32_t trapno, uint32_t exc_sp, uint32_t usp,
+			       uint32_t frame_sr);
 
 struct mb_exception_context *mb_last_exception_context(void)
 {
 	return mb_last_ctx;
+}
+
+uint32_t mb_last_user_usp(void)
+{
+	return mb_cached_user_usp;
+}
+
+uint32_t mb_last_entry_usp(void)
+{
+	return mb_cached_entry_usp;
+}
+
+uint32_t mb_last_entry_sp(void)
+{
+	return mb_cached_entry_sp;
+}
+
+void mb_trap_return_sanity(uint32_t trapno, uint32_t exc_sp, uint32_t usp,
+			       uint32_t frame_sr)
+{
+	uint16_t sr = (uint16_t)frame_sr;
+
+	if (sr & 0x2000u)
+		return;
+	if (exc_sp & 1u)
+		mb_panic("trap%u: odd exc_sp=%08x sr=%04x usp=%08x",
+			 trapno, exc_sp, (uint32_t)sr, usp);
+	if (usp & 1u)
+		mb_panic("trap%u: odd usp=%08x sr=%04x", trapno, usp, (uint32_t)sr);
 }
 
 static int mb_decode_vector(uint16_t fmt, uint16_t *vec)

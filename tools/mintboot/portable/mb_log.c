@@ -204,15 +204,17 @@ void mb_panic(const char *fmt, ...)
 	va_list ap;
 	struct mb_exception_context *ctx;
 	uint32_t usp = 0;
+	uint32_t usp_cached = 0;
+	uint32_t usp_dump = 0;
+	uint32_t entry_usp = 0;
+	uint32_t entry_sp = 0;
 	uint32_t ssp = 0;
 	uint32_t vbr = 0;
-
-	if (!mb_user_mode) {
-		__asm__ volatile("andiw #0xf8ff, %%sr" : : : "cc");
-		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
-		__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
-	}
 	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
+	usp_cached = mb_last_user_usp();
+	entry_usp = mb_last_entry_usp();
+	entry_sp = mb_last_entry_sp();
+	usp_dump = usp ? usp : usp_cached;
 
 	mb_log_puts("\r\nmintboot panic: ");
 	va_start(ap, fmt);
@@ -221,7 +223,10 @@ void mb_panic(const char *fmt, ...)
 	mb_log_puts("\r\n");
 
 	ctx = mb_last_exception_context();
-	mb_log_printf("  USP=%08x SSP=%08x\r\n", usp, ssp);
+	mb_log_printf("  USP=%08x USP(cached)=%08x SSP=%08x\r\n",
+		      usp, usp_cached, ssp);
+	mb_log_printf("  Entry USP=%08x Entry SP=%08x\r\n",
+		      entry_usp, entry_sp);
 	if (ctx) {
 		uint32_t pc = ctx->frame.pc;
 		uint32_t kbase = 0;
@@ -341,16 +346,32 @@ void mb_panic(const char *fmt, ...)
 				mb_log_puts(" none");
 			mb_log_puts("\r\n");
 		}
-		if (usp >= 2u * 16u && usp <= phystop) {
-			uint32_t start = usp - 2u * 16u;
-			uint16_t *u = (uint16_t *)(uintptr_t)start;
-			mb_log_puts("  USP words (below):");
-			for (i = 0; i < 16; i++) {
-				if ((i % 8) == 0)
-					mb_log_puts("\r\n   ");
-				mb_log_printf(" %04x", (uint32_t)u[i]);
+		if (usp_dump && usp_dump < phystop) {
+			uint32_t start = (usp_dump >= 2u * 16u) ? (usp_dump - 2u * 16u) : 0u;
+			uint32_t end = usp_dump + 2u * 16u;
+			uint32_t count;
+			uint16_t *u;
+
+			if (end > phystop)
+				end = phystop;
+			if (end > start + 1u) {
+				count = (end - start) / 2u;
+				u = (uint16_t *)(uintptr_t)start;
+				mb_log_printf("  USP window (%s): USP=%08x start=%08x end=%08x\r\n",
+					      usp ? "live" : "cached",
+					      usp_dump, start, end);
+				mb_log_puts("  USP words (around):");
+				for (i = 0; i < (int)count; i++) {
+					if ((i % 8) == 0)
+						mb_log_puts("\r\n   ");
+					if (start + (uint32_t)(i * 2) == usp_dump)
+						mb_log_puts(">");
+					else
+						mb_log_puts(" ");
+					mb_log_printf("%04x", (uint32_t)u[i]);
+				}
+				mb_log_puts("\r\n");
 			}
-			mb_log_puts("\r\n");
 		}
 		mb_log_printf("  D0=%08x (%d)\r\n", ctx->d[0], (int32_t)ctx->d[0]);
 		mb_log_printf("  D1=%08x (%d)\r\n", ctx->d[1], (int32_t)ctx->d[1]);

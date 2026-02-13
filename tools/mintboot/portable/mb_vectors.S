@@ -69,7 +69,7 @@ mb_install_vector_base:
 	rts
 	.size mb_install_vector_base, .-mb_install_vector_base
 
-	.macro MB_TRAP_STUB name, handler
+	.macro MB_TRAP_STUB name, handler, trapno
 	.globl \name
 	.type \name, @function
 \name:
@@ -77,15 +77,19 @@ mb_install_vector_base:
 	move.l %d1, -(%sp)
 	move.l %a0, -(%sp)
 	move.l %a1, -(%sp)
+	move.l %a2, -(%sp)
+	move.l %usp, %a0
+	move.l %a0, mb_cached_entry_usp
+	move.l %sp, mb_cached_entry_sp
 	move.l %sp, %a0
-	add.l #16, %a0
+	add.l #20, %a0
 	sub.l #MB_CTX_SIZE, %sp
 	lea (%sp), %a1
 	move.l %a0, (%a1)
-	move.l MB_CTX_SIZE+12(%sp), 4(%a1)
-	move.l MB_CTX_SIZE+8(%sp), 8(%a1)
-	move.l MB_CTX_SIZE+4(%sp), 36(%a1)
-	move.l MB_CTX_SIZE(%sp), 40(%a1)
+	move.l MB_CTX_SIZE+16(%sp), 4(%a1)
+	move.l MB_CTX_SIZE+12(%sp), 8(%a1)
+	move.l MB_CTX_SIZE+8(%sp), 36(%a1)
+	move.l MB_CTX_SIZE+4(%sp), 40(%a1)
 	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
 	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
 	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
@@ -93,23 +97,37 @@ mb_install_vector_base:
 	move.l %a0, -(%sp)
 	jsr \handler
 	add.l #4, %sp
+	move.l (%sp), %a2
 	move.l 4(%sp), %d0
 	add.l #MB_CTX_SIZE, %sp
+	move.l %d0, -(%sp)
+	lea 20(%sp), %a0
+	move.l #0, -(%sp)
+	move.w (%a0), 2(%sp)
+	move.l %usp, %a1
+	move.l %a1, -(%sp)
+	move.l %a0, -(%sp)
+	move.l #\trapno, -(%sp)
+	jsr mb_trap_return_sanity
+	add.l #16, %sp
+	move.l (%sp)+, %d0
+	move.l %a2, %d1
+	move.l (%sp)+, %a2
 	move.l (%sp)+, %a1
 	move.l (%sp)+, %a0
-	move.l (%sp)+, %d1
-	add.l #4, %sp
+	add.l #8, %sp
+	move.l %d1, %sp
 	rte
 	.size \name, .-\name
 	.endm
 
-	MB_TRAP_STUB mb_trap1_stub, mb_trap1_handler
+	MB_TRAP_STUB mb_trap1_stub, mb_trap1_handler, 1
 
-	MB_TRAP_STUB mb_trap13_stub, mb_trap13_handler
+	MB_TRAP_STUB mb_trap13_stub, mb_trap13_handler, 13
 
-	MB_TRAP_STUB mb_trap14_stub, mb_trap14_handler
+	MB_TRAP_STUB mb_trap14_stub, mb_trap14_handler, 14
 
-	MB_TRAP_STUB mb_trap2_stub, mb_trap2_handler
+	MB_TRAP_STUB mb_trap2_stub, mb_trap2_handler, 2
 
 
 	.globl mb_spurious_stub
@@ -142,6 +160,9 @@ mb_spurious_stub:
 	.globl \name
 	.type \name, @function
 \name:
+	move.l %usp, %a0
+	move.l %a0, mb_cached_entry_usp
+	move.l %sp, mb_cached_entry_sp
 	move.l %sp, %a1
 	sub.l #MB_CTX_SIZE, %sp
 	lea (%sp), %a0
@@ -164,6 +185,9 @@ mb_spurious_stub:
 	.globl mb_default_exception_stub
 	.type mb_default_exception_stub, @function
 mb_default_exception_stub:
+	move.l %usp, %a0
+	move.l %a0, mb_cached_entry_usp
+	move.l %sp, mb_cached_entry_sp
 	move.l %sp, %a1
 	sub.l #MB_CTX_SIZE, %sp
 	lea (%sp), %a0
@@ -191,6 +215,9 @@ mb_default_exception_stub:
 	.globl mb_trace_exception_stub
 	.type mb_trace_exception_stub, @function
 mb_trace_exception_stub:
+	move.l %usp, %a0
+	move.l %a0, mb_cached_entry_usp
+	move.l %sp, mb_cached_entry_sp
 	move.l %sp, %a1
 	sub.l #MB_CTX_SIZE, %sp
 	lea (%sp), %a0
