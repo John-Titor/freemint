@@ -7,6 +7,7 @@ HEADER = \
 	include/mintboot/mb_trap_helpers.h \
 	include/mintboot/mb_util.h \
 	include/mintboot/mb_cookie.h \
+	include/mintboot/mb_osbind.h \
 	include/mintboot/mb_lowmem.h \
 	include/mintboot/mb_fat.h \
 	include/mintboot/mb_bdos_state.h \

@@ -1,6 +1,7 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_errors.h"
 #include "mb_virt_mmio.h"
 #include <string.h>
 
@@ -109,8 +110,11 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 	if (!ramdisk)
 		return -1;
 
+	if (dev > 25)
+		return MB_ERR_DRIVE;
+
 	if (dev != 2)
-		return -1;
+		return MB_ERR_DRIVE;
 
 	offset = (uint32_t)recno * 512u;
 	size = mb_virt_boot.ramdisk_size;
