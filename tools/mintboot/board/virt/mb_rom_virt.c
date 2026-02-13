@@ -136,8 +136,8 @@ const struct mb_rom_dispatch mb_rom_dispatch = {
 	.bconin = mb_virt_rom_bconin,
 	.bconout = mb_virt_rom_bconout,
 	.rwabs = mb_virt_rom_rwabs,
-	.bcostat = mb_rom_bcostat,
+	.bcostat = mb_bios_bcostat,
 	.drvmap = mb_virt_rom_drvmap,
-	.settime = mb_rom_settime,
+	.settime = mb_xbios_settime,
 	.gettime = mb_virt_rom_gettime,
 };

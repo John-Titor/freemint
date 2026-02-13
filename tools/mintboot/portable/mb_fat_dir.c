@@ -91,7 +91,7 @@ static const char *mb_fat_resolve_path(uint16_t dev_in, const char *path,
 		dev = (uint16_t)(drive - 'A');
 		p += 2;
 	} else {
-		dev = mb_rom_get_current_drive();
+		dev = mb_bdos_get_current_drive();
 	}
 
 	if (*p == '\\' || *p == '/') {
@@ -100,7 +100,7 @@ static const char *mb_fat_resolve_path(uint16_t dev_in, const char *path,
 		return p;
 	}
 
-	cur = mb_rom_get_current_path(dev);
+	cur = mb_bdos_get_current_path(dev);
 	while (cur[cur_len])
 		cur_len++;
 
@@ -187,7 +187,7 @@ int mb_fat_setup_search(const char *filespec, uint16_t attr,
 			struct mb_fat_search **out)
 {
 	char resolved[256];
-	uint16_t dev = mb_rom_get_current_drive();
+	uint16_t dev = mb_bdos_get_current_drive();
 	const char *p = mb_fat_resolve_path(dev, filespec, &dev, resolved, sizeof(resolved));
 	char part[64];
 	uint8_t pat[11];
@@ -252,7 +252,7 @@ int mb_fat_locate_parent(const char *path, uint16_t *dev_out,
 			  uint32_t *dir_cluster_out, uint8_t name83[11])
 {
 	char part[64];
-	uint16_t dev = mb_rom_get_current_drive();
+	uint16_t dev = mb_bdos_get_current_drive();
 	char resolved[256];
 	const char *p = mb_fat_resolve_path(dev, path, &dev, resolved, sizeof(resolved));
 	uint32_t dir_cluster = 0;
@@ -331,7 +331,7 @@ long mb_fat_fsfirst(const char *filespec, uint16_t attr)
 	uint32_t idx;
 	char name[14];
 
-	dta = (struct mb_fat_dta *)mb_rom_fgetdta();
+	dta = (struct mb_fat_dta *)mb_bdos_fgetdta();
 	if (!dta)
 		return -1;
 
@@ -372,7 +372,7 @@ long mb_fat_fsnext(void)
 	uint32_t idx;
 	char name[14];
 
-	dta = (struct mb_fat_dta *)mb_rom_fgetdta();
+	dta = (struct mb_fat_dta *)mb_bdos_fgetdta();
 	if (!dta || dta->magic != MB_FAT_DTA_VALID)
 		return MB_ERR_FILNF;
 

@@ -106,7 +106,7 @@ static long mb_read_exact(uint16_t handle, void *buf, uint32_t len)
 	uint8_t *dst = (uint8_t *)buf;
 
 	while (offset < len) {
-		long rc = mb_rom_fread(handle, len - offset, dst + offset);
+		long rc = mb_bdos_fread(handle, len - offset, dst + offset);
 		if (rc <= 0)
 			return (rc == 0) ? -1 : rc;
 		offset += (uint32_t)rc;
@@ -122,7 +122,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	uint32_t offset = 0;
 	uint8_t buf[256];
 
-	if (mb_rom_fseek((int32_t)reloc_off, handle, 0) < 0) {
+	if (mb_bdos_fseek((int32_t)reloc_off, handle, 0) < 0) {
 		mb_log_printf("mintboot: reloc seek failed off=%08x\r\n", reloc_off);
 		return -1;
 	}
@@ -144,7 +144,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	*(uint32_t *)(tbase + offset) += (uint32_t)(uintptr_t)tbase;
 
 	for (;;) {
-		long rc = mb_rom_fread(handle, sizeof(buf), buf);
+		long rc = mb_bdos_fread(handle, sizeof(buf), buf);
 		uint32_t i;
 
 		if (rc < 0) {
@@ -187,7 +187,6 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	uint32_t total_len;
 	uint32_t tpa_start;
 	uint32_t tpa_end;
-	uint32_t stack_top;
 	uint32_t text_off;
 	uint32_t reloc_off;
 	uint32_t entry_off;
@@ -202,17 +201,17 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	if (!path || !path[0])
 		return -1;
 
-	handle = (uint16_t)mb_rom_fopen(path, 0);
+	handle = (uint16_t)mb_bdos_fopen(path, 0);
 	if ((int16_t)handle < 0)
 		return -1;
 
 	if (mb_read_exact(handle, &hdr, sizeof(hdr)) != 0) {
-		mb_rom_fclose(handle);
+		mb_bdos_fclose(handle);
 		return -1;
 	}
 
 	if (hdr.magic != MB_PRG_MAGIC) {
-		mb_rom_fclose(handle);
+		mb_bdos_fclose(handle);
 		return -1;
 	}
 
@@ -221,12 +220,12 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	file_text_len = hdr.tlen;
 	file_data_len = hdr.dlen;
 	if (hdr.res1 == MB_MINT_EXT_MAGIC) {
-		if (mb_rom_fseek((int32_t)MB_MINT_AOUT_OFF, handle, 0) < 0) {
-			mb_rom_fclose(handle);
+		if (mb_bdos_fseek((int32_t)MB_MINT_AOUT_OFF, handle, 0) < 0) {
+			mb_bdos_fclose(handle);
 			return -1;
 		}
 		if (mb_read_exact(handle, &aout, sizeof(aout)) != 0) {
-			mb_rom_fclose(handle);
+			mb_bdos_fclose(handle);
 			return -1;
 		}
 		if (aout.magic == 0x0107u || aout.magic == 0x0108u ||
@@ -236,7 +235,7 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 			file_text_len = aout.text;
 			file_data_len = aout.data;
 			if (entry_off + file_text_len != hdr.tlen) {
-				mb_rom_fclose(handle);
+				mb_bdos_fclose(handle);
 				return -1;
 			}
 		}
@@ -257,12 +256,12 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 			tpa_start = end_addr;
 	}
 	if (tpa_end <= tpa_start + MB_PRG_STACK_RESERVE) {
-		mb_rom_fclose(handle);
+		mb_bdos_fclose(handle);
 		return -1;
 	}
 
 	if (tpa_start + total_len > tpa_end - MB_PRG_STACK_RESERVE) {
-		mb_rom_fclose(handle);
+		mb_bdos_fclose(handle);
 		return -1;
 	}
 
@@ -276,7 +275,6 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 
 	memset(bp, 0, sizeof(*bp));
 	bp->p_lowtpa = (uint8_t *)bp;
-	stack_top = tpa_end & ~3u;
 	bp->p_hitpa = (uint8_t *)(uintptr_t)tpa_end;
 	bp->p_tbase = tbase;
 	bp->p_tlen = hdr.tlen;
@@ -308,15 +306,15 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 
 	if (hdr.tlen)
 		memset(tbase, 0, hdr.tlen);
-	if (mb_rom_fseek((int32_t)text_off, handle, 0) < 0) {
-		mb_rom_fclose(handle);
+	if (mb_bdos_fseek((int32_t)text_off, handle, 0) < 0) {
+		mb_bdos_fclose(handle);
 		return -1;
 	}
 	if (file_text_len) {
 		long rc = mb_read_exact(handle, tbase + entry_off, file_text_len);
 		if (rc != 0) {
 			mb_log_printf("mintboot: load kernel text read failed rc=%ld\r\n", rc);
-			mb_rom_fclose(handle);
+			mb_bdos_fclose(handle);
 			return -1;
 		}
 	}
@@ -324,7 +322,7 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 		long rc = mb_read_exact(handle, dbase, file_data_len);
 		if (rc != 0) {
 			mb_log_printf("mintboot: load kernel data read failed rc=%ld\r\n", rc);
-			mb_rom_fclose(handle);
+			mb_bdos_fclose(handle);
 			return -1;
 		}
 	}
@@ -338,12 +336,12 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 			      reloc_off, text_data_len);
 		if (mb_relocate_prg(handle, reloc_off, tbase, text_data_len) != 0) {
 			mb_log_printf("mintboot: load kernel relocation failed\r\n");
-			mb_rom_fclose(handle);
+			mb_bdos_fclose(handle);
 			return -1;
 		}
 	}
 
-	mb_rom_fclose(handle);
+	mb_bdos_fclose(handle);
 	mb_log_printf("mintboot: load kernel success\r\n");
 	{
 		uint16_t *ins = (uint16_t *)(tbase + entry_off);

@@ -59,7 +59,7 @@ int mb_fat_mount(uint16_t dev)
 		}
 	}
 
-	bpb_ptr = mb_rom_getbpb(dev);
+	bpb_ptr = mb_bios_getbpb(dev);
 	if (bpb_ptr <= 0)
 		return -1;
 
@@ -398,7 +398,7 @@ int mb_fat_read_dirent(uint32_t dir_cluster, uint32_t index,
 
 int mb_fat_parse_drive(const char *path, uint16_t *dev_out)
 {
-	uint16_t dev = mb_rom_get_current_drive();
+	uint16_t dev = mb_bdos_get_current_drive();
 
 	if (!path)
 		return MB_ERR_PTHNF;

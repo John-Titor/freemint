@@ -54,7 +54,7 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 		return -1;
 
 	{
-		int rc = mb_fat_find_path(mb_rom_get_current_drive(), path, &ent);
+		int rc = mb_fat_find_path(mb_bdos_get_current_drive(), path, &ent);
 		if (rc != 0)
 			return MB_ERR_FILNF;
 	}
@@ -223,7 +223,7 @@ long mb_fat_fattrib(const char *fn, uint16_t rwflag, uint16_t attr)
 		return MB_ERR_ACCDN;
 
 	{
-		int rc = mb_fat_find_path(mb_rom_get_current_drive(), fn, &ent);
+		int rc = mb_fat_find_path(mb_bdos_get_current_drive(), fn, &ent);
 		if (rc != 0)
 			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FILNF;
 	}

@@ -80,31 +80,31 @@ static void mb_setexc_tests(void)
 	long cur;
 	long rc;
 
-	prev = mb_rom_setexc(vnum, 0xffffffffu);
-	cur = mb_rom_setexc(vnum, new_vec);
+	prev = mb_bios_setexc(vnum, 0xffffffffu);
+	cur = mb_bios_setexc(vnum, new_vec);
 	if (cur != prev)
 		mb_panic("Setexc: prev mismatch %d vs %d", (int)cur, (int)prev);
 
-	cur = mb_rom_setexc(vnum, 0xffffffffu);
+	cur = mb_bios_setexc(vnum, 0xffffffffu);
 	if ((uint32_t)cur != new_vec)
 		mb_panic("Setexc: query mismatch %d vs %u", (int)cur, new_vec);
 
-	cur = mb_rom_setexc(vnum, alt_vec);
+	cur = mb_bios_setexc(vnum, alt_vec);
 	if ((uint32_t)cur != new_vec)
 		mb_panic("Setexc: swap mismatch %d vs %u", (int)cur, new_vec);
 
-	cur = mb_rom_setexc(vnum, prev);
+	cur = mb_bios_setexc(vnum, prev);
 	if ((uint32_t)cur != alt_vec)
 		mb_panic("Setexc: restore mismatch %d vs %u", (int)cur, alt_vec);
 
-	rc = mb_rom_setexc(256, 0xffffffffu);
+	rc = mb_bios_setexc(256, 0xffffffffu);
 	if (rc != 0)
 		mb_panic("Setexc: vnum range rc=%d expected 0", (int)rc);
 }
 
 static void mb_gettime_tests(void)
 {
-	uint32_t dt = (uint32_t)mb_rom_gettime();
+	uint32_t dt = (uint32_t)mb_xbios_gettime();
 	uint16_t date = (uint16_t)(dt >> 16);
 	uint16_t time = (uint16_t)dt;
 	uint16_t year = (uint16_t)(1980u + ((date >> 9) & 0x7fu));
@@ -139,15 +139,15 @@ static void mb_drive_range_tests(void)
 	uint8_t sector[512];
 	long rc;
 
-	rc = mb_rom_rwabs(0, sector, 1, 0, 26);
+	rc = mb_bios_rwabs(0, sector, 1, 0, 26);
 	if (rc != MB_ERR_DRIVE)
 	mb_panic("Rwabs drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
 
-	rc = mb_rom_getbpb(26);
+	rc = mb_bios_getbpb(26);
 	if (rc != MB_ERR_DRIVE)
 	mb_panic("Getbpb drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
 
-	rc = mb_rom_dfree((uint32_t)(uintptr_t)sector, 26);
+	rc = mb_bdos_dfree((uint32_t)(uintptr_t)sector, 26);
 	if (rc != MB_ERR_DRIVE)
 	mb_panic("Dfree drive rc=%d expected %d", (int)rc, MB_ERR_DRIVE);
 }
@@ -158,11 +158,11 @@ static void mb_bconmap_tests(void)
 	struct mb_test_ext_iorec *iorec;
 	long rc;
 
-	rc = mb_rom_bconmap(0xffffu);
+	rc = mb_xbios_bconmap(0xffffu);
 	if (rc != 6)
 		mb_panic("Bconmap current rc=%d expected 6", (int)rc);
 
-	rc = mb_rom_bconmap(0xfffeu);
+	rc = mb_xbios_bconmap(0xfffeu);
 	if (rc == 0)
 		mb_panic("Bconmap pointer rc=0");
 
@@ -179,15 +179,15 @@ static void mb_bconmap_tests(void)
 	    !root->maptab[0].rsconf || !root->maptab[0].iorec)
 		mb_panic("Bconmap maptab entry missing");
 
-	rc = mb_rom_bconmap(6);
+	rc = mb_xbios_bconmap(6);
 	if (rc != 6)
 		mb_panic("Bconmap set rc=%d expected 6", (int)rc);
 
-	rc = mb_rom_bconmap(5);
+	rc = mb_xbios_bconmap(5);
 	if (rc != 0)
 		mb_panic("Bconmap invalid rc=%d expected 0", (int)rc);
 
-	rc = mb_rom_iorec(0);
+	rc = mb_xbios_iorec(0);
 	if (rc == -1)
 		mb_panic("Iorec(0) returned -1");
 	iorec = (struct mb_test_ext_iorec *)(uintptr_t)rc;
@@ -198,11 +198,11 @@ static void mb_bconmap_tests(void)
 	if ((uintptr_t)root->maptab[0].iorec != (uintptr_t)iorec)
 		mb_panic("Iorec pointer mismatch");
 
-	rc = mb_rom_iorec(1);
+	rc = mb_xbios_iorec(1);
 	if (rc != -1)
 		mb_panic("Iorec(1) rc=%d expected -1", (int)rc);
 
-	rc = mb_rom_rsconf(0x1234u, 0x55u, 0x66u, 0xffffu, 0xffffu, 0xffffu);
+	rc = mb_xbios_rsconf(0x1234u, 0x55u, 0x66u, 0xffffu, 0xffffu, 0xffffu);
 	if (rc != 0)
 		mb_panic("Rsconf rc=%d expected 0", (int)rc);
 
@@ -210,7 +210,7 @@ static void mb_bconmap_tests(void)
 	    iorec->ucr != 0x66u)
 		mb_panic("Rsconf did not update iorec");
 
-	rc = mb_rom_rsconf(0xffffu, 0xffffu, 0xffffu, 0xffffu, 0xffffu, 0xffffu);
+	rc = mb_xbios_rsconf(0xffffu, 0xffffu, 0xffffu, 0xffffu, 0xffffu, 0xffffu);
 	if (rc != 0)
 		mb_panic("Rsconf -1 rc=%d expected 0", (int)rc);
 	if (iorec->baudrate != 0x34u || iorec->flowctrl != 0x55u ||
@@ -260,99 +260,99 @@ static void mb_drive_path_tests(void)
 		}
 	}
 
-	rc = mb_rom_dgetdrv();
+	rc = mb_bdos_dgetdrv();
 	if (rc != (long)dev)
 		mb_panic("Dgetdrv: initial=%d expected %d", (int)rc, (int)dev);
 
-	rc = mb_rom_dgetpath(buf, 0);
+	rc = mb_bdos_dgetpath(buf, 0);
 	if (rc != 0)
 		mb_panic("Dgetpath(0) rc=%d", (int)rc);
 	if (buf[0] != '\\')
 		mb_panic("Dgetpath(0) missing root");
 
 	if (invalid_drive != 0xffffu) {
-		rc = mb_rom_dsetdrv(invalid_drive);
+		rc = mb_bdos_dsetdrv(invalid_drive);
 		if (rc != (long)map)
 			mb_panic("Dsetdrv invalid rc=%d", (int)rc);
-		if (mb_rom_dgetdrv() != (long)dev)
+		if (mb_bdos_dgetdrv() != (long)dev)
 			mb_panic("Dsetdrv invalid changed drive");
 	}
 
-	rc = mb_rom_dsetdrv(dev);
+	rc = mb_bdos_dsetdrv(dev);
 	if (rc != (long)mb_rom_dispatch.drvmap())
 		mb_panic("Dsetdrv current rc=%d", (int)rc);
-	if (mb_rom_dgetdrv() != (long)dev)
+	if (mb_bdos_dgetdrv() != (long)dev)
 		mb_panic("Dsetdrv current mismatch");
 
-	rc = mb_rom_dsetpath("C:");
+	rc = mb_bdos_dsetpath("C:");
 	if (rc != MB_ERR_PTHNF)
 		mb_panic("Dsetpath drive letter rc=%d expected %d",
 			 (int)rc, MB_ERR_PTHNF);
-	rc = mb_rom_dsetpath("C:FOO");
+	rc = mb_bdos_dsetpath("C:FOO");
 	if (rc != MB_ERR_PTHNF)
 		mb_panic("Dsetpath drive letter rc=%d expected %d",
 			 (int)rc, MB_ERR_PTHNF);
-	rc = mb_rom_dsetpath("C:\\MINT");
+	rc = mb_bdos_dsetpath("C:\\MINT");
 	if (rc != MB_ERR_PTHNF)
 		mb_panic("Dsetpath drive letter rc=%d expected %d",
 			 (int)rc, MB_ERR_PTHNF);
 
-	rc = mb_rom_dsetpath("no_such_dir");
+	rc = mb_bdos_dsetpath("no_such_dir");
 	if (rc == 0)
 		mb_panic("Dsetpath missing dir accepted");
 
-	rc = mb_rom_dsetpath("\\");
+	rc = mb_bdos_dsetpath("\\");
 	if (rc != 0)
 		mb_panic("Dsetpath root rc=%d", (int)rc);
 
-	rc = mb_rom_dgetpath(buf, 0);
+	rc = mb_bdos_dgetpath(buf, 0);
 	if (rc != 0)
 		mb_panic("Dgetpath(0) after root rc=%d", (int)rc);
 	if (buf[0] != '\\' || buf[1] != '\0')
 		mb_panic("Dgetpath root mismatch");
 
-	rc = mb_rom_dsetpath("MINT");
+	rc = mb_bdos_dsetpath("MINT");
 	if (rc != 0)
 		mb_panic("Dsetpath rel rc=%d", (int)rc);
-	rc = mb_rom_dgetpath(buf, 0);
+	rc = mb_bdos_dgetpath(buf, 0);
 	if (rc != 0)
 		mb_panic("Dgetpath after rel rc=%d", (int)rc);
 	if (buf[0] != '\\')
 		mb_panic("Dgetpath rel missing root");
 
-	rc = mb_rom_dsetpath("\\MINT");
+	rc = mb_bdos_dsetpath("\\MINT");
 	if (rc != 0)
 		mb_panic("Dsetpath abs rc=%d", (int)rc);
 
-	rc = mb_rom_dsetpath("1-19-cur");
+	rc = mb_bdos_dsetpath("1-19-cur");
 	if (rc != 0)
 		mb_panic("Dsetpath rel2 rc=%d", (int)rc);
-	rc = mb_rom_dgetpath(buf, 0);
+	rc = mb_bdos_dgetpath(buf, 0);
 	if (rc != 0)
 		mb_panic("Dgetpath rel2 rc=%d", (int)rc);
 	if (buf[0] != '\\')
 		mb_panic("Dgetpath rel2 missing root");
 
 	long_rel = "\\MINT\\1-19-cur";
-	rc = mb_rom_dsetpath(long_rel);
+	rc = mb_bdos_dsetpath(long_rel);
 	if (rc != 0)
 		mb_panic("Dsetpath long rc=%d", (int)rc);
-	rc = mb_rom_dgetpath(buf, 0);
+	rc = mb_bdos_dgetpath(buf, 0);
 	if (rc != 0)
 		mb_panic("Dgetpath long rc=%d", (int)rc);
 
 	for (i = 0; i < sizeof(longbuf) - 1; i++)
 		longbuf[i] = 'A';
 	longbuf[sizeof(longbuf) - 1] = '\0';
-	rc = mb_rom_dsetpath(longbuf);
+	rc = mb_bdos_dsetpath(longbuf);
 	if (rc != MB_ERR_PTHNF)
 		mb_panic("Dsetpath long rc=%d expected %d", (int)rc, MB_ERR_PTHNF);
 
-	rc = mb_rom_dgetpath(buf, (uint16_t)(dev + 1u));
+	rc = mb_bdos_dgetpath(buf, (uint16_t)(dev + 1u));
 	if (rc != 0)
 		mb_panic("Dgetpath current rc=%d", (int)rc);
 
-	rc = mb_rom_dgetpath(buf, 27);
+	rc = mb_bdos_dgetpath(buf, 27);
 	if (rc != MB_ERR_DRIVE)
 		mb_panic("Dgetpath bad drive rc=%d", (int)rc);
 }
@@ -430,18 +430,18 @@ static void mb_kernel_loader_tests(void)
 	mb_tests_strcat(kernel_path, sizeof(kernel_path), MINT_VERS_PATH_STRING);
 	mb_tests_strcat(kernel_path, sizeof(kernel_path), "\\MINT040.PRG");
 
-	handle = (uint16_t)mb_rom_fopen(kernel_path, 0);
+	handle = (uint16_t)mb_bdos_fopen(kernel_path, 0);
 	if ((int16_t)handle < 0)
 		mb_panic("Kernel test: open failed");
-	if (mb_rom_fread(handle, sizeof(hdr), &hdr) != (long)sizeof(hdr))
+	if (mb_bdos_fread(handle, sizeof(hdr), &hdr) != (long)sizeof(hdr))
 		mb_panic("Kernel test: header read");
 	tlen = hdr.tlen;
 	dlen = hdr.dlen;
 	blen = hdr.blen;
 	if (hdr.res1 == MB_MINT_EXT_MAGIC) {
-		if (mb_rom_fseek(0x24, handle, 0) < 0)
+		if (mb_bdos_fseek(0x24, handle, 0) < 0)
 			mb_panic("Kernel test: header seek");
-		if (mb_rom_fread(handle, sizeof(aout), &aout) != (long)sizeof(aout))
+		if (mb_bdos_fread(handle, sizeof(aout), &aout) != (long)sizeof(aout))
 			mb_panic("Kernel test: aout header read");
 		if (aout.magic == 0x0107u || aout.magic == 0x0108u ||
 		    aout.magic == 0x010bu) {
@@ -449,7 +449,7 @@ static void mb_kernel_loader_tests(void)
 				mb_panic("Kernel test: aout size mismatch");
 		}
 	}
-	mb_rom_fclose(handle);
+	mb_bdos_fclose(handle);
 
 	rc = mb_portable_load_kernel(kernel_path, 0);
 	if (rc != 0)

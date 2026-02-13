@@ -115,7 +115,7 @@ out:
 	if (mb_boot_drive < 26)
 		*mb_lm_bootdev() = mb_boot_drive;
 	if (mb_boot_drive < 26)
-		mb_rom_set_current_drive(mb_boot_drive);
+		mb_bdos_set_current_drive(mb_boot_drive);
 }
 
 uint16_t mb_portable_boot_drive(void)
@@ -158,10 +158,10 @@ static int mb_path_exists(const char *path)
 {
 	long fh;
 
-	fh = mb_rom_fopen(path, 0);
+	fh = mb_bdos_fopen(path, 0);
 	if (fh < 0)
 		return 0;
-	mb_rom_fclose((uint16_t)fh);
+	mb_bdos_fclose((uint16_t)fh);
 	return 1;
 }
 
