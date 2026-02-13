@@ -311,20 +311,5 @@ void mb_default_exception_handler(struct mb_exception_context *ctx)
 
 	mb_last_ctx = ctx;
 
-	if (vec == 8) {
-		uint32_t top = phystop;
-		uint16_t *w8 = (uint16_t *)(uintptr_t)(top - 8u);
-		uint16_t *w6 = (uint16_t *)(uintptr_t)(top - 6u);
-
-		mb_log_printf("priv-viol: exc_sp=%08x phystop=%08x\r\n",
-			      sp, phystop);
-		mb_log_printf("priv-viol: top-8: %04x %04x %04x %04x\r\n",
-			      (uint32_t)w8[0], (uint32_t)w8[1],
-			      (uint32_t)w8[2], (uint32_t)w8[3]);
-		mb_log_printf("priv-viol: top-6: %04x %04x %04x\r\n",
-			      (uint32_t)w6[0], (uint32_t)w6[1],
-			      (uint32_t)w6[2]);
-	}
-
 	mb_panic("exception %u (%s)", (uint32_t)vec, mb_vector_name(vec));
 }

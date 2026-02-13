@@ -120,6 +120,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 {
 	uint32_t relst = 0;
 	uint32_t offset = 0;
+	uint32_t relbase = (uint32_t)(uintptr_t)tbase;
 	uint8_t buf[256];
 
 	if (Fseek((int32_t)reloc_off, handle, 0) < 0) {
@@ -141,7 +142,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	offset = relst;
 	if (offset >= text_data_len)
 		return -1;
-	*(uint32_t *)(tbase + offset) += (uint32_t)(uintptr_t)tbase;
+	*(uint32_t *)(void *)(tbase + offset) += relbase;
 
 	for (;;) {
 		long rc = Fread(handle, sizeof(buf), buf);
@@ -160,16 +161,19 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 			uint8_t b = buf[i];
 			if (b == 0)
 				return 0;
-			if (b == 1)
+			if (b == 1) {
+				/* DRI extension byte: advance by 254, no relocation here. */
 				offset += 254;
-			else
+				continue;
+			} else {
 				offset += b;
+			}
 			if (offset >= text_data_len) {
 				mb_log_printf("mintboot: reloc offset=%08x exceeds len=%08x\r\n",
 					      offset, text_data_len);
 				return -1;
 			}
-			*(uint32_t *)(tbase + offset) += (uint32_t)(uintptr_t)tbase;
+			*(uint32_t *)(void *)(tbase + offset) += relbase;
 		}
 	}
 
@@ -326,7 +330,6 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 			return -1;
 		}
 	}
-
 	if (hdr.blen)
 		memset(bbase, 0, hdr.blen);
 
@@ -340,7 +343,6 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 			return -1;
 		}
 	}
-
 	Fclose(handle);
 	mb_log_printf("mintboot: load kernel success\r\n");
 	{
