@@ -34,7 +34,7 @@ void mb_portable_run_tests(void)
 	(void)Super((void *)(uintptr_t)user_sp);
 	mb_tests_run_common();
 	(void)Super(0);
-	mb_coverage_dump();
 	mb_tests_kernel_loader();
 	mb_tests_reset_state();
+	mb_coverage_dump();
 }
