@@ -27,6 +27,12 @@ SECTIONS
 		*(.rodata*)
 	} :text
 
+	.gcov_info : {
+		__gcov_info_start = .;
+		KEEP(*(.gcov_info))
+		__gcov_info_end = .;
+	} :data
+
 	.data : {
 		*(.data*)
 	} :data

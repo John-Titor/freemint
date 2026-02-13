@@ -21,6 +21,7 @@ COBJS_SRC = \
 	portable/mb_portable.c \
 	portable/mb_cookie.c \
 	portable/mb_traps.c \
+	portable/mb_coverage.c \
 	portable/bios/dispatch.c \
 	portable/bios/bconstat.c \
 	portable/bios/bconin.c \

@@ -29,11 +29,12 @@ void mb_portable_run_tests(void)
 	uint32_t user_sp = *mb_lm_memtop();
 
 	mb_tests_run_common();
-	mb_tests_kernel_loader();
 	mb_tests_reset_state();
-
 	user_sp &= ~3u;
 	(void)Super((void *)(uintptr_t)user_sp);
 	mb_tests_run_common();
 	(void)Super(0);
+	mb_coverage_dump();
+	mb_tests_kernel_loader();
+	mb_tests_reset_state();
 }

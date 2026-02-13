@@ -198,6 +198,7 @@ static void mb_tests_kernel_mint_ext_reloc(const char *kernel_path, uint8_t *tba
 
 void mb_tests_kernel_loader(void)
 {
+	static const int do_jump = 0;
 	char kernel_path[96];
 	struct mb_test_prg_header hdr;
 	struct mb_test_aout_header aout;
@@ -246,7 +247,11 @@ void mb_tests_kernel_loader(void)
 	}
 	Fclose(handle);
 
-	rc = mb_portable_load_kernel(kernel_path, 0);
+	/*
+	 * Loader test must not transfer control to the kernel; we only validate
+	 * load/relocation and basepage state here.
+	 */
+	rc = mb_portable_load_kernel(kernel_path, do_jump);
 	if (rc != 0)
 		mb_panic("Kernel test: load rc=%d", (int)rc);
 

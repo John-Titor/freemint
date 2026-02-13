@@ -11,6 +11,8 @@ RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
 CMDLINE=${CMDLINE:-}
 QEMU_TRACE=${QEMU_TRACE:-}
+RUN_LOG=${RUN_LOG:-$ROOT/.compile_virt/run-virt.log}
+COV_STREAM=${COV_STREAM:-$ROOT/.compile_virt/coverage.stream}
 VERSION_H="$ROOT/../../sys/buildinfo/version.h"
 KERNEL_SRC="$ROOT/../../sys/compile.040/mint040.prg"
 if [ ! -f "$KERNEL_SRC" ]; then
@@ -105,7 +107,10 @@ if [ $# -gt 0 ]; then
 	CMDLINE="$*"
 fi
 
-exec "$QEMU" \
+mkdir -p "$(dirname "$RUN_LOG")"
+rm -f "$RUN_LOG"
+
+"$QEMU" \
 	-M virt \
 	-cpu m68040 \
 	-nographic \
@@ -113,4 +118,28 @@ exec "$QEMU" \
 	-kernel "$ELF" \
 	-initrd "$RAMDISK" \
 	${QEMU_TRACE:+$QEMU_TRACE} \
-	${CMDLINE:+-append "$CMDLINE"}
+	${CMDLINE:+-append "$CMDLINE"} 2>&1 | tee "$RUN_LOG"
+
+if grep -q '^MB-COV-BEGIN' "$RUN_LOG"; then
+	if ! command -v xxd >/dev/null 2>&1; then
+		echo "xxd not found; cannot decode coverage stream" >&2
+		exit 1
+	fi
+	if ! command -v m68k-atari-mintelf-gcov-tool >/dev/null 2>&1; then
+		echo "m68k-atari-mintelf-gcov-tool not found; cannot merge coverage stream" >&2
+		exit 1
+	fi
+
+	rm -f "$COV_STREAM"
+
+	awk '/^MB-COV:/{ line=$0; sub(/\r$/, "", line); print substr(line,8); }' "$RUN_LOG" \
+		| tr -d '\n' \
+		| xxd -r -p > "$COV_STREAM"
+
+	if [ -s "$COV_STREAM" ]; then
+		m68k-atari-mintelf-gcov-tool merge-stream "$COV_STREAM"
+		echo "coverage stream merged into object directories (e.g. $ROOT/.compile_virt)"
+	else
+		echo "coverage markers found but stream was empty" >&2
+	fi
+fi

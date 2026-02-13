@@ -47,7 +47,7 @@ build: $(TARGET)
 
 ifeq ($(BUILD_ELF),yes)
 LD = $(CC) $(CFLAGS) -nostdlib -Wl,--entry=mb_entry -Wl,-m,m68kelf -Wl,-T,$(LDSCRIPT)
-LIBS = -lgcc
+LIBS = -lgcc $(MINTBOOT_EXTRA_LIBS)
 
 $(TARGET): $(OBJS)
 	$(LD) -o $@ -Wl,-Map,$(@F).map -Wall $^ $(LIBS)

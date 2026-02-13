@@ -6,6 +6,7 @@ COBJS = \
 	portable/mb_cookie.c \
 	portable/mb_traps.c \
 	portable/mb_log.c \
+	portable/mb_coverage.c \
 	portable/fs_fat/mb_fat_core.c \
 	portable/fs_fat/mb_fat_dir.c \
 	portable/fs_fat/mb_fat_file.c \
@@ -100,6 +101,7 @@ COBJS = \
 	portable/mb_cookie.c \
 	portable/mb_traps.c \
 	portable/mb_log.c \
+	portable/mb_coverage.c \
 	portable/fs_fat/mb_fat_core.c \
 	portable/fs_fat/mb_fat_dir.c \
 	portable/fs_fat/mb_fat_file.c \
@@ -186,3 +188,10 @@ LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
 endif
 
 mintboottargets = generic virt
+
+MINTBOOT_COVERAGE ?= no
+ifeq ($(MINTBOOT_COVERAGE),yes)
+cflags += -fprofile-arcs -ftest-coverage -fprofile-info-section
+cflags += -DMB_ENABLE_COVERAGE=1
+MINTBOOT_EXTRA_LIBS += -lgcov
+endif
