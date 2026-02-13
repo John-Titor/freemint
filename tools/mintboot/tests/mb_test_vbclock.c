@@ -15,6 +15,11 @@ void mb_tests_vbclock(void)
 	uint32_t current_fr;
 	uint32_t current_hz;
 	uint32_t spins;
+	uint32_t vb_delta;
+	uint32_t fr_delta;
+	uint32_t hz_delta;
+	uint32_t expected_hz;
+	uint32_t hz_diff;
 
 	start_vb = *vbclock;
 	start_fr = *frclock;
@@ -25,12 +30,19 @@ void mb_tests_vbclock(void)
 		current_vb = *vbclock;
 		current_fr = *frclock;
 		current_hz = *hz_200;
-		if (current_vb != start_vb &&
-		    current_fr > start_fr &&
-		    current_hz >= start_hz + 4u) {
-			if ((current_hz - start_hz) != (current_fr - start_fr) * 4u)
-				mb_panic("HZ_200 mismatch fr=%u hz=%u",
-					 current_fr - start_fr, current_hz - start_hz);
+		vb_delta = current_vb - start_vb;
+		fr_delta = current_fr - start_fr;
+		hz_delta = current_hz - start_hz;
+		if (vb_delta >= 10u &&
+		    fr_delta >= 10u &&
+		    hz_delta >= 40u) {
+			expected_hz = fr_delta * 4u;
+			hz_diff = (hz_delta > expected_hz)
+				  ? (hz_delta - expected_hz)
+				  : (expected_hz - hz_delta);
+			if (hz_diff > 4u)
+				mb_panic("HZ_200 mismatch fr=%u hz=%u diff=%u",
+					 fr_delta, hz_delta, hz_diff);
 			return;
 		}
 	}

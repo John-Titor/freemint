@@ -37,6 +37,8 @@ long mb_xbios_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_xbios_kbrate(mb_arg16(args, 0), mb_arg16(args, 1));
 	case 0x25:
 		return mb_xbios_vsync();
+	case 0x26:
+		return mb_xbios_supexec(mb_arg32w(args, 0));
 	case 0x2c:
 		return mb_xbios_bconmap(mb_arg16(args, 0));
 	case 0x05:

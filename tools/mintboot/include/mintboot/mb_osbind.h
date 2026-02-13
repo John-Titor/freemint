@@ -637,6 +637,9 @@ extern "C" {
 #define Vsync()                                                            \
 	(void)MB_TRAP14_W((short)(0x25))
 
+#define Supexec(func)                                                      \
+	(long)MB_TRAP14_WL((short)(0x26), (long)(func))
+
 #define Bconmap(dev)                                                       \
 	(long)MB_TRAP14_WW((short)(0x2C), (short)(dev))
 

@@ -47,6 +47,7 @@ COBJS_SRC = \
 	portable/xbios/dosound.c \
 	portable/xbios/kbdvbase.c \
 	portable/xbios/vsync.c \
+	portable/xbios/supexec.c \
 	portable/xbios/bconmap.c \
 	portable/xbios/vsetscreen.c \
 	portable/xbios/kbrate.c \
