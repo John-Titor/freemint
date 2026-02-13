@@ -469,7 +469,7 @@ static void mb_kernel_loader_tests(void)
 
 }
 
-void mb_portable_run_tests(void)
+static void mb_tests_run_all(void)
 {
 	mb_fat_run_tests();
 	mb_setexc_tests();
@@ -479,4 +479,26 @@ void mb_portable_run_tests(void)
 	mb_bconmap_tests();
 	mb_kernel_loader_tests();
 	mb_vbclock_tests();
+}
+
+static void mb_tests_reset_state(void)
+{
+	uint16_t drive = mb_portable_boot_drive();
+
+	Dsetdrv((int16_t)drive);
+	if (Dsetpath("\\") != 0)
+		mb_panic("Test reset: Dsetpath failed");
+}
+
+void mb_portable_run_tests(void)
+{
+	uint32_t user_sp = *mb_lm_memtop();
+
+	mb_tests_run_all();
+	mb_tests_reset_state();
+
+	user_sp &= ~3u;
+	(void)Super((void *)(uintptr_t)user_sp);
+	mb_tests_run_all();
+	(void)Super(0);
 }

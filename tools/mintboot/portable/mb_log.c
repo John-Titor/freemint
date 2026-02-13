@@ -7,13 +7,11 @@
 #include <stdarg.h>
 
 extern uint8_t _mb_image_end[] __attribute__((weak));
+extern volatile uint16_t mb_user_mode;
 
 static void mb_log_putc(int ch)
 {
-	uint16_t sr;
-
-	__asm__ volatile("move.w %%sr,%0" : "=r"(sr));
-	if ((sr & 0x2000u) == 0)
+	if (mb_user_mode)
 		Bconout(2, ch);
 	else
 		mb_board_console_putc(ch);
@@ -209,10 +207,12 @@ void mb_panic(const char *fmt, ...)
 	uint32_t ssp = 0;
 	uint32_t vbr = 0;
 
-	__asm__ volatile("andiw #0xf8ff, %%sr" : : : "cc");
-	__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+	if (!mb_user_mode) {
+		__asm__ volatile("andiw #0xf8ff, %%sr" : : : "cc");
+		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+		__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
+	}
 	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
-	__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
 
 	mb_log_puts("\r\nmintboot panic: ");
 	va_start(ap, fmt);

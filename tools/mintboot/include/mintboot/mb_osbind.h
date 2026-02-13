@@ -324,6 +324,9 @@ extern "C" {
 #define Cconws(buf)                                                        \
 	(long)MB_TRAP1_WL((short)(0x09), (long)(buf))
 
+#define Super(stack)                                                       \
+	(long)MB_TRAP1_WL((short)(0x20), (long)(stack))
+
 #define Dgetdrv()                                                          \
 	(long)MB_TRAP1_W((short)(0x19))
 

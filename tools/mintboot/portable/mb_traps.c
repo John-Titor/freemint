@@ -10,6 +10,8 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);
 long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
 long mb_xbios_dispatch(uint16_t fnum, uint16_t *args);
 
+volatile uint16_t mb_user_mode;
+
 static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 {
 	uint32_t sp = ctx->sp;
@@ -48,6 +50,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 		if (newsp == 1u) {
 			ret = sbit ? 0xffffffffu : 0u;
 			ctx->d[0] = ret;
+			mb_user_mode = sbit ? 0u : 1u;
 			goto out;
 		}
 
@@ -57,6 +60,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 			}
 			ret = usp;
 			ctx->d[0] = ret;
+			mb_user_mode = 0u;
 			goto out;
 		}
 
@@ -64,6 +68,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 		frame[0] = (uint16_t)(sr & 0xdfffu);
 		ret = usp;
 		ctx->d[0] = ret;
+		mb_user_mode = 1u;
 		goto out;
 	}
 
