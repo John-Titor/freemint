@@ -1,6 +1,6 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_bdos_state.h"
-#include "mintboot/portable/mb_fat_internal.h"
+#include "mintboot/portable/fs_fat/mb_fat_internal.h"
 #include "mintboot/mb_errors.h"
 
 long mb_bdos_dsetpath(const char *path)

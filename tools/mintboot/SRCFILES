@@ -11,7 +11,7 @@ HEADER = \
 	include/mintboot/mb_fat.h \
 	include/mintboot/mb_bdos_state.h \
 	include/mintboot/mb_xbios_iorec.h \
-	portable/mb_fat_internal.h \
+	portable/fs_fat/mb_fat_internal.h \
 	board/virt/mb_virt_mmio.h
 
 COBJS_SRC = \
@@ -77,12 +77,12 @@ COBJS_SRC = \
 	portable/bdos/fcntl.c \
 	portable/bdos/mshrink.c \
 	portable/mb_log.c \
-	portable/mb_fat_core.c \
-	portable/mb_fat_dir.c \
-	portable/mb_fat_file.c \
+	portable/fs_fat/mb_fat_core.c \
+	portable/fs_fat/mb_fat_dir.c \
+	portable/fs_fat/mb_fat_file.c \
 	portable/mb_util.c \
 	portable/mb_lib.c \
-	portable/mb_fat_tests.c \
+	portable/fs_fat/mb_fat_tests.c \
 	portable/mb_tests.c \
 	board/mb_board.c \
 	board/virt/mb_board_virt.c \

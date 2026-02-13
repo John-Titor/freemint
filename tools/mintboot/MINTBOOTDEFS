@@ -6,14 +6,14 @@ COBJS = \
 	portable/mb_cookie.c \
 	portable/mb_traps.c \
 	portable/mb_log.c \
-	portable/mb_fat_core.c \
-	portable/mb_fat_dir.c \
-	portable/mb_fat_file.c \
-	portable/mb_fat_check.c \
+	portable/fs_fat/mb_fat_core.c \
+	portable/fs_fat/mb_fat_dir.c \
+	portable/fs_fat/mb_fat_file.c \
+	portable/fs_fat/mb_fat_check.c \
 	portable/mb_kernel.c \
 	portable/mb_lib.c \
 	portable/mb_util.c \
-	portable/mb_fat_tests.c \
+	portable/fs_fat/mb_fat_tests.c \
 	portable/mb_tests.c \
 	portable/bios/dispatch.c \
 	portable/bios/bconstat.c \
@@ -88,14 +88,14 @@ COBJS = \
 	portable/mb_cookie.c \
 	portable/mb_traps.c \
 	portable/mb_log.c \
-	portable/mb_fat_core.c \
-	portable/mb_fat_dir.c \
-	portable/mb_fat_file.c \
-	portable/mb_fat_check.c \
+	portable/fs_fat/mb_fat_core.c \
+	portable/fs_fat/mb_fat_dir.c \
+	portable/fs_fat/mb_fat_file.c \
+	portable/fs_fat/mb_fat_check.c \
 	portable/mb_kernel.c \
 	portable/mb_lib.c \
 	portable/mb_util.c \
-	portable/mb_fat_tests.c \
+	portable/fs_fat/mb_fat_tests.c \
 	portable/mb_tests.c \
 	portable/bios/dispatch.c \
 	portable/bios/bconstat.c \
