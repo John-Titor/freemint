@@ -63,8 +63,6 @@ COBJS = \
 	portable/bdos/fsetdta.c \
 	portable/bdos/fgetdta.c \
 	portable/bdos/dfree.c \
-	portable/bdos/dcreate.c \
-	portable/bdos/ddelete.c \
 	portable/bdos/dsetpath.c \
 	portable/bdos/dsetdrv.c \
 	portable/bdos/dgetdrv.c \
@@ -80,11 +78,6 @@ COBJS = \
 	portable/bdos/fwrite.c \
 	portable/bdos/fdelete.c \
 	portable/bdos/fseek.c \
-	portable/bdos/fattrib.c \
-	portable/bdos/fsfirst.c \
-	portable/bdos/fsnext.c \
-	portable/bdos/frename.c \
-	portable/bdos/fdatime.c \
 	portable/bdos/flock.c \
 	portable/bdos/fcntl.c \
 	portable/bdos/mshrink.c \
@@ -160,8 +153,6 @@ COBJS = \
 	portable/bdos/fsetdta.c \
 	portable/bdos/fgetdta.c \
 	portable/bdos/dfree.c \
-	portable/bdos/dcreate.c \
-	portable/bdos/ddelete.c \
 	portable/bdos/dsetpath.c \
 	portable/bdos/dsetdrv.c \
 	portable/bdos/dgetdrv.c \
@@ -177,11 +168,6 @@ COBJS = \
 	portable/bdos/fwrite.c \
 	portable/bdos/fdelete.c \
 	portable/bdos/fseek.c \
-	portable/bdos/fattrib.c \
-	portable/bdos/fsfirst.c \
-	portable/bdos/fsnext.c \
-	portable/bdos/frename.c \
-	portable/bdos/fdatime.c \
 	portable/bdos/flock.c \
 	portable/bdos/fcntl.c \
 	portable/bdos/mshrink.c \

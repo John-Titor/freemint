@@ -75,8 +75,9 @@ void mb_fat_tests_phase_core_helpers(struct mb_fat_test_ctx *t)
 	op.start_cluster = 2;
 	if (mb_fat_cluster_for_offset(&op, 100, &cluster, &cluster_off) != 0)
 		mb_panic("FAT core: cluster offset");
-	if (cluster != 2 || cluster_off != 100)
-		mb_panic("FAT core: cluster values");
+	if (cluster != 2u || cluster_off != 100u)
+		mb_panic("FAT core: cluster values c=%u off=%u",
+			 (uint32_t)cluster, (uint32_t)cluster_off);
 
 	op.start_cluster = 1;
 	if (mb_fat_cluster_for_offset(&op, 0, &cluster, &cluster_off) == 0)

@@ -3,35 +3,21 @@
 void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 {
 	long rc;
-	long rc2;
 	long fh;
 	long n;
-	int found = 0;
-	int found_inner = 0;
 	int i;
 	uint32_t free_bytes;
 	uint32_t total_bytes;
+	uint8_t wbuf[700];
+	uint8_t rbuf[700];
+	uint8_t one = 0x5a;
+	uint32_t k;
+	const char rewrite_one[] = "Z";
+	const char overwrite[] = "OVERRIDE-HEADER";
+	const uint32_t overwrite_len = (uint32_t)(sizeof(overwrite) - 1);
 	const char *bad_drive = "1:\\HELLO.TXT";
 	const char expect[] = "mintboot FAT16 test file\n";
 	const char expect_inner[] = "mintboot nested file\n";
-
-	rc = mb_tests_fsfirst(t->spec, 0x17, &t->dta);
-	if (rc != 0)
-		mb_panic("FAT test: Fsfirst rc=%d", (int)rc);
-	for (;;) {
-		if (mb_tests_strcmp(t->dta.dta_name, "HELLO.TXT") == 0) {
-			found = 1;
-			break;
-		}
-		rc = Fsnext();
-		if (rc != 0)
-			break;
-	}
-	if (rc == 0)
-		mb_tests_drain_search();
-
-	if (!found)
-		mb_panic("FAT test: HELLO.TXT not found");
 
 	fh = Fopen(t->ddelete_file, 0);
 	if (fh < 0)
@@ -84,41 +70,6 @@ void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 		mb_panic("FAT test: Fopen missing dir rc=%d expected %d",
 			 (int)fh, MB_ERR_FILNF);
 
-	Fsetdta(&t->dta);
-	rc = Fsfirst(t->missing_dir_spec, 0x17);
-	if (rc != MB_ERR_FILNF)
-		mb_panic("FAT test: Fsfirst missing dir rc=%d expected %d",
-			 (int)rc, MB_ERR_FILNF);
-
-	rc = mb_tests_fsfirst(t->spec, 0x17, &t->dta);
-	if (rc != 0)
-		mb_panic("FAT test: Fsfirst repeat rc=%d", (int)rc);
-	for (;;) {
-		rc2 = Fsnext();
-		if (rc2 != 0)
-			break;
-	}
-	if (rc2 != MB_ERR_NMFIL)
-		mb_panic("FAT test: Fsnext end rc=%d expected %d", (int)rc2,
-			 MB_ERR_NMFIL);
-
-	rc = mb_tests_fsfirst(t->inner_spec, 0x17, &t->dta);
-	if (rc != 0)
-		mb_panic("FAT test: Fsfirst inner rc=%d", (int)rc);
-	for (;;) {
-		if (mb_tests_strcmp(t->dta.dta_name, "INNER.TXT") == 0) {
-			found_inner = 1;
-			break;
-		}
-		rc = Fsnext();
-		if (rc != 0)
-			break;
-	}
-	if (rc == 0)
-		mb_tests_drain_search();
-	if (!found_inner)
-		mb_panic("FAT test: INNER.TXT not found");
-
 	fh = Fopen(t->inner_path, 0);
 	if (fh < 0)
 		mb_panic("FAT test: Fopen INNER.TXT failed");
@@ -137,20 +88,10 @@ void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 		mb_panic("FAT test: Fopen inner missing rc=%d expected %d",
 			 (int)fh, MB_ERR_FILNF);
 
-	rc = mb_tests_fsfirst(t->wrong_drive, 0x17, &t->dta);
-	if (rc != MB_ERR_FILNF)
-		mb_panic("FAT test: Fsfirst wrong drive rc=%d expected %d",
-			 (int)rc, MB_ERR_FILNF);
-
 	fh = Fopen(t->wrong_drive, 0);
 	if (fh != MB_ERR_FILNF)
 		mb_panic("FAT test: Fopen wrong drive rc=%d expected %d",
 			 (int)fh, MB_ERR_FILNF);
-
-	rc = mb_tests_fsfirst(bad_drive, 0x17, &t->dta);
-	if (rc != MB_ERR_DRIVE)
-		mb_panic("FAT test: Fsfirst bad drive rc=%d expected %d",
-			 (int)rc, MB_ERR_DRIVE);
 
 	fh = Fopen(bad_drive, 0);
 	if (fh != MB_ERR_FILNF)
@@ -166,24 +107,95 @@ void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 		mb_panic("FAT test: Dfree free=%u total=%u", free_bytes,
 			 total_bytes);
 
-	rc = mb_tests_fsfirst(t->rename_src, 0x17, &t->dta);
-	if (rc != 0)
-		mb_panic("FAT test: Fsfirst rename src rc=%d", (int)rc);
-	mb_tests_drain_search();
-	fh = Fopen(t->rename_src, 0);
-	if (fh < 0)
-		mb_panic("FAT test: Fopen rename src rc=%d", (int)fh);
-	Fclose((uint16_t)fh);
+	fh = Fcreate(t->fcreate_missing_parent, 0);
+	if (fh != MB_ERR_PTHNF)
+		mb_panic("FAT test: Fcreate missing parent rc=%d expected %d",
+			 (int)fh, MB_ERR_PTHNF);
 
-	fh = Fopen(t->ddelete_file, 0);
+	fh = Fcreate(t->fcreate_dir_target, 0);
+	if (fh != MB_ERR_ACCDN)
+		mb_panic("FAT test: Fcreate dir target rc=%d expected %d",
+			 (int)fh, MB_ERR_ACCDN);
+
+	fh = Fcreate(t->fcreate_new, 0);
 	if (fh < 0)
-		mb_panic("FAT test: Fopen HELLO.TXT for fdatime rc=%d", (int)fh);
-	if (Fdatime((uint32_t)(uintptr_t)t->timebuf, (uint16_t)fh, 0) != 0)
-		mb_panic("FAT test: Fdatime failed");
-	if (Fdatime((uint32_t)(uintptr_t)t->timebuf2, (uint16_t)fh, 0) != 0)
-		mb_panic("FAT test: Fdatime repeat failed");
-	Fclose((uint16_t)fh);
-	if ((t->timebuf[0] == 0 && t->timebuf[1] == 0) ||
-	    t->timebuf[0] != t->timebuf2[0] || t->timebuf[1] != t->timebuf2[1])
-		mb_panic("FAT test: Fdatime mismatch");
+		mb_panic("FAT test: Fcreate new rc=%d", (int)fh);
+	for (k = 0; k < (uint32_t)sizeof(wbuf); k++)
+		wbuf[k] = (uint8_t)(k & 0xffu);
+	n = Fwrite((uint16_t)fh, (uint32_t)sizeof(wbuf), wbuf);
+	if (n != (long)sizeof(wbuf))
+		mb_panic("FAT test: Fwrite full rc=%d", (int)n);
+	n = Fseek(0, (uint16_t)fh, 0);
+	if (n != 0)
+		mb_panic("FAT test: Fseek rewrite rc=%d", (int)n);
+	n = Fwrite((uint16_t)fh, overwrite_len, (void *)overwrite);
+	if (n != (long)overwrite_len)
+		mb_panic("FAT test: Fwrite overwrite rc=%d", (int)n);
+	if (Fclose((uint16_t)fh) != 0)
+		mb_panic("FAT test: Fclose create");
+
+	fh = Fopen(t->fcreate_new, 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen created rc=%d", (int)fh);
+	n = Fread((uint16_t)fh, (uint32_t)sizeof(rbuf), rbuf);
+	if (n != (long)sizeof(rbuf))
+		mb_panic("FAT test: Fread created size rc=%d", (int)n);
+	if (mb_tests_memcmp(rbuf, (const uint8_t *)overwrite, overwrite_len) != 0)
+		mb_panic("FAT test: Fwrite overwrite mismatch");
+	if (mb_tests_memcmp(&rbuf[overwrite_len], &wbuf[overwrite_len],
+			    (uint32_t)sizeof(rbuf) - overwrite_len) != 0)
+		mb_panic("FAT test: Fwrite payload mismatch");
+	n = Fwrite((uint16_t)fh, 1, &one);
+	if (n != MB_ERR_ACCDN)
+		mb_panic("FAT test: Fwrite readonly handle rc=%d expected %d",
+			 (int)n, MB_ERR_ACCDN);
+	if (Fclose((uint16_t)fh) != 0)
+		mb_panic("FAT test: Fclose created");
+
+	n = Fwrite(1, 1, &one);
+	if (n != MB_ERR_IHNDL)
+		mb_panic("FAT test: Fwrite badf rc=%d expected %d",
+			 (int)n, MB_ERR_IHNDL);
+
+	fh = Fcreate(t->fcreate_rewrite, 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fcreate rewrite rc=%d", (int)fh);
+	n = Fwrite((uint16_t)fh, 1, (void *)rewrite_one);
+	if (n != 1)
+		mb_panic("FAT test: Fwrite rewrite rc=%d", (int)n);
+	if (Fclose((uint16_t)fh) != 0)
+		mb_panic("FAT test: Fclose rewrite");
+	fh = Fopen(t->fcreate_rewrite, 0);
+	if (fh < 0)
+		mb_panic("FAT test: Fopen rewrite rc=%d", (int)fh);
+	n = Fread((uint16_t)fh, sizeof(t->buf), t->buf);
+	if (n != 1 || t->buf[0] != (uint8_t)rewrite_one[0])
+		mb_panic("FAT test: Fcreate truncate/read rc=%d ch=%u", (int)n,
+			 (uint32_t)t->buf[0]);
+	if (Fclose((uint16_t)fh) != 0)
+		mb_panic("FAT test: Fclose rewrite read");
+
+	n = Fdelete(t->fdelete_missing_file);
+	if (n != MB_ERR_FILNF)
+		mb_panic("FAT test: Fdelete missing rc=%d expected %d",
+			 (int)n, MB_ERR_FILNF);
+
+	n = Fdelete(t->fdelete_dir_target);
+	if (n != MB_ERR_ACCDN)
+		mb_panic("FAT test: Fdelete dir rc=%d expected %d",
+			 (int)n, MB_ERR_ACCDN);
+
+	mb_tests_set_readonly("REWRITE TXT");
+	n = Fdelete(t->fcreate_rewrite);
+	if (n != MB_ERR_ACCDN)
+		mb_panic("FAT test: Fdelete readonly rc=%d expected %d",
+			 (int)n, MB_ERR_ACCDN);
+
+	n = Fdelete(t->fcreate_new);
+	if (n != 0)
+		mb_panic("FAT test: Fdelete new rc=%d", (int)n);
+	fh = Fopen(t->fcreate_new, 0);
+	if (fh != MB_ERR_FILNF)
+		mb_panic("FAT test: Fopen deleted rc=%d expected %d",
+			 (int)fh, MB_ERR_FILNF);
 }

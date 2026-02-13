@@ -6,14 +6,16 @@
 
 #include <stdint.h>
 
+#define MB_FAT_MAX_OPEN 4
 #define MB_FAT_MAX_SEARCH 4
-#define MB_FAT_MAX_VOLS 8
+#define MB_FAT_MAX_VOLS 2
 
 #define MB_FAT_ATTR_RDONLY 0x01
 #define MB_FAT_ATTR_HIDDEN 0x02
 #define MB_FAT_ATTR_SYSTEM 0x04
 #define MB_FAT_ATTR_LABEL  0x08
 #define MB_FAT_ATTR_DIR    0x10
+#define MB_FAT_ATTR_ARCH   0x20
 #define MB_FAT_ATTR_LFN    0x0f
 
 #define MB_FAT_DTA_VALID 0x1234fedcUL
@@ -71,9 +73,13 @@ struct mb_fat_search {
 struct mb_fat_open {
 	uint8_t in_use;
 	uint8_t dev;
+	uint8_t write;
+	uint8_t dirty;
 	uint32_t size;
 	uint32_t start_cluster;
 	uint32_t offset;
+	uint32_t dir_cluster;
+	uint32_t dir_index;
 	uint16_t time;
 	uint16_t date;
 	uint8_t attr;

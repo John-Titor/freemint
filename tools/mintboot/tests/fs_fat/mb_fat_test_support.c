@@ -24,18 +24,6 @@ int mb_tests_memcmp(const uint8_t *a, const uint8_t *b, uint32_t len)
 	return 0;
 }
 
-long mb_tests_fsfirst(const char *spec, uint16_t attr, struct mb_test_dta *dta)
-{
-	Fsetdta(dta);
-	return Fsfirst(spec, attr);
-}
-
-void mb_tests_drain_search(void)
-{
-	while (Fsnext() == 0) {
-	}
-}
-
 void mb_tests_init_drive(void)
 {
 	uint16_t dev;
@@ -311,38 +299,10 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
 			   "NOFILE.TXT");
 	mb_tests_make_path(t->missing_dir, sizeof(t->missing_dir), mb_tests_drive_letter,
 			   "NOSUCH\\HELLO.TXT");
-	mb_tests_make_path(t->missing_dir_spec, sizeof(t->missing_dir_spec),
-			   mb_tests_drive_letter, "NOSUCH\\*.*");
 	mb_tests_make_path(t->inner_path, sizeof(t->inner_path), mb_tests_drive_letter,
 			   "SUBDIR\\INNER.TXT");
 	mb_tests_make_path(t->inner_missing, sizeof(t->inner_missing),
 			   mb_tests_drive_letter, "SUBDIR\\NOFILE.TXT");
-	mb_tests_make_path(t->inner_spec, sizeof(t->inner_spec), mb_tests_drive_letter,
-			   "SUBDIR\\*.*");
-	mb_tests_make_path(t->rename_src, sizeof(t->rename_src), mb_tests_drive_letter,
-			   "RENAME.TXT");
-	mb_tests_make_path(t->rename_dst, sizeof(t->rename_dst), mb_tests_drive_letter,
-			   "RENAMED.TXT");
-	mb_tests_make_path(t->move_src, sizeof(t->move_src), mb_tests_drive_letter,
-			   "MOVE.TXT");
-	mb_tests_make_path(t->move_dst, sizeof(t->move_dst), mb_tests_drive_letter,
-			   "SUBDIR\\MOVED.TXT");
-	mb_tests_make_path(t->rename_dir_src, sizeof(t->rename_dir_src),
-			   mb_tests_drive_letter, "SUBDIR");
-	mb_tests_make_path(t->rename_dir_dst, sizeof(t->rename_dir_dst),
-			   mb_tests_drive_letter, "NEWDIR");
-	mb_tests_make_path(t->missing_rename, sizeof(t->missing_rename),
-			   mb_tests_drive_letter, "NOFILE.TXT");
-	mb_tests_make_path(t->missing_dir_rename, sizeof(t->missing_dir_rename),
-			   mb_tests_drive_letter, "NODIR");
-	mb_tests_make_path(t->missing_dst_dir, sizeof(t->missing_dst_dir),
-			   mb_tests_drive_letter, "NOSUCH\\RENAMED.TXT");
-	mb_tests_make_path(t->renamed_spec, sizeof(t->renamed_spec),
-			   mb_tests_drive_letter, "RENAMED.TXT");
-	mb_tests_make_path(t->moved_spec, sizeof(t->moved_spec), mb_tests_drive_letter,
-			   "SUBDIR\\MOVED.TXT");
-	mb_tests_make_path(t->newdir_spec, sizeof(t->newdir_spec), mb_tests_drive_letter,
-			   "NEWDIR");
 	mb_tests_make_path(t->dcreate_missing_parent, sizeof(t->dcreate_missing_parent),
 			   mb_tests_drive_letter, "NOSUCH\\NEW.DIR");
 	mb_tests_make_path(t->dcreate_root, sizeof(t->dcreate_root),
@@ -359,20 +319,18 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
 			   mb_tests_drive_letter, "NOPE");
 	mb_tests_make_path(t->ddelete_nonempty, sizeof(t->ddelete_nonempty),
 			   mb_tests_drive_letter, "NEWDIR");
-	mb_tests_make_path(t->rename_exist_src, sizeof(t->rename_exist_src),
-			   mb_tests_drive_letter, "RENAMED.TXT");
-	mb_tests_make_path(t->rename_exist_dst, sizeof(t->rename_exist_dst),
-			   mb_tests_drive_letter, "HELLO.TXT");
-	mb_tests_make_path(t->rename_readonly_src, sizeof(t->rename_readonly_src),
-			   mb_tests_drive_letter, "HELLO.TXT");
-	mb_tests_make_path(t->rename_readonly_dst, sizeof(t->rename_readonly_dst),
-			   mb_tests_drive_letter, "HELLO2.TXT");
-	mb_tests_make_path(t->rename_readonly_target_src,
-			   sizeof(t->rename_readonly_target_src),
-			   mb_tests_drive_letter, "NEWDIR\\INNER.TXT");
-	mb_tests_make_path(t->rename_readonly_target_dst,
-			   sizeof(t->rename_readonly_target_dst),
-			   mb_tests_drive_letter, "HELLO.TXT");
+	mb_tests_make_path(t->fcreate_new, sizeof(t->fcreate_new), mb_tests_drive_letter,
+			   "NEWFILE.TXT");
+	mb_tests_make_path(t->fcreate_rewrite, sizeof(t->fcreate_rewrite), mb_tests_drive_letter,
+			   "REWRITE.TXT");
+	mb_tests_make_path(t->fcreate_missing_parent, sizeof(t->fcreate_missing_parent),
+			   mb_tests_drive_letter, "NOSUCH\\NEWFILE.TXT");
+	mb_tests_make_path(t->fcreate_dir_target, sizeof(t->fcreate_dir_target),
+			   mb_tests_drive_letter, "SUBDIR");
+	mb_tests_make_path(t->fdelete_missing_file, sizeof(t->fdelete_missing_file),
+			   mb_tests_drive_letter, "NOFILE2.TXT");
+	mb_tests_make_path(t->fdelete_dir_target, sizeof(t->fdelete_dir_target),
+			   mb_tests_drive_letter, "SUBDIR");
 
 	if (mb_tests_drive_letter == 'Z')
 		other_drive = 'Y';
@@ -380,13 +338,9 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
 		other_drive = (char)(mb_tests_drive_letter + 1);
 	mb_tests_make_path(t->wrong_drive, sizeof(t->wrong_drive), other_drive,
 			   "HELLO.TXT");
-	mb_tests_make_path(t->wrong_drive_rename, sizeof(t->wrong_drive_rename),
-			   other_drive, "RENAMED.TXT");
-	mb_tests_make_path(t->wildcard, sizeof(t->wildcard), mb_tests_drive_letter,
-			   "H*.TXT");
 	mb_tests_make_noslash_path(t->noslash, sizeof(t->noslash),
 			   mb_tests_drive_letter, "HELLO.TXT");
 	mb_tests_make_path(t->mixed, sizeof(t->mixed), mb_tests_drive_letter,
-			   "NEWDIR\\INNER.TXT");
+			   "SUBDIR\\INNER.TXT");
 	t->mixed[2] = '/';
 }

@@ -3,6 +3,93 @@
 
 #include <string.h>
 
+static int mb_fat_find_free_open_slot(uint32_t *idx_out)
+{
+	uint32_t idx;
+
+	for (idx = 0; idx < MB_FAT_MAX_OPEN; idx++) {
+		if (!mb_fat_open[idx].in_use) {
+			*idx_out = idx;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static int mb_fat_sync_open_dirent(const struct mb_fat_open *op)
+{
+	uint8_t raw[32];
+
+	if (mb_fat_mount(op->dev) != 0)
+		return -1;
+	if (mb_fat_read_dirent_raw(op->dir_cluster, op->dir_index, raw) != 0)
+		return -1;
+	if (raw[0] == 0x00 || raw[0] == 0xe5)
+		return -1;
+
+	raw[11] = (uint8_t)((raw[11] & MB_FAT_ATTR_DIR) |
+			    (op->attr & (MB_FAT_ATTR_RDONLY |
+					 MB_FAT_ATTR_HIDDEN |
+					 MB_FAT_ATTR_SYSTEM |
+					 MB_FAT_ATTR_ARCH)));
+	raw[22] = (uint8_t)(op->time & 0xff);
+	raw[23] = (uint8_t)(op->time >> 8);
+	raw[24] = (uint8_t)(op->date & 0xff);
+	raw[25] = (uint8_t)(op->date >> 8);
+	raw[26] = (uint8_t)(op->start_cluster & 0xff);
+	raw[27] = (uint8_t)(op->start_cluster >> 8);
+	raw[28] = (uint8_t)(op->size & 0xff);
+	raw[29] = (uint8_t)((op->size >> 8) & 0xff);
+	raw[30] = (uint8_t)((op->size >> 16) & 0xff);
+	raw[31] = (uint8_t)((op->size >> 24) & 0xff);
+
+	return mb_fat_write_dirent_raw(op->dir_cluster, op->dir_index, raw);
+}
+
+static int mb_fat_ensure_cluster(struct mb_fat_open *op, uint32_t cluster_index,
+				 uint32_t *cluster_out)
+{
+	uint32_t cluster = op->start_cluster;
+	uint32_t i;
+
+	if (cluster < 2u) {
+		cluster = mb_fat_alloc_cluster();
+		if (cluster < 2u)
+			return -1;
+		if (mb_fat_zero_cluster(cluster) != 0) {
+			mb_fat_free_chain(cluster);
+			return -1;
+		}
+		op->start_cluster = cluster;
+		op->dirty = 1;
+	}
+
+	for (i = 0; i < cluster_index; i++) {
+		uint16_t next = mb_fat_read_fat(cluster);
+		if (next >= 0xfff8u) {
+			uint32_t new_cluster = mb_fat_alloc_cluster();
+			if (new_cluster < 2u)
+				return -1;
+			if (mb_fat_zero_cluster(new_cluster) != 0) {
+				mb_fat_free_chain(new_cluster);
+				return -1;
+			}
+			if (mb_fat_write_fat(cluster, (uint16_t)new_cluster) != 0) {
+				mb_fat_free_chain(new_cluster);
+				return -1;
+			}
+			cluster = new_cluster;
+			op->dirty = 1;
+		} else {
+			cluster = next;
+		}
+	}
+
+	*cluster_out = cluster;
+	return 0;
+}
+
 struct mb_fat_open *mb_fat_get_open(uint16_t handle)
 {
 	uint16_t idx = handle - 3;
@@ -48,34 +135,197 @@ int mb_fat_cluster_for_offset(const struct mb_fat_open *op, uint32_t offset,
 long mb_fat_fopen(const char *path, uint16_t mode)
 {
 	struct mb_fat_dirent ent;
+	uint16_t dev;
+	uint32_t dir_cluster;
+	uint8_t name83[11];
+	uint32_t dir_index = 0;
 	uint32_t idx;
 
 	if (mode != 0)
 		return -1;
 
-	{
-		int rc = mb_fat_find_path(mb_bdos_get_current_drive(), path, &ent);
-		if (rc != 0)
-			return MB_ERR_FILNF;
-	}
+	if (mb_fat_locate_parent(path, &dev, &dir_cluster, name83) != 0)
+		return MB_ERR_FILNF;
+	if (mb_fat_mount(dev) != 0)
+		return MB_ERR_FILNF;
+	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &dir_index) != 0)
+		return MB_ERR_FILNF;
 	if (ent.attr & MB_FAT_ATTR_DIR)
-		return -1;
+		return MB_ERR_FILNF;
 
-	for (idx = 0; idx < MB_FAT_MAX_OPEN; idx++) {
-		if (!mb_fat_open[idx].in_use) {
-			mb_fat_open[idx].in_use = 1;
-			mb_fat_open[idx].dev = mb_fat_vol->dev;
-			mb_fat_open[idx].size = ent.size;
-			mb_fat_open[idx].start_cluster = ent.start_lo;
-			mb_fat_open[idx].offset = 0;
-			mb_fat_open[idx].time = ent.wr_time;
-			mb_fat_open[idx].date = ent.wr_date;
-			mb_fat_open[idx].attr = ent.attr;
-			return (long)(idx + 3);
-		}
+	if (mb_fat_find_free_open_slot(&idx) != 0)
+		return MB_ERR_NHNDL;
+
+	mb_fat_open[idx].in_use = 1;
+	mb_fat_open[idx].dev = mb_fat_vol->dev;
+	mb_fat_open[idx].write = 0;
+	mb_fat_open[idx].dirty = 0;
+	mb_fat_open[idx].size = ent.size;
+	mb_fat_open[idx].start_cluster = ent.start_lo;
+	mb_fat_open[idx].offset = 0;
+	mb_fat_open[idx].dir_cluster = dir_cluster;
+	mb_fat_open[idx].dir_index = dir_index;
+	mb_fat_open[idx].time = ent.wr_time;
+	mb_fat_open[idx].date = ent.wr_date;
+	mb_fat_open[idx].attr = ent.attr;
+	return (long)(idx + 3);
+}
+
+long mb_fat_fcreate(const char *path, uint16_t mode)
+{
+	uint16_t dev;
+	uint32_t dir_cluster;
+	uint8_t name83[11];
+	struct mb_fat_dirent ent;
+	uint32_t dir_index = 0;
+	uint32_t open_idx;
+	uint8_t raw[32];
+	int found;
+	int rc;
+	uint8_t attr;
+
+	rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
+	if (rc != 0)
+		return rc;
+	if (mb_fat_mount(dev) != 0)
+		return MB_ERR_ACCDN;
+	if (mb_fat_find_free_open_slot(&open_idx) != 0)
+		return MB_ERR_NHNDL;
+
+	found = (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &dir_index) == 0);
+	if (found) {
+		if (ent.attr & MB_FAT_ATTR_DIR)
+			return MB_ERR_ACCDN;
+		if (ent.attr & MB_FAT_ATTR_RDONLY)
+			return MB_ERR_ACCDN;
+	} else {
+		if (mb_fat_find_free_entry(dir_cluster, &dir_index) != 0)
+			return MB_ERR_ACCDN;
 	}
 
-	return MB_ERR_NHNDL;
+	if (found && ent.start_lo >= 2u) {
+		if (mb_fat_free_chain(ent.start_lo) != 0)
+			return MB_ERR_ACCDN;
+	}
+
+	attr = (uint8_t)(mode & (MB_FAT_ATTR_RDONLY |
+				 MB_FAT_ATTR_HIDDEN |
+				 MB_FAT_ATTR_SYSTEM));
+	attr |= MB_FAT_ATTR_ARCH;
+
+	memset(raw, 0, sizeof(raw));
+	memcpy(raw, name83, sizeof(name83));
+	raw[11] = attr;
+	if (mb_fat_write_dirent_raw(dir_cluster, dir_index, raw) != 0)
+		return MB_ERR_ACCDN;
+
+	mb_fat_open[open_idx].in_use = 1;
+	mb_fat_open[open_idx].dev = mb_fat_vol->dev;
+	mb_fat_open[open_idx].write = 1;
+	mb_fat_open[open_idx].dirty = 0;
+	mb_fat_open[open_idx].size = 0;
+	mb_fat_open[open_idx].start_cluster = 0;
+	mb_fat_open[open_idx].offset = 0;
+	mb_fat_open[open_idx].dir_cluster = dir_cluster;
+	mb_fat_open[open_idx].dir_index = dir_index;
+	mb_fat_open[open_idx].time = 0;
+	mb_fat_open[open_idx].date = 0;
+	mb_fat_open[open_idx].attr = attr;
+	return (long)(open_idx + 3);
+}
+
+long mb_fat_fwrite(uint16_t handle, uint32_t cnt, void *buf)
+{
+	struct mb_fat_open *op;
+	uint8_t sector[512];
+	uint32_t remaining = cnt;
+	uint8_t *src = (uint8_t *)buf;
+	uint32_t written = 0;
+	uint32_t cluster_size;
+
+	op = mb_fat_get_open(handle);
+	if (!op)
+		return MB_ERR_IHNDL;
+	if (!op->write)
+		return MB_ERR_ACCDN;
+	if (mb_fat_mount(op->dev) != 0)
+		return MB_ERR_ACCDN;
+	if (cnt == 0)
+		return 0;
+
+	cluster_size = mb_fat_vol->spc * mb_fat_vol->recsiz;
+	if (cluster_size == 0)
+		return MB_ERR_ACCDN;
+
+	while (remaining > 0) {
+		uint32_t cluster_index = op->offset / cluster_size;
+		uint32_t cluster_off = op->offset % cluster_size;
+		uint32_t cluster;
+		uint32_t sector_in_cluster;
+		uint32_t sector_off;
+		uint32_t sector_idx;
+		uint32_t chunk;
+
+		if (mb_fat_ensure_cluster(op, cluster_index, &cluster) != 0)
+			break;
+
+		sector_in_cluster = cluster_off / mb_fat_vol->recsiz;
+		sector_off = cluster_off % mb_fat_vol->recsiz;
+		sector_idx = mb_fat_cluster_sector(cluster) + sector_in_cluster;
+		chunk = mb_fat_vol->recsiz - sector_off;
+		if (chunk > remaining)
+			chunk = remaining;
+
+		if (chunk != mb_fat_vol->recsiz) {
+			if (mb_fat_rwabs(0, sector, 1, sector_idx, mb_fat_vol->dev) != 0)
+				break;
+		}
+		memcpy(&sector[sector_off], src, chunk);
+		if (mb_fat_rwabs(1, sector, 1, sector_idx, mb_fat_vol->dev) != 0)
+			break;
+
+		src += chunk;
+		written += chunk;
+		remaining -= chunk;
+		op->offset += chunk;
+		if (op->offset > op->size)
+			op->size = op->offset;
+		op->dirty = 1;
+	}
+
+	return (long)written;
+}
+
+long mb_fat_fdelete(const char *path)
+{
+	uint16_t dev;
+	uint32_t dir_cluster;
+	uint8_t name83[11];
+	struct mb_fat_dirent ent;
+	uint32_t dir_index = 0;
+	uint8_t raw[32];
+	int rc;
+
+	rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
+	if (rc != 0)
+		return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FILNF;
+	if (mb_fat_mount(dev) != 0)
+		return MB_ERR_FILNF;
+	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &dir_index) != 0)
+		return MB_ERR_FILNF;
+	if (ent.attr & MB_FAT_ATTR_DIR)
+		return MB_ERR_ACCDN;
+	if (ent.attr & MB_FAT_ATTR_RDONLY)
+		return MB_ERR_ACCDN;
+
+	if (mb_fat_read_dirent_raw(dir_cluster, dir_index, raw) != 0)
+		return MB_ERR_FILNF;
+	raw[0] = 0xe5;
+	if (mb_fat_write_dirent_raw(dir_cluster, dir_index, raw) != 0)
+		return MB_ERR_ACCDN;
+	if (ent.start_lo >= 2u && mb_fat_free_chain(ent.start_lo) != 0)
+		return MB_ERR_ACCDN;
+	return 0;
 }
 
 long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
@@ -191,44 +441,13 @@ long mb_fat_fclose(uint16_t handle)
 	if (!op)
 		return MB_ERR_IHNDL;
 
-	op->in_use = 0;
-	return 0;
-}
-
-long mb_fat_fdatime(uint32_t timeptr, uint16_t handle, uint16_t rwflag)
-{
-	uint16_t *tp;
-	struct mb_fat_open *op;
-
-	if (rwflag != 0)
-		return -1;
-
-	op = mb_fat_get_open(handle);
-	if (!op)
-		return MB_ERR_IHNDL;
-
-	tp = (uint16_t *)(uintptr_t)timeptr;
-	tp[0] = op->time;
-	tp[1] = op->date;
-	return 0;
-}
-
-long mb_fat_fattrib(const char *fn, uint16_t rwflag, uint16_t attr)
-{
-	struct mb_fat_dirent ent;
-
-	(void)attr;
-
-	if (rwflag != 0)
-		return MB_ERR_ACCDN;
-
-	{
-		int rc = mb_fat_find_path(mb_bdos_get_current_drive(), fn, &ent);
-		if (rc != 0)
-			return (rc == MB_ERR_DRIVE) ? MB_ERR_DRIVE : MB_ERR_FILNF;
+	if (op->dirty) {
+		if (mb_fat_sync_open_dirent(op) != 0)
+			return MB_ERR_ACCDN;
 	}
 
-	return (long)ent.attr;
+	op->in_use = 0;
+	return 0;
 }
 
 long mb_fat_dfree(uint32_t buf, uint16_t d)
@@ -251,188 +470,5 @@ long mb_fat_dfree(uint32_t buf, uint16_t d)
 	out[1] = (uint16_t)mb_fat_vol->total_clusters;
 	out[2] = (uint16_t)mb_fat_vol->recsiz;
 	out[3] = (uint16_t)mb_fat_vol->spc;
-	return 0;
-}
-
-long mb_fat_dcreate(const char *path)
-{
-	uint16_t dev;
-	uint32_t dir_cluster;
-	uint8_t name83[11];
-	uint32_t idx;
-	struct mb_fat_dirent ent;
-	uint8_t raw[32];
-	uint32_t new_cluster;
-
-	{
-		int rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
-		if (rc != 0)
-			return rc;
-	}
-
-	if (mb_fat_mount(dev) != 0)
-		return MB_ERR_ACCDN;
-
-	idx = 0;
-	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &idx) == 0)
-		return MB_ERR_ACCDN;
-
-	if (mb_fat_find_free_entry(dir_cluster, &idx) != 0)
-		return MB_ERR_ACCDN;
-
-	new_cluster = mb_fat_alloc_cluster();
-	if (new_cluster == 0)
-		return MB_ERR_ACCDN;
-
-	if (mb_fat_zero_cluster(new_cluster) != 0) {
-		mb_fat_free_chain(new_cluster);
-		return MB_ERR_ACCDN;
-	}
-
-	memset(raw, 0, sizeof(raw));
-	memcpy(raw, name83, 11u);
-	raw[11] = MB_FAT_ATTR_DIR;
-	raw[26] = (uint8_t)(new_cluster & 0xff);
-	raw[27] = (uint8_t)(new_cluster >> 8);
-	if (mb_fat_write_dirent_raw(dir_cluster, idx, raw) != 0) {
-		mb_fat_free_chain(new_cluster);
-		return MB_ERR_ACCDN;
-	}
-
-	memset(raw, 0, sizeof(raw));
-	raw[0] = '.';
-	memset(&raw[1], ' ', 10);
-	raw[11] = MB_FAT_ATTR_DIR;
-	raw[26] = (uint8_t)(new_cluster & 0xff);
-	raw[27] = (uint8_t)(new_cluster >> 8);
-	if (mb_fat_write_dirent_raw(new_cluster, 0, raw) != 0) {
-		mb_fat_free_chain(new_cluster);
-		return MB_ERR_ACCDN;
-	}
-
-	memset(raw, 0, sizeof(raw));
-	raw[0] = '.';
-	raw[1] = '.';
-	memset(&raw[2], ' ', 9);
-	raw[11] = MB_FAT_ATTR_DIR;
-	raw[26] = (uint8_t)(dir_cluster & 0xff);
-	raw[27] = (uint8_t)(dir_cluster >> 8);
-	if (mb_fat_write_dirent_raw(new_cluster, 1, raw) != 0) {
-		mb_fat_free_chain(new_cluster);
-		return MB_ERR_ACCDN;
-	}
-
-	return 0;
-}
-
-long mb_fat_ddelete(const char *path)
-{
-	uint16_t dev;
-	uint32_t dir_cluster;
-	uint8_t name83[11];
-	struct mb_fat_dirent ent;
-	uint32_t idx = 0;
-	int rc;
-	uint8_t raw[32];
-
-	rc = mb_fat_locate_parent(path, &dev, &dir_cluster, name83);
-	if (rc != 0)
-		return rc;
-
-	if (mb_fat_mount(dev) != 0)
-		return MB_ERR_FILNF;
-
-	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &idx) != 0)
-		return MB_ERR_FILNF;
-
-	if (!(ent.attr & MB_FAT_ATTR_DIR))
-		return MB_ERR_ACCDN;
-
-	if (ent.attr & MB_FAT_ATTR_RDONLY)
-		return MB_ERR_ACCDN;
-
-	if (ent.start_lo < 2)
-		return MB_ERR_ACCDN;
-
-	rc = mb_fat_dir_is_empty(ent.start_lo);
-	if (rc <= 0)
-		return (rc == 0) ? MB_ERR_ACCDN : MB_ERR_FILNF;
-
-	if (mb_fat_read_dirent_raw(dir_cluster, idx, raw) != 0)
-		return MB_ERR_FILNF;
-	raw[0] = 0xe5;
-	if (mb_fat_write_dirent_raw(dir_cluster, idx, raw) != 0)
-		return MB_ERR_FILNF;
-
-	if (mb_fat_free_chain(ent.start_lo) != 0)
-		return MB_ERR_ACCDN;
-
-	return 0;
-}
-
-long mb_fat_frename(uint16_t zero, const char *oldname, const char *newname)
-{
-	uint16_t dev_src;
-	uint16_t dev_dst;
-	uint32_t dir_src;
-	uint32_t dir_dst;
-	uint8_t name_src[11];
-	uint8_t name_dst[11];
-	uint32_t idx_src = 0;
-	uint32_t idx_dst = 0;
-	struct mb_fat_dirent ent;
-	uint8_t raw[32];
-
-	(void)zero;
-
-	{
-		int rc;
-		rc = mb_fat_locate_parent(oldname, &dev_src, &dir_src, name_src);
-		if (rc != 0)
-			return rc;
-		rc = mb_fat_parse_drive(newname, &dev_dst);
-		if (rc != 0)
-			return rc;
-	}
-	if (dev_src != dev_dst)
-		return MB_ERR_NSAME;
-	{
-		int rc;
-		rc = mb_fat_locate_parent(newname, &dev_dst, &dir_dst, name_dst);
-		if (rc != 0)
-			return rc;
-	}
-
-	if (mb_fat_mount(dev_src) != 0)
-		return MB_ERR_FILNF;
-
-	if (mb_fat_find_in_dir(dir_src, name_src, 0xffffu, &ent, &idx_src) != 0)
-		return MB_ERR_FILNF;
-
-	if (ent.attr & MB_FAT_ATTR_RDONLY)
-		return MB_ERR_ACCDN;
-
-	if (mb_fat_find_in_dir(dir_dst, name_dst, 0xffffu, &ent, &idx_dst) == 0)
-		return MB_ERR_ACCDN;
-
-	if (mb_fat_read_dirent_raw(dir_src, idx_src, raw) != 0)
-		return MB_ERR_FILNF;
-
-	memcpy(raw, name_dst, 11u);
-
-	if (dir_src == dir_dst) {
-		if (mb_fat_write_dirent_raw(dir_src, idx_src, raw) != 0)
-			return -1;
-		return 0;
-	}
-
-	if (mb_fat_find_free_entry(dir_dst, &idx_dst) != 0)
-		return MB_ERR_FILNF;
-	if (mb_fat_write_dirent_raw(dir_dst, idx_dst, raw) != 0)
-		return -1;
-	raw[0] = 0xe5;
-	if (mb_fat_write_dirent_raw(dir_src, idx_src, raw) != 0)
-		return -1;
-
 	return 0;
 }

@@ -342,12 +342,6 @@ extern "C" {
 #define Dfree(buf, d)                                                      \
 	(long)MB_TRAP1_WLW((short)(0x36), (long)(buf), (short)(d))
 
-#define Dcreate(path)                                                      \
-	(long)MB_TRAP1_WL((short)(0x39), (long)(path))
-
-#define Ddelete(path)                                                      \
-	(long)MB_TRAP1_WL((short)(0x3a), (long)(path))
-
 #define Dsetpath(path)                                                     \
 	(long)MB_TRAP1_WL((short)(0x3b), (long)(path))
 
@@ -405,10 +399,6 @@ extern "C" {
 	(long)MB_TRAP1_WLWW((short)(0x42), (long)(where),                \
 			    (short)(handle), (short)(how))
 
-#define Fattrib(fn, rwflag, attr)                                          \
-	(long)MB_TRAP1_WLWW((short)(0x43), (long)(fn),                   \
-			    (short)(rwflag), (short)(attr))
-
 #define Mxalloc(amt, flag)                                                 \
 	(long)MB_TRAP1_WLW((short)(0x44), (long)(amt), (short)(flag))
 
@@ -418,21 +408,6 @@ extern "C" {
 #define Mshrink(ptr, size)                                                 \
 	(long)MB_TRAP1_WWLL((short)(0x4a), (short)0, (long)(ptr),        \
 			    (long)(size))
-
-#define Fsfirst(filespec, attr)                                            \
-	(long)MB_TRAP1_WLW((short)(0x4e), (long)(filespec),              \
-			   (short)(attr))
-
-#define Fsnext()                                                           \
-	(long)MB_TRAP1_W((short)(0x4f))
-
-#define Frename(zero, old, _new)                                           \
-	(long)MB_TRAP1_WWLL((short)(0x56), (short)(zero), (long)(old),   \
-			    (long)(_new))
-
-#define Fdatime(timeptr, handle, rwflag)                                   \
-	(long)MB_TRAP1_WLWW((short)(0x57), (long)(timeptr),              \
-			    (short)(handle), (short)(rwflag))
 
 #define Flock(handle, mode, start, length)                                 \
 	(long)MB_TRAP1_WWWLL((short)(0x5c), (short)(handle),             \

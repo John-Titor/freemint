@@ -45,6 +45,11 @@ int mb_fat_mount(uint16_t dev)
 		return MB_ERR_DRIVE;
 
 	if (!mb_fat_dev_map_init) {
+		memset(mb_fat_open, 0, sizeof(mb_fat_open));
+		memset(mb_fat_search, 0, sizeof(mb_fat_search));
+		memset(mb_fat_vols, 0, sizeof(mb_fat_vols));
+		mb_fat_vol = NULL;
+		mb_fat_vol_rr = 0;
 		for (i = 0; i < (int)(sizeof(mb_fat_dev_map) /
 				      sizeof(mb_fat_dev_map[0])); i++)
 			mb_fat_dev_map[i] = -1;

@@ -23,10 +23,6 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args)
 				       mb_arg16(args, 2));
 	case 0x036:
 		return mb_bdos_dfree(mb_arg32w(args, 0), mb_arg16(args, 2));
-	case 0x039:
-		return mb_bdos_dcreate((const char *)(uintptr_t)mb_arg32w(args, 0));
-	case 0x03a:
-		return mb_bdos_ddelete((const char *)(uintptr_t)mb_arg32w(args, 0));
 	case 0x03b:
 		return mb_bdos_dsetpath((const char *)(uintptr_t)mb_arg32w(args, 0));
 	case 0x03c:
@@ -45,21 +41,10 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_bdos_fdelete((const char *)(uintptr_t)mb_arg32w(args, 0));
 	case 0x042:
 		return mb_bdos_fseek((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
-	case 0x043:
-		return mb_bdos_fattrib((const char *)(uintptr_t)mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
 	case 0x044:
 		return mb_bdos_mxalloc((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2));
 	case 0x04a:
 		return mb_bdos_mshrink(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
-	case 0x04e:
-		return mb_bdos_fsfirst((const char *)(uintptr_t)mb_arg32w(args, 0), mb_arg16(args, 2));
-	case 0x04f:
-		return mb_bdos_fsnext();
-	case 0x056:
-		return mb_bdos_frename(mb_arg16(args, 0), (const char *)(uintptr_t)mb_arg32w(args, 1),
-				       (const char *)(uintptr_t)mb_arg32w(args, 3));
-	case 0x057:
-		return mb_bdos_fdatime(mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
 	case 0x05c:
 		return mb_bdos_flock(mb_arg16(args, 0), mb_arg16(args, 1),
 				    (int32_t)mb_arg32w(args, 2), (int32_t)mb_arg32w(args, 4));
