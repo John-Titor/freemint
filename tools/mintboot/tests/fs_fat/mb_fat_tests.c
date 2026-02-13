@@ -16,6 +16,7 @@ void mb_fat_run_tests(void)
 	    bpb->numcl == 0)
 		mb_panic("FAT test: BPB fields invalid");
 
+	mb_fat_tests_phase_core_helpers(&t);
 	mb_fat_tests_phase_lookup_io(&t);
 	mb_fat_tests_phase_rename_attr_seek(&t);
 	mb_fat_tests_phase_dir_integrity(&t);

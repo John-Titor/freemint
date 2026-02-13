@@ -123,5 +123,6 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t);
 void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t);
 void mb_fat_tests_phase_rename_attr_seek(struct mb_fat_test_ctx *t);
 void mb_fat_tests_phase_dir_integrity(struct mb_fat_test_ctx *t);
+void mb_fat_tests_phase_core_helpers(struct mb_fat_test_ctx *t);
 
 #endif

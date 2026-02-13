@@ -111,7 +111,7 @@ static void mb_tests_kernel_mint_ext_reloc(const char *kernel_path, uint8_t *tba
 	uint32_t file_next;
 	uint32_t got_ext;
 	uint32_t got_next;
-	uint8_t b;
+	uint8_t reloc_buf[256];
 	int saw_ext;
 
 	handle = (uint16_t)Fopen(kernel_path, 0);
@@ -152,27 +152,41 @@ static void mb_tests_kernel_mint_ext_reloc(const char *kernel_path, uint8_t *tba
 	next_off = 0;
 	saw_ext = 0;
 	for (;;) {
-		if (Fread(handle, 1, &b) != 1)
+		long rc = Fread(handle, sizeof(reloc_buf), reloc_buf);
+		uint32_t i;
+
+		if (rc < 0)
 			mb_panic("Reloc test: reloc stream read");
-		if (b == 0)
+		if (rc == 0)
 			break;
-		if (!saw_ext) {
+
+		for (i = 0; i < (uint32_t)rc; i++) {
+			uint8_t b = reloc_buf[i];
+			if (b == 0) {
+				i = (uint32_t)rc;
+				break;
+			}
+			if (!saw_ext) {
+				if (b == 1) {
+					offset += 254u;
+					ext_off = offset;
+					saw_ext = 1;
+					continue;
+				}
+				offset += (uint32_t)b;
+				continue;
+			}
 			if (b == 1) {
 				offset += 254u;
-				ext_off = offset;
-				saw_ext = 1;
 				continue;
 			}
 			offset += (uint32_t)b;
-			continue;
+			next_off = offset;
+			i = (uint32_t)rc;
+			break;
 		}
-		if (b == 1) {
-			offset += 254u;
-			continue;
-		}
-		offset += (uint32_t)b;
-		next_off = offset;
-		break;
+		if (next_off != 0)
+			break;
 	}
 
 	if (!saw_ext || next_off == 0)

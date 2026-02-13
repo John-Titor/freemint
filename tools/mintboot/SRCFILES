@@ -91,12 +91,14 @@ COBJS_SRC = \
 	tests/fs_fat/mb_fat_test_lookup.c \
 	tests/fs_fat/mb_fat_test_rename.c \
 	tests/fs_fat/mb_fat_test_dir.c \
+	tests/fs_fat/mb_fat_test_core.c \
 	tests/mb_test_helpers.c \
 	tests/mb_test_setexc.c \
 	tests/mb_test_gettime.c \
 	tests/mb_test_drive_range.c \
 	tests/mb_test_drive_path.c \
 	tests/mb_test_bconmap.c \
+	tests/mb_test_bios_bdos.c \
 	tests/mb_test_vbclock.c \
 	tests/mb_test_kernel_loader.c \
 	tests/mb_tests_main.c \

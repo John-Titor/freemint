@@ -11,6 +11,7 @@ void mb_tests_gettime(void);
 void mb_tests_drive_range(void);
 void mb_tests_drive_path(void);
 void mb_tests_bconmap(void);
+void mb_tests_bios_bdos(void);
 void mb_tests_vbclock(void);
 void mb_tests_kernel_loader(void);
 

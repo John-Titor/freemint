@@ -12,6 +12,7 @@ static void mb_tests_run_common(void)
 	mb_tests_drive_range();
 	mb_tests_drive_path();
 	mb_tests_bconmap();
+	mb_tests_bios_bdos();
 	mb_tests_vbclock();
 }
 
