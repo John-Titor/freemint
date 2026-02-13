@@ -4,6 +4,7 @@
 #include "mintboot/mb_cookie.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_osbind.h"
 
 #ifndef str
 #define str(x) _stringify(x)
@@ -158,10 +159,10 @@ static int mb_path_exists(const char *path)
 {
 	long fh;
 
-	fh = mb_bdos_fopen(path, 0);
+	fh = Fopen(path, 0);
 	if (fh < 0)
 		return 0;
-	mb_bdos_fclose((uint16_t)fh);
+	Fclose((uint16_t)fh);
 	return 1;
 }
 

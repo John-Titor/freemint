@@ -2,6 +2,7 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_kernel.h"
+#include "mintboot/mb_osbind.h"
 
 #include <stdarg.h>
 
@@ -9,7 +10,13 @@ extern uint8_t _mb_image_end[] __attribute__((weak));
 
 static void mb_log_putc(int ch)
 {
-	mb_board_console_putc(ch);
+	uint16_t sr;
+
+	__asm__ volatile("move.w %%sr,%0" : "=r"(sr));
+	if ((sr & 0x2000u) == 0)
+		Bconout(2, ch);
+	else
+		mb_board_console_putc(ch);
 }
 
 static void mb_log_hex32_width(uint32_t value, int width, int pad_zero)
