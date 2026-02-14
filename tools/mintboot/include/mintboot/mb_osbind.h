@@ -584,6 +584,9 @@ extern "C" {
 	(void)MB_TRAP14_WWLL((short)(0x00), (short)(type),               \
 			     (long)(param), (long)(vptr))
 
+#define Physbase()                                                         \
+	(void *)MB_TRAP14_W((short)(0x02))
+
 #define Getrez()                                                           \
 	(short)MB_TRAP14_W((short)(0x04))
 

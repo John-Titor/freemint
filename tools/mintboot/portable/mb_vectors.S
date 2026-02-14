@@ -235,7 +235,32 @@ mb_trace_exception_stub:
 	add.l #MB_CTX_SIZE, %sp
 	rte
 	.size mb_trace_exception_stub, .-mb_trace_exception_stub
-	MB_EXC_STUB mb_line1010_stub, rte
+	.globl mb_line1010_stub
+	.type mb_line1010_stub, @function
+mb_line1010_stub:
+	move.l %usp, %a0
+	move.l %a0, mb_cached_entry_usp
+	move.l %sp, mb_cached_entry_sp
+	move.l %sp, %a1
+	sub.l #MB_CTX_SIZE, %sp
+	lea (%sp), %a0
+	move.l %a1, (%a0)
+	movem.l %d0-%d7/%a0-%a6, 4(%a0)
+	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
+	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
+	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
+	move.l %sp, %a1
+	move.l %a1, -(%sp)
+	jsr mb_linea_exception_handler
+	add.l #4, %sp
+	lea (%sp), %a1
+	move.w MB_CTX_FRAME_OFF(%a1), MB_CTX_SIZE(%sp)
+	move.l MB_CTX_FRAME_OFF+2(%a1), MB_CTX_SIZE+2(%sp)
+	move.w MB_CTX_FRAME_OFF+6(%a1), MB_CTX_SIZE+6(%sp)
+	movem.l 4(%a1), %d0-%d7/%a0-%a6
+	add.l #MB_CTX_SIZE, %sp
+	rte
+	.size mb_line1010_stub, .-mb_line1010_stub
 	MB_EXC_STUB mb_line1111_stub, rte
 	MB_EXC_STUB mb_reserved12_stub, rte
 	MB_EXC_STUB mb_reserved13_stub, rte

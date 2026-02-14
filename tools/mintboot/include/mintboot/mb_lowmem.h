@@ -13,6 +13,7 @@
 #define MB_LM_MEMTOP_ADDR     0x00000436u
 #define MB_LM_MEMVAL2_ADDR    0x0000043au
 #define MB_LM_MEMVAL3_ADDR    0x0000051au
+#define MB_LM_V_BAS_AD_ADDR   0x0000044eu
 #define MB_LM_BOOTDEV_ADDR    0x00000446u
 #define MB_LM_TMR_MS_ADDR     0x00000442u
 #define MB_LM_VBLSEM_ADDR     0x00000452u
@@ -57,6 +58,11 @@ static inline volatile uint32_t *mb_lm_memval2(void)
 static inline volatile uint32_t *mb_lm_memval3(void)
 {
 	return (volatile uint32_t *)MB_LM_MEMVAL3_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_v_bas_ad(void)
+{
+	return (volatile uint32_t *)MB_LM_V_BAS_AD_ADDR;
 }
 
 static inline volatile uint16_t *mb_lm_bootdev(void)

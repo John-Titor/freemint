@@ -20,6 +20,7 @@ void mb_tests_bios_bdos(void)
 	uint32_t memtop;
 	uint32_t avail;
 	uint32_t old_membot;
+	uint32_t physbase;
 	uint16_t args[4] = { 0, 0, 0, 0 };
 
 	drive = (uint16_t)Dgetdrv();
@@ -47,6 +48,11 @@ void mb_tests_bios_bdos(void)
 
 	if (Kbshift(0) != 0)
 		mb_panic("BIOS/BDOS test: Kbshift");
+	physbase = (uint32_t)(uintptr_t)Physbase();
+	if (physbase != *mb_lm_v_bas_ad())
+		mb_panic("BIOS/BDOS test: Physbase got=%08x exp=%08x",
+			 physbase,
+			 *mb_lm_v_bas_ad());
 
 	memset(sector_a, 0, sizeof(sector_a));
 	memset(sector_b, 0, sizeof(sector_b));

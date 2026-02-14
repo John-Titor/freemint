@@ -2,6 +2,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_lowmem.h"
+#include "mintboot/mb_linea.h"
 #include "mintboot/mb_trap_helpers.h"
 
 #include <stdint.h>
@@ -188,6 +189,35 @@ void mb_trace_exception_handler(struct mb_exception_context *ctx)
 	volatile uint16_t *frame_sr = (uint16_t *)(uintptr_t)ctx->sp;
 
 	*frame_sr = (uint16_t)(*frame_sr & 0x3fffu);
+}
+
+void mb_linea_exception_handler(struct mb_exception_context *ctx)
+{
+	uint32_t pc = ctx->frame.pc;
+	volatile const uint16_t *op_at_pc = (volatile const uint16_t *)(uintptr_t)pc;
+	uint16_t op = *op_at_pc;
+
+	if (op != 0xa000u && pc >= 2u) {
+		volatile const uint16_t *op_prev =
+			(volatile const uint16_t *)(uintptr_t)(pc - 2u);
+		uint16_t prev = *op_prev;
+
+		if (prev == 0xa000u)
+			op = prev;
+	}
+
+	if (op == 0xa000u) {
+		uint32_t ptr = mb_linea_planes_ptr();
+
+		ctx->d[0] = ptr;
+		ctx->a[0] = ptr;
+		if (*op_at_pc == 0xa000u)
+			ctx->frame.pc = pc + 2u;
+		return;
+	}
+
+	mb_panic("lineA: unsupported opcode %04x at pc=%08x",
+		 (uint32_t)op, pc);
 }
 
 

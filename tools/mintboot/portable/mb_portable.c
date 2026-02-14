@@ -2,6 +2,7 @@
 #include "mintboot/mb_tests.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_cookie.h"
+#include "mintboot/mb_linea.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
@@ -65,6 +66,8 @@ static void mb_portable_init_lowmem(void)
 	*mb_lm_frclock() = 0;
 	*mb_lm_hz_200() = 0;
 	*mb_lm_vblsem() = 0;
+	*mb_lm_v_bas_ad() = 0xffffffffu;
+	mb_linea_init();
 }
 
 void mb_portable_set_st_ram(uint32_t base, uint32_t size)

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-QEMU=${QEMU:-qemu-system-m68k}
+QEMU_DEFAULT=/Users/agent/work/Agent/M68K/_Emulators/qemu/qemu/build/qemu-system-m68k-unsigned
+QEMU=${QEMU:-$QEMU_DEFAULT}
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ELF="$ROOT/mintboot-virt.elf"
 RAMDISK="$ROOT/ramdisk.img"
@@ -21,6 +22,10 @@ fi
 
 if [ ! -f "$ELF" ]; then
 	echo "mintboot-virt.elf not found: $ELF" >&2
+	exit 1
+fi
+if [ ! -x "$QEMU" ]; then
+	echo "qemu binary not executable: $QEMU" >&2
 	exit 1
 fi
 if [ ! -f "$KERNEL_SRC" ]; then
