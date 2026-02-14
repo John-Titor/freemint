@@ -23,9 +23,10 @@
 #define GOLDFISH_CTRL_CMD_HALT     0x02
 
 #define GOLDFISH_PIC_STATUS        0x00
-#define GOLDFISH_PIC_ENABLE        0x04
-#define GOLDFISH_PIC_DISABLE       0x08
-#define GOLDFISH_PIC_ACK           0x0c
+#define GOLDFISH_PIC_NUMBER        0x04
+#define GOLDFISH_PIC_DISABLE_ALL   0x08
+#define GOLDFISH_PIC_DISABLE       0x0c
+#define GOLDFISH_PIC_ENABLE        0x10
 
 #define GOLDFISH_RTC_TIME_LOW      0x00
 #define GOLDFISH_RTC_TIME_HIGH     0x04
@@ -33,6 +34,8 @@
 #define GOLDFISH_RTC_ALARM_HIGH    0x0c
 #define GOLDFISH_RTC_IRQ_ENABLED   0x10
 #define GOLDFISH_RTC_CLEAR_ALARM   0x14
+#define GOLDFISH_RTC_ALARM_STATUS  0x18
+#define GOLDFISH_RTC_CLEAR_INTERRUPT 0x1c
 
 static inline void mb_mmio_write32(uintptr_t addr, uint32_t value)
 {

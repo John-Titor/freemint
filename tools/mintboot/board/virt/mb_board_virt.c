@@ -10,7 +10,8 @@
 void mb_virt_start(void);
 
 static uint8_t mb_virt_rx;
-static uint32_t mb_virt_tmr_ms = 20;
+static const uint32_t mb_virt_tmr_ms = 20;
+static const uint32_t mb_virt_hz200_step = 4;
 
 struct mb_boot_info mb_virt_boot;
 
@@ -174,31 +175,25 @@ static void mb_virt_init_rtc_50hz(void)
 			(uint32_t)(alarm >> 32));
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_LOW,
 			(uint32_t)alarm);
-	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_ALARM, 1);
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_IRQ_ENABLED, 1);
 }
 
 static void mb_virt_enable_pic_irq(uint32_t pic, uint32_t irq)
 {
-	uintptr_t base = VIRT_GF_PIC_MMIO_BASE + (pic * VIRT_GF_PIC_STRIDE);
+	uintptr_t base;
 
-	mb_mmio_write32(base + GOLDFISH_PIC_DISABLE, 0xffffffffu);
-	mb_mmio_write32(base + GOLDFISH_PIC_ENABLE, (1u << (irq - 1)));
-	mb_mmio_write32(base + GOLDFISH_PIC_ACK, (1u << (irq - 1)));
-}
+	if (pic < 1u || pic > 6u || irq < 1u || irq > 32u)
+		mb_panic("virt pic cfg out of range pic=%u irq=%u", pic, irq);
 
-static void mb_virt_puts(const char *s)
-{
-	for (; *s; s++)
-		mb_board_console_putc(*s);
+	base = VIRT_GF_PIC_MMIO_BASE + ((pic - 1u) * VIRT_GF_PIC_STRIDE);
+
+	mb_mmio_write32(base + GOLDFISH_PIC_ENABLE, (1u << (irq - 1u)));
 }
 
 void mb_virt_start(void)
 {
 	mb_board_early_init();
 	mb_portable_boot(&mb_virt_boot);
-
-	mb_virt_puts("mintboot virt: mb_portable_boot returned.\r\n");
 	mb_board_exit(0);
 }
 
@@ -206,7 +201,7 @@ void mb_board_early_init(void)
 {
 	mb_virt_parse_bootinfo();
 	*mb_lm_tmr_ms() = mb_virt_tmr_ms;
-	mb_virt_enable_pic_irq(5, 1);
+	mb_virt_enable_pic_irq(6, 1);
 	mb_virt_init_rtc_50hz();
 }
 
@@ -225,6 +220,7 @@ void mb_autovec_level6_handler(void)
 	void (*handler)(void);
 
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_ALARM, 1);
+	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_INTERRUPT, 1);
 
 	low = mb_mmio_read32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_TIME_LOW);
 	high = mb_mmio_read32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_TIME_HIGH);
@@ -235,22 +231,15 @@ void mb_autovec_level6_handler(void)
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_LOW,
 			(uint32_t)alarm);
 
+	*mb_lm_hz_200() = *mb_lm_hz_200() + mb_virt_hz200_step;
+
 	handler = (void (*)(void))(*mb_lm_etv_timer());
 	if (handler)
 		handler();
 }
 
-int mb_board_load_kernel(struct mb_boot_info *info)
-{
-	(void)info;
-	/* TODO: load kernel image from virt storage or embedded image. */
-	return -1;
-}
-
 void mb_board_console_putc(int ch)
 {
-	if (ch == '\n')
-		mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_PUT_CHAR, '\r');
 	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_PUT_CHAR,
 			(uint32_t)ch);
 }

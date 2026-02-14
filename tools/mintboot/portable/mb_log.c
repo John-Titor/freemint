@@ -11,6 +11,9 @@ extern volatile uint16_t mb_user_mode;
 
 static void mb_log_putc(int ch)
 {
+	if (ch == '\n')
+		mb_log_putc('\r');
+
 	if (mb_user_mode)
 		Bconout(2, ch);
 	else

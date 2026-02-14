@@ -28,7 +28,8 @@ long mb_bios_dispatch(uint16_t fnum, uint16_t *args)
 	case 0x0b:
 		return mb_bios_kbshift(mb_arg16(args, 0));
 	default:
-		mb_log_printf("bios: unhandled 0x%04x", (uint32_t)fnum);
+		if (fnum != 0xffffu)
+			mb_log_printf("bios: unhandled 0x%04x\r\n", (uint32_t)fnum);
 		return MB_ERR_INVFN;
 	}
 }

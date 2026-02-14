@@ -14,9 +14,6 @@ void mb_board_init_cookies(void);
 /* Optional board override for kernel TPA base address (0 = default). */
 uint32_t mb_board_kernel_tpa_start(void);
 
-/* Load kernel image into memory and populate boot info. */
-int mb_board_load_kernel(struct mb_boot_info *info);
-
 /* Board-specific console I/O used by portable layer. */
 void mb_board_console_putc(int ch);
 int mb_board_console_getc(void);

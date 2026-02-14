@@ -52,7 +52,6 @@ static void mb_etv_term_stub(void)
 static void mb_etv_timer_stub(void)
 {
 	*mb_lm_frclock() = *mb_lm_frclock() + 1u;
-	*mb_lm_hz_200() = *mb_lm_hz_200() + 4u;
 	if (*mb_lm_vblsem() == 0)
 		*mb_lm_vbclock() = *mb_lm_vbclock() + 1u;
 }
@@ -245,11 +244,6 @@ uint32_t mb_portable_vector_base(void)
 	return 0;
 }
 
-void mb_portable_setup_traps(void)
-{
-	/* TODO: install ROM_* trap emulation handlers. */
-}
-
 void mb_portable_run_tests(void);
 
 void mb_portable_boot(struct mb_boot_info *info)
@@ -262,7 +256,7 @@ void mb_portable_boot(struct mb_boot_info *info)
 	mb_board_init_cookies();
 	mb_portable_init_boot_drive();
 	mb_portable_setup_vectors();
-	mb_portable_setup_traps();
+	__asm__ volatile("move.w #0x2000, %%sr" : : : "cc", "memory");
 	mb_portable_run_tests();
 	{
 		char kernel_path[384];

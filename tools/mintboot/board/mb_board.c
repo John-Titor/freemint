@@ -6,13 +6,6 @@ void mb_board_early_init(void)
 	/* TODO: hardware init for target board. */
 }
 
-int mb_board_load_kernel(struct mb_boot_info *info)
-{
-	(void)info;
-	/* TODO: load kernel image, set entry/base/size in info. */
-	return -1;
-}
-
 void mb_board_console_putc(int ch)
 {
 	(void)ch;
