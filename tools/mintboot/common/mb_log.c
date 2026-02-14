@@ -81,10 +81,7 @@ static void mb_log_putc(int ch)
 	if (ch == '\n')
 		mb_log_putc('\r');
 
-	if (mb_user_mode)
-		Bconout(2, ch);
-	else
-		mb_board_console_putc(ch);
+	mb_board_console_putc(ch);
 }
 
 static void mb_log_hex32_width(uint32_t value, int width, int pad_zero)
