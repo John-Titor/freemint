@@ -4,6 +4,6 @@
 #include <stdint.h>
 
 void mb_linea_init(void);
-uint32_t mb_linea_planes_ptr(void);
+uint32_t mb_linea_struct_ptr(void);
 
 #endif /* MINTBOOT_MB_LINEA_H */

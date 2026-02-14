@@ -41,6 +41,7 @@ COBJS = \
 	common/bios/bcostat.c \
 	common/bios/drvmap.c \
 	common/bios/kbshift.c \
+	common/vdi/dispatch.c \
 	common/xbios/dispatch.c \
 	common/xbios/initmous.c \
 	common/xbios/physbase.c \
@@ -135,6 +136,7 @@ COBJS = \
 	common/bios/bcostat.c \
 	common/bios/drvmap.c \
 	common/bios/kbshift.c \
+	common/vdi/dispatch.c \
 	common/xbios/dispatch.c \
 	common/xbios/initmous.c \
 	common/xbios/physbase.c \

@@ -10,7 +10,6 @@
 
 #include <stddef.h>
 
-extern uint32_t mb_vector_table[];
 extern uint8_t _mb_image_end[] __attribute__((weak));
 
 char mb_cmdline[128];
@@ -96,23 +95,9 @@ uint16_t mb_common_boot_drive(void)
 	return *mb_lm_bootdev();
 }
 
-void mb_common_setup_vectors(void)
-{
-	uint32_t *dst = (uint32_t *)(uintptr_t)0x8;
-	uint32_t *src = mb_vector_table + 2;
-	uint32_t i;
-
-	if (src != dst) {
-		for (i = 0; i < 254; i++)
-			dst[i] = src[i];
-	}
-
-	mb_cpu_set_vbr(0);
-}
-
 uint32_t mb_common_vector_base(void)
 {
-	return 0;
+	return mb_cpu_get_vbr();
 }
 
 void mb_common_run_tests(void);

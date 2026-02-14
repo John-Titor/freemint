@@ -1,274 +1,128 @@
-	.equ MB_CTX_SIZE, 72
-	.equ MB_CTX_FRAME_OFF, 64
-
-	.section .vectors,"a"
-	.align 4
-	.globl mb_vector_table
-mb_vector_table:
-	.long _mb_stack_top
-	.long mb_entry
-
-	.long mb_bus_error_stub
-	.long mb_address_error_stub
-	.long mb_illegal_instruction_stub
-	.long mb_zero_divide_stub
-	.long mb_chk_exception_stub
-	.long mb_trapv_exception_stub
-	.long mb_privilege_violation_stub
-	.long mb_trace_exception_stub
-	.long mb_line1010_stub
-	.long mb_line1111_stub
-	.long mb_reserved12_stub
-	.long mb_reserved13_stub
-	.long mb_reserved14_stub
-	.long mb_reserved15_stub
-
-	/* vectors 16-23: reserved */
-	.rept 8
-	.long mb_default_exception_stub
-	.endr
-
-	.long mb_spurious_stub
-	.long mb_irq1_stub             /* irq1 */
-	.long mb_irq2_stub             /* irq2 */
-	.long mb_irq3_stub             /* irq3 */
-	.long mb_irq4_stub             /* irq4 */
-	.long mb_irq5_stub             /* irq5 */
-	.long mb_irq6_stub             /* irq6 */
-	.long mb_irq7_stub             /* irq7 */
-
-	/* trap vectors 0-15 (vectors 32-47) */
-	.long mb_default_exception_stub /* trap0 */
-	.long mb_trap1_stub             /* trap1 */
-	.long mb_trap2_stub             /* trap2 */
-	.long mb_default_exception_stub /* trap3 */
-	.long mb_default_exception_stub /* trap4 */
-	.long mb_default_exception_stub /* trap5 */
-	.long mb_default_exception_stub /* trap6 */
-	.long mb_default_exception_stub /* trap7 */
-	.long mb_default_exception_stub /* trap8 */
-	.long mb_default_exception_stub /* trap9 */
-	.long mb_default_exception_stub /* trap10 */
-	.long mb_default_exception_stub /* trap11 */
-	.long mb_default_exception_stub /* trap12 */
-	.long mb_trap13_stub            /* trap13 */
-	.long mb_trap14_stub            /* trap14 */
-	.long mb_default_exception_stub /* trap15 */
-
-	.rept 208
-	.long mb_default_exception_stub
-	.endr
-
 	.text
 
-	.globl mb_install_vector_base
-	.type mb_install_vector_base, @function
-mb_install_vector_base:
-	lea mb_vector_table, %a0
-	movec %a0, %vbr
-	rts
-	.size mb_install_vector_base, .-mb_install_vector_base
-
-	.macro MB_TRAP_STUB name, handler, trapno
-	.globl \name
-	.type \name, @function
-\name:
-	move.l %usp, %a0
-	move.l %a0, mb_cached_entry_usp
-	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a1
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a0
-	move.l %a1, (%a0)
-	movem.l %d0-%d7/%a0-%a6, 4(%a0)
-	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
-	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
-	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
-	move.l %a0, -(%sp)
-	jsr \handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	move.l (%a1), %a0
-	move.w MB_CTX_FRAME_OFF(%a1), (%a0)
-	move.l MB_CTX_FRAME_OFF+2(%a1), 2(%a0)
-	move.w MB_CTX_FRAME_OFF+6(%a1), 6(%a0)
-	move.l #0, -(%sp)
-	move.w MB_CTX_FRAME_OFF(%a1), 2(%sp)
-	move.l %usp, %a2
-	move.l %a2, -(%sp)
-	move.l (%a1), -(%sp)
-	move.l #\trapno, -(%sp)
-	jsr mb_trap_return_sanity
-	add.l #16, %sp
-	move.l (%a1), -(%sp)
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	move.l (%sp)+, %sp
+	/*
+	 * Minmal line-A handler, only supports A000.
+	 */
+	.globl mb_line1010
+	.globl mb_linea_struct_ptr
+	.type mb_line1010, @function
+mb_line1010:
+	move.l		2(%sp),%a0						// return address
+	clr.l		%d0
+	move.w		(%a0)+,%d0						// faulting opcode
+	move.l		%a0,2(%sp)						// adjust return address to skip instruction
+	cmp.w		#0xa000,%d0						// expected?
+	jbne		mb_trap_fatal					// ... no
+	jsr			mb_linea_struct_ptr				// ... yes, fetch return ptr
+	move.l		%d0,%a0							// return in both D0/A0
 	rte
-	.size \name, .-\name
-	.endm
 
-	MB_TRAP_STUB mb_trap1_stub, mb_trap1_handler, 1
-
-	MB_TRAP_STUB mb_trap13_stub, mb_trap13_handler, 13
-
-	MB_TRAP_STUB mb_trap14_stub, mb_trap14_handler, 14
-
-	MB_TRAP_STUB mb_trap2_stub, mb_trap2_handler, 2
-
-
-	.globl mb_spurious_stub
-	.type mb_spurious_stub, @function
-mb_spurious_stub:
-	jsr mb_spurious_irq_handler
-	rte
-	.size mb_spurious_stub, .-mb_spurious_stub
-
-	.macro MB_AUTOVEC_STUB name, handler
-	.globl \name
-	.type \name, @function
-\name:
-	movem.l %d0-%d7/%a0-%a6, -(%sp)
-	jsr \handler
-	movem.l (%sp)+, %d0-%d7/%a0-%a6
-	rte
-	.size \name, .-\name
-	.endm
-
-	MB_AUTOVEC_STUB mb_irq1_stub, mb_autovec_level1_handler
-	MB_AUTOVEC_STUB mb_irq2_stub, mb_autovec_level2_handler
-	MB_AUTOVEC_STUB mb_irq3_stub, mb_autovec_level3_handler
-	MB_AUTOVEC_STUB mb_irq4_stub, mb_autovec_level4_handler
-	MB_AUTOVEC_STUB mb_irq5_stub, mb_autovec_level5_handler
-	MB_AUTOVEC_STUB mb_irq6_stub, mb_autovec_level6_handler
-	MB_AUTOVEC_STUB mb_irq7_stub, mb_autovec_level7_handler
-
-	.macro MB_EXC_STUB name, ret
-	.globl \name
-	.type \name, @function
-\name:
-	move.l %usp, %a0
-	move.l %a0, mb_cached_entry_usp
-	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a1
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a0
-	move.l %a1, (%a0)
-	movem.l %d0-%d7/%a0-%a6, 4(%a0)
-	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
-	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
-	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
-	move.l %sp, %a1
-	move.l %a1, -(%sp)
-	jsr mb_default_exception_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-\ret
-	.size \name, .-\name
-	.endm
-
-	.macro MB_FATAL_VEC_STUB name, vecno
-	.globl \name
-	.type \name, @function
-\name:
-	move.l %usp, %a1
-	move.l %sp, %a0
-	sub.l #32, %sp
-	move.l %a1, -(%sp)
-	move.l %a0, -(%sp)
-	move.l #\vecno, -(%sp)
-	jsr mb_fatal_vector_handler
-	add.l #12, %sp
+	/*
+	 * Trap1 handler. Complicated by Super shenanigans.
+	 */
+	.globl mb_trap1
+	.globl mb_bdos_dispatch
+	.type mb_trap1, @function
+mb_trap1:
+	btst.b  	#5,(%sp)						// called from supervisor mode?
+	jbne		1f								// ... yes
+	move.l		%usp,%a0						// args on user stack
+	cmp.w		#32,(%a0)						// Super?
+	jbeq		3f								// ... yes
+	jbra		2f
 1:
-	bra 1b
+	lea			8(%sp),%a0						// args behind trap frame
+	cmp.w		#32,(%a0)						// Super?
+	jbeq		5f								// ... yes
+2:
+	pea			2(%a0)							// address of function args
+	clr.l		%d0								// clear high word
+	move.w		(%a0),%d0						// ... and get low word
+	move.l		%d0,-(%sp)						// ... of function code
+    jsr			mb_bdos_dispatch				// call dispatcher
+    addq.l		#8,%sp							// adjust stack
+    rte											// return already in D0
+	.size mb_trap1, .-mb_trap1
+
+3:												// Super from user mode
+	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
+	cmp.l		#1,(%a0)						// query?
+	jbne		4f								// ...no
+	clr.l		%d0								// SUP_USER
+	rte
+4:
+	move.l		%sp,%a0							// save SSP to return
+	move.l		%usp,%a1						// user stack
+	sub.l		#8,%a1							// ... make space for frame
+	move.w		(%a0),%d0						// copy SR
+	or.w		#0x2000,%d0						// ... with S set
+	move.w		%d0,(%a1)						// to new frame
+	move.l		2(%a0),2(%a1)					// copy PC
+	move.w		6(%a0),6(%a1)					// copy format / vector
+	move.l		%a1,%sp							// switch stacks
+	move.l		%a0,%d0							// return old SSP
+	rte
+
+5:												// Super from supervisor mode
+	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
+	cmp.l		#1,(%a0)						// query?
+	jbne		6f								// ...no
+	moveq.l		#1,%d0							// SUP_SUPER
+	rte
+6:
+	move.l		(%a0),%a0						// previous SSP with original trapframe
+	move.w		(%sp),%d0						// copy SR
+	and.w		#0xdfff,%d0						// ... with S clear
+	move.w		%d0,(%a0)						// back to old frame
+	move.l		2(%sp),2(%a0)					// copy return address
+	move.l		%a0,%sp							// swap to previous SSP
+	rte
+
+	/*
+	 * Trap handler for simple traps not requiring special handling.
+	 */
+	.macro MB_SIMPLE_TRAP name, handler
+	.globl \name
+	.globl \handler
+	.type \name, @function
+\name:
+	btst.b  	#5,(%sp)						// called from supervisor mode?
+	jbne		1f								// ... yes
+	move.l		%usp,%a0						// args on user stack
+	jbra		2f
+1:
+	lea			8(%sp),%a0						// args behind trap frame
+2:
+	pea			2(%a0)							// address of function args
+	clr.l		%d0								// clear high word
+	move.w		(%a0),%d0						// ... and get low word
+	move.l		%d0,-(%sp)						// ... of function code
+    jsr			\handler						// call dispatcher
+    addq.l		#8,%sp							// adjust stack
+    rte											// return already in D0
 	.size \name, .-\name
 	.endm
 
-	.globl mb_default_exception_stub
-	.type mb_default_exception_stub, @function
-mb_default_exception_stub:
-	move.l %usp, %a0
-	move.l %a0, mb_cached_entry_usp
-	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a1
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a0
-	move.l %a1, (%a0)
-	movem.l %d0-%d7/%a0-%a6, 4(%a0)
-	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
-	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
-	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
-	move.l %sp, %a1
-	move.l %a1, -(%sp)
-	jsr mb_default_exception_handler
-	add.l #4, %sp
-	add.l #MB_CTX_SIZE, %sp
-1:
-	bra 1b
-	.size mb_default_exception_stub, .-mb_default_exception_stub
+	MB_SIMPLE_TRAP mb_trap2, mb_vdi_dispatch
+	MB_SIMPLE_TRAP mb_trap13, mb_bios_dispatch
+	MB_SIMPLE_TRAP mb_trap14, mb_xbios_dispatch
 
-	MB_FATAL_VEC_STUB mb_bus_error_stub, 2
-	MB_FATAL_VEC_STUB mb_address_error_stub, 3
-	MB_EXC_STUB mb_illegal_instruction_stub, rte
-	MB_EXC_STUB mb_zero_divide_stub, rte
-	MB_EXC_STUB mb_chk_exception_stub, rte
-	MB_EXC_STUB mb_trapv_exception_stub, rte
-	MB_EXC_STUB mb_privilege_violation_stub, rte
-	.globl mb_trace_exception_stub
-	.type mb_trace_exception_stub, @function
-mb_trace_exception_stub:
-	move.l %usp, %a0
-	move.l %a0, mb_cached_entry_usp
-	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a1
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a0
-	move.l %a1, (%a0)
-	movem.l %d0-%d7/%a0-%a6, 4(%a0)
-	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
-	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
-	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
-	move.l %sp, %a1
-	move.l %a1, -(%sp)
-	jsr mb_trace_exception_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-	rte
-	.size mb_trace_exception_stub, .-mb_trace_exception_stub
-	.globl mb_line1010_stub
-	.type mb_line1010_stub, @function
-mb_line1010_stub:
-	move.l %usp, %a0
-	move.l %a0, mb_cached_entry_usp
-	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a1
-	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a0
-	move.l %a1, (%a0)
-	movem.l %d0-%d7/%a0-%a6, 4(%a0)
-	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
-	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
-	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
-	move.l %sp, %a1
-	move.l %a1, -(%sp)
-	jsr mb_linea_exception_handler
-	add.l #4, %sp
-	lea (%sp), %a1
-	move.w MB_CTX_FRAME_OFF(%a1), MB_CTX_SIZE(%sp)
-	move.l MB_CTX_FRAME_OFF+2(%a1), MB_CTX_SIZE+2(%sp)
-	move.w MB_CTX_FRAME_OFF+6(%a1), MB_CTX_SIZE+6(%sp)
-	movem.l 4(%a1), %d0-%d7/%a0-%a6
-	add.l #MB_CTX_SIZE, %sp
-	rte
-	.size mb_line1010_stub, .-mb_line1010_stub
+	/*
+	 * Default exception handler.
+	 */
+	.globl mb_trap_fatal
+	.globl mb_trap_panic
+	.type mb_trap_fatal, @function
+mb_trap_fatal:
+    ori         #0x0700,%sr                     // disable interrupts
+                                                // 040/060: guaranteed to be executed
+                                                // before another interrupt will be taken.
+                                                // 030: implied by similar wording to 040
+                                                // others: ???
+    movem.l     %d0-%d7/%a0-%a7, -(%sp)         // stack GP regs
+    jsr			mb_trap_panic
+    bra			.
+	.size mb_trap_fatal, .-mb_trap_fatal
 
-	MB_FATAL_VEC_STUB mb_line1111_stub, 11
-	MB_FATAL_VEC_STUB mb_reserved12_stub, 12
-	MB_FATAL_VEC_STUB mb_reserved13_stub, 13
-	MB_FATAL_VEC_STUB mb_reserved14_stub, 14
-	MB_FATAL_VEC_STUB mb_reserved15_stub, 15
 
 	.section .note.GNU-stack,"",@progbits

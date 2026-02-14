@@ -57,7 +57,7 @@ void mb_linea_init(void)
 	mb_linea_screen.planesiz = 0;
 }
 
-uint32_t mb_linea_planes_ptr(void)
+uint32_t mb_linea_struct_ptr(void)
 {
 	return (uint32_t)(uintptr_t)&mb_linea_screen.planes;
 }

@@ -24,6 +24,14 @@ static inline uint32_t mb_cpu_get_usp(void)
 	return usp;
 }
 
+static inline uint32_t mb_cpu_get_ssp(void)
+{
+	uint32_t ssp;
+
+	__asm__ volatile("move.l %%ssp, %0" : "=a"(ssp));
+	return ssp;
+}
+
 static inline void mb_cpu_set_usp(uint32_t usp)
 {
 	__asm__ volatile("move.l %0, %%usp" : : "a"(usp) : "memory");

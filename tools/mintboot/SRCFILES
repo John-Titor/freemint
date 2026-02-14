@@ -11,6 +11,7 @@ HEADER = \
 	include/mintboot/mb_lowmem.h \
 	include/mintboot/mb_fat.h \
 	include/mintboot/mb_bdos_state.h \
+	include/mintboot/mb_vdi.h \
 	include/mintboot/mb_xbios_iorec.h \
 	common/fs_fat/mb_fat_internal.h \
 	tests/mb_tests_internal.h \
@@ -32,6 +33,7 @@ COBJS_SRC = \
 	common/bios/bcostat.c \
 	common/bios/drvmap.c \
 	common/bios/kbshift.c \
+	common/vdi/dispatch.c \
 	common/xbios/dispatch.c \
 	common/xbios/initmous.c \
 	common/xbios/getrez.c \
