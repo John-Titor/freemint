@@ -1,6 +1,5 @@
 #include "mb_fat_tests_internal.h"
 
-struct mb_test_snap mb_test_snap;
 uint16_t mb_tests_drive_dev;
 char mb_tests_drive_letter;
 
@@ -29,7 +28,7 @@ void mb_tests_init_drive(void)
 	uint16_t dev;
 
 	dev = mb_common_boot_drive();
-	if (dev >= 26)
+	if (dev >= MB_MAX_DRIVES)
 		mb_panic("FAT test: boot drive invalid");
 
 	mb_tests_drive_dev = dev;
@@ -91,166 +90,6 @@ const struct mb_test_bpb *mb_tests_getbpb(void)
 	if (!bpb || bpb->recsiz != 512)
 		mb_panic("FAT test: BPB invalid");
 	return bpb;
-}
-
-static void mb_tests_snapshot_dir(uint32_t start_cluster)
-{
-	struct mb_test_snap *snap = &mb_test_snap;
-	uint32_t cluster = start_cluster;
-	uint32_t sectors = 0;
-	uint32_t offset = snap->dir_used;
-	uint32_t steps = 0;
-
-	if (snap->dir_count >= (uint16_t)(sizeof(snap->dirs) /
-					 sizeof(snap->dirs[0])))
-		mb_panic("FAT test: dir snapshot overflow");
-
-	while (cluster >= 2u && cluster < 0xfff8u) {
-		uint32_t sector;
-		uint16_t i;
-
-		if (steps++ > 0xffffu)
-			mb_panic("FAT test: dir chain loop");
-
-		if (offset + sectors + snap->spc >
-		    (uint32_t)(sizeof(snap->dir_buf) / 512u))
-			mb_panic("FAT test: dir snapshot too large");
-
-		sector = mb_fat_cluster_sector(cluster);
-		for (i = 0; i < snap->spc; i++) {
-			if (mb_fat_rwabs(0,
-					 snap->dir_buf +
-					 (offset + sectors + i) * 512u,
-					 1, sector + i, snap->dev) != 0)
-				mb_panic("FAT test: dir snapshot read");
-		}
-		sectors += snap->spc;
-		cluster = mb_fat_read_fat(cluster);
-	}
-
-	snap->dirs[snap->dir_count].start_cluster = start_cluster;
-	snap->dirs[snap->dir_count].sectors = sectors;
-	snap->dirs[snap->dir_count].buf_offset = offset;
-	snap->dir_count++;
-	snap->dir_used += sectors;
-}
-
-void mb_tests_snapshot_fs(uint16_t dev)
-{
-	struct mb_test_snap *snap = &mb_test_snap;
-	struct mb_fat_dirent ent;
-	uint32_t total_fat_sectors;
-	uint32_t i;
-
-	if (mb_fat_mount(dev) != 0 || !mb_fat_vol)
-		mb_panic("FAT test: snapshot mount failed");
-
-	snap->dev = dev;
-	snap->recsiz = mb_fat_vol->recsiz;
-	snap->spc = mb_fat_vol->spc;
-	snap->num_fats = mb_fat_vol->num_fats;
-	snap->fat_sectors = mb_fat_vol->fat_sectors;
-	snap->fat_start = mb_fat_vol->fat_start;
-	snap->root_start = mb_fat_vol->root_start;
-	snap->root_sectors = mb_fat_vol->root_sectors;
-	snap->dir_count = 0;
-	snap->dir_used = 0;
-
-	if (snap->recsiz != 512)
-		mb_panic("FAT test: snapshot recsiz=%u", snap->recsiz);
-
-	total_fat_sectors = (uint32_t)snap->num_fats * snap->fat_sectors;
-	if (total_fat_sectors > (uint32_t)(sizeof(snap->fat_buf) / 512u))
-		mb_panic("FAT test: snapshot FAT too large");
-	if (snap->root_sectors > (uint32_t)(sizeof(snap->root_buf) / 512u))
-		mb_panic("FAT test: snapshot root too large");
-
-	for (i = 0; i < total_fat_sectors; i++) {
-		if (mb_fat_rwabs(0, snap->fat_buf + i * 512u, 1,
-				 snap->fat_start + i, dev) != 0)
-			mb_panic("FAT test: snapshot FAT read");
-	}
-
-	for (i = 0; i < snap->root_sectors; i++) {
-		if (mb_fat_rwabs(0, snap->root_buf + i * 512u, 1,
-				 snap->root_start + i, dev) != 0)
-			mb_panic("FAT test: snapshot root read");
-	}
-
-	for (i = 0; i < (snap->root_sectors * 512u) / 32u; i++) {
-		char name[14];
-		uint32_t cluster;
-
-		if (mb_fat_read_dirent(0, i, &ent) != 0)
-			mb_panic("FAT test: snapshot root dirent");
-		if (ent.name[0] == 0x00)
-			break;
-		if (ent.name[0] == 0xe5)
-			continue;
-		if ((ent.attr & MB_FAT_ATTR_DIR) == 0)
-			continue;
-		if (ent.attr & MB_FAT_ATTR_LABEL)
-			continue;
-		mb_fat_name_from_dirent(&ent, name);
-		if ((name[0] == '.' && name[1] == '\0') ||
-		    (name[0] == '.' && name[1] == '.' && name[2] == '\0'))
-			continue;
-		cluster = ((uint32_t)ent.start_hi << 16) | ent.start_lo;
-		if (cluster < 2u)
-			continue;
-		mb_tests_snapshot_dir(cluster);
-	}
-}
-
-void mb_tests_restore_fs(void)
-{
-	struct mb_test_snap *snap = &mb_test_snap;
-	uint32_t total_fat_sectors;
-	uint32_t i;
-	uint16_t d;
-
-	if (mb_fat_mount(snap->dev) != 0 || !mb_fat_vol)
-		mb_panic("FAT test: restore mount failed");
-
-	d = snap->dev;
-	total_fat_sectors = (uint32_t)snap->num_fats * snap->fat_sectors;
-	for (i = 0; i < total_fat_sectors; i++) {
-		if (mb_fat_rwabs(1, snap->fat_buf + i * 512u, 1,
-				 snap->fat_start + i, d) != 0)
-			mb_panic("FAT test: restore FAT write");
-	}
-
-	for (i = 0; i < snap->root_sectors; i++) {
-		if (mb_fat_rwabs(1, snap->root_buf + i * 512u, 1,
-				 snap->root_start + i, d) != 0)
-			mb_panic("FAT test: restore root write");
-	}
-
-	for (i = 0; i < snap->dir_count; i++) {
-		uint32_t cluster = snap->dirs[i].start_cluster;
-		uint32_t sector_off = snap->dirs[i].buf_offset;
-		uint32_t sectors_left = snap->dirs[i].sectors;
-		uint32_t steps = 0;
-
-		while (cluster >= 2u && cluster < 0xfff8u && sectors_left) {
-			uint32_t sector = mb_fat_cluster_sector(cluster);
-			uint16_t j;
-
-			if (steps++ > 0xffffu)
-				mb_panic("FAT test: restore chain loop");
-
-			for (j = 0; j < snap->spc && sectors_left; j++) {
-				if (mb_fat_rwabs(1,
-						 snap->dir_buf +
-						 (sector_off * 512u),
-						 1, sector + j, d) != 0)
-					mb_panic("FAT test: restore dir write");
-				sector_off++;
-				sectors_left--;
-			}
-			cluster = mb_fat_read_fat(cluster);
-		}
-	}
 }
 
 void mb_tests_set_readonly(const char name83[11])
@@ -332,8 +171,8 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
 	mb_tests_make_path(t->fdelete_dir_target, sizeof(t->fdelete_dir_target),
 			   mb_tests_drive_letter, "SUBDIR");
 
-	if (mb_tests_drive_letter == 'Z')
-		other_drive = 'Y';
+	if (mb_tests_drive_letter == (char)('A' + (MB_MAX_DRIVES - 1u)))
+		other_drive = 'A';
 	else
 		other_drive = (char)(mb_tests_drive_letter + 1);
 	mb_tests_make_path(t->wrong_drive, sizeof(t->wrong_drive), other_drive,

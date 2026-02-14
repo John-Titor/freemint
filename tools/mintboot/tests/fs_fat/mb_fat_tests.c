@@ -7,7 +7,6 @@ void mb_fat_run_tests(void)
 	const struct mb_test_bpb *bpb;
 
 	mb_tests_init_drive();
-	mb_tests_snapshot_fs(mb_tests_drive_dev);
 	mb_fat_tests_init_context(&t);
 
 	mb_log_puts("mintboot: FAT test start\n");
@@ -22,5 +21,4 @@ void mb_fat_run_tests(void)
 	mb_fat_tests_phase_dir_integrity(&t);
 
 	mb_log_puts("mintboot: FAT test done\n");
-	mb_tests_restore_fs();
 }

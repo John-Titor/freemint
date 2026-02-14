@@ -45,7 +45,7 @@ long mb_bios_getbpb(uint16_t dev)
 	struct mb_rom_bpb *bpb;
 	static struct mb_rom_bpb mb_bpb;
 
-	if (dev > 25)
+	if (dev >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 
 	if (mb_rom_dispatch.rwabs(0, sector, 1, 0, dev) != 0)

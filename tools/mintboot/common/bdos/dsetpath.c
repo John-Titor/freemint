@@ -68,7 +68,7 @@ lookup_path:
 			return MB_ERR_PTHNF;
 	}
 
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		return MB_ERR_PTHNF;
 
 	if (!(ent.attr & 0x10u))

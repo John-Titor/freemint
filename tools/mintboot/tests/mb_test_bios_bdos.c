@@ -1,4 +1,5 @@
 #include "mintboot/mb_common.h"
+#include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_errors.h"
@@ -25,7 +26,7 @@ void mb_tests_bios_bdos(void)
 
 	drive = (uint16_t)Dgetdrv();
 	drvmap = Drvmap();
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		mb_panic("BIOS/BDOS test: current drive=%u", (uint32_t)drive);
 	if ((drvmap & (1L << drive)) == 0)
 		mb_panic("BIOS/BDOS test: drvmap=%08x drive=%u",

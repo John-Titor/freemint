@@ -81,9 +81,10 @@ static const char *mb_fat_resolve_path(uint16_t dev_in, const char *path,
 
 	if (p[1] == ':') {
 		char drive = p[0];
+		const char drive_max = (char)('A' + (MB_MAX_DRIVES - 1u));
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
-		if (drive < 'A' || drive > 'Z') {
+		if (drive < 'A' || drive > drive_max) {
 			if (dev_out)
 				*dev_out = 0xffffu;
 			return NULL;

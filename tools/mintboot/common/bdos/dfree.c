@@ -4,7 +4,7 @@
 
 long mb_bdos_dfree(uint32_t buf, uint16_t d)
 {
-	if (d > 25)
+	if (d >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 	return mb_fat_dfree(buf, d);
 }

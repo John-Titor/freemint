@@ -5,7 +5,7 @@
 
 struct mb_fat_volume *mb_fat_vol;
 struct mb_fat_volume mb_fat_vols[MB_FAT_MAX_VOLS];
-static int8_t mb_fat_dev_map[26];
+static int8_t mb_fat_dev_map[MB_MAX_DRIVES];
 static uint8_t mb_fat_vol_rr;
 static uint8_t mb_fat_dev_map_init;
 struct mb_fat_search mb_fat_search[MB_FAT_MAX_SEARCH];
@@ -41,7 +41,7 @@ int mb_fat_mount(uint16_t dev)
 	int slot = -1;
 	int i;
 
-	if (dev >= 26)
+	if (dev >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 
 	if (!mb_fat_dev_map_init) {
@@ -90,7 +90,8 @@ int mb_fat_mount(uint16_t dev)
 		slot = mb_fat_vol_rr++ % MB_FAT_MAX_VOLS;
 		if (mb_fat_vols[slot].valid) {
 			uint8_t old_dev = mb_fat_vols[slot].dev;
-			if (old_dev < 26 && mb_fat_dev_map[old_dev] == slot)
+			if (old_dev < MB_MAX_DRIVES &&
+			    mb_fat_dev_map[old_dev] == slot)
 				mb_fat_dev_map[old_dev] = -1;
 		}
 		mb_fat_vols[slot].valid = 0;
@@ -410,9 +411,10 @@ int mb_fat_parse_drive(const char *path, uint16_t *dev_out)
 
 	if (path[1] == ':') {
 		char drive = path[0];
+		const char drive_max = (char)('A' + (MB_MAX_DRIVES - 1u));
 		if (drive >= 'a' && drive <= 'z')
 			drive = (char)(drive - 'a' + 'A');
-		if (drive < 'A' || drive > 'Z')
+		if (drive < 'A' || drive > drive_max)
 			return MB_ERR_DRIVE;
 		dev = (uint16_t)(drive - 'A');
 	}

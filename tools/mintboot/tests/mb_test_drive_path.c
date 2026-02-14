@@ -16,10 +16,10 @@ void mb_tests_drive_path(void)
 	uint32_t i;
 
 	dev = mb_common_boot_drive();
-	if (dev >= 26)
+	if (dev >= MB_MAX_DRIVES)
 		mb_panic("Drive tests: invalid boot drive");
 	map = (uint32_t)mb_rom_dispatch.drvmap();
-	for (i = 0; i < 26; i++) {
+	for (i = 0; i < MB_MAX_DRIVES; i++) {
 		if ((map & (1u << i)) == 0) {
 			invalid_drive = (uint16_t)i;
 			break;
@@ -118,7 +118,7 @@ void mb_tests_drive_path(void)
 	if (rc != 0)
 		mb_panic("Dgetpath current rc=%d", (int)rc);
 
-	rc = Dgetpath(buf, 27);
+	rc = Dgetpath(buf, (uint16_t)(MB_MAX_DRIVES + 1u));
 	if (rc != MB_ERR_DRIVE)
 		mb_panic("Dgetpath bad drive rc=%d", (int)rc);
 }

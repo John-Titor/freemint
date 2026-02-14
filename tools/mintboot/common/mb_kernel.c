@@ -58,7 +58,7 @@ static int mb_find_boot_drive(char *drive_out)
 {
 	uint16_t boot_drive = mb_common_boot_drive();
 
-	if (boot_drive >= 26)
+	if (boot_drive >= MB_MAX_DRIVES)
 		return -1;
 	*drive_out = (char)('A' + boot_drive);
 	return 0;

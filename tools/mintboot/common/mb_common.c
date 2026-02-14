@@ -70,14 +70,16 @@ __attribute__((weak)) void mb_board_init_cookies(void)
 static void mb_common_init_boot_drive(void)
 {
 	uint32_t map = (uint32_t)Drvmap();
+	const uint32_t drive_mask = (1u << MB_MAX_DRIVES) - 1u;
 	uint16_t boot_drive = 0xffffu;
 	uint16_t i;
 
+	map &= drive_mask;
 	*mb_lm_drvbits() = map;
 	if (map == 0)
 		goto out;
 
-	for (i = 0; i < 26; i++) {
+	for (i = 0; i < MB_MAX_DRIVES; i++) {
 		if (map & (1u << i)) {
 			boot_drive = i;
 			break;
@@ -85,7 +87,7 @@ static void mb_common_init_boot_drive(void)
 	}
 out:
 	*mb_lm_bootdev() = boot_drive;
-	if (boot_drive < 26)
+	if (boot_drive < MB_MAX_DRIVES)
 		mb_bdos_set_current_drive(boot_drive);
 }
 

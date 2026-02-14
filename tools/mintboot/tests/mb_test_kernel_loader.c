@@ -1,4 +1,5 @@
 #include "mintboot/mb_common.h"
+#include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
 #include "mb_tests_internal.h"
 
@@ -229,7 +230,7 @@ void mb_tests_kernel_loader(void)
 	mb_cmdline[0] = '\0';
 
 	dev = mb_common_boot_drive();
-	if (dev >= 26)
+	if (dev >= MB_MAX_DRIVES)
 		mb_panic("Kernel test: invalid boot drive");
 	drive = (char)('A' + dev);
 	kernel_path[0] = drive;

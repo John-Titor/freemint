@@ -5,6 +5,8 @@
 
 #include "mintboot/mb_errors.h"
 
+#define MB_MAX_DRIVES 4u
+
 struct mb_rom_dispatch {
 	long (*bconstat)(uint16_t dev);
 	long (*bconin)(uint16_t dev);

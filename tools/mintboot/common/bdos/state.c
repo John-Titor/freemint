@@ -10,11 +10,11 @@
 static uint8_t mb_default_dta[MB_EMUTOS_DTA_SIZE];
 static void *mb_bdos_dta = mb_default_dta;
 static uint16_t mb_current_drive;
-static char mb_current_path[26][MB_GEMDOS_PATH_MAX];
+static char mb_current_path[MB_MAX_DRIVES][MB_GEMDOS_PATH_MAX];
 
 static void mb_set_default_path(uint16_t drive)
 {
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		return;
 	if (mb_current_path[drive][0])
 		return;
@@ -35,7 +35,7 @@ uint16_t mb_bdos_get_current_drive(void)
 
 const char *mb_bdos_get_current_path(uint16_t drive)
 {
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		return "\\";
 	if (!mb_current_path[drive][0])
 		return "\\";
@@ -48,7 +48,7 @@ int mb_bdos_set_current_path(uint16_t drive, const char *path)
 
 	if (!path)
 		return -1;
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		return -1;
 	len = strlen(path);
 	if (len + 1 > sizeof(mb_current_path[0]))

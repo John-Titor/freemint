@@ -111,7 +111,7 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 	if (!ramdisk)
 		return -1;
 
-	if (dev > 25)
+	if (dev >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 
 	if (dev != 2)

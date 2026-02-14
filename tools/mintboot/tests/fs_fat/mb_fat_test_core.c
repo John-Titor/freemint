@@ -90,7 +90,7 @@ void mb_fat_tests_phase_core_helpers(struct mb_fat_test_ctx *t)
 
 	mb_fat_vol = saved_vol;
 
-	if (mb_fat_mount(26) != MB_ERR_DRIVE)
+	if (mb_fat_mount((uint16_t)MB_MAX_DRIVES) != MB_ERR_DRIVE)
 		mb_panic("FAT core: mount drive range");
 	if (mb_fat_rwabs(0, raw, 1, 0x10000u, 2) == 0)
 		mb_panic("FAT core: rwabs recno range");

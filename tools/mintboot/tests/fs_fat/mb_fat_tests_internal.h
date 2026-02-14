@@ -30,29 +30,6 @@ struct mb_test_bpb {
 	int16_t bflags;
 };
 
-struct mb_test_dir_snap {
-	uint32_t start_cluster;
-	uint32_t sectors;
-	uint32_t buf_offset;
-};
-
-struct mb_test_snap {
-	uint16_t dev;
-	uint16_t recsiz;
-	uint16_t spc;
-	uint16_t num_fats;
-	uint16_t fat_sectors;
-	uint32_t fat_start;
-	uint32_t root_start;
-	uint32_t root_sectors;
-	uint16_t dir_count;
-	uint32_t dir_used;
-	struct mb_test_dir_snap dirs[8];
-	uint8_t fat_buf[512 * 512];
-	uint8_t root_buf[512 * 512];
-	uint8_t dir_buf[256 * 512];
-};
-
 struct mb_fat_test_ctx {
 	char spec[32];
 	char missing[32];
@@ -84,7 +61,6 @@ struct mb_fat_test_ctx {
 	struct mb_fat_check_report report;
 };
 
-extern struct mb_test_snap mb_test_snap;
 extern uint16_t mb_tests_drive_dev;
 extern char mb_tests_drive_letter;
 
@@ -94,8 +70,6 @@ void mb_tests_init_drive(void);
 void mb_tests_make_path(char *out, uint32_t outsz, char drive, const char *suffix);
 void mb_tests_make_noslash_path(char *out, uint32_t outsz, char drive, const char *suffix);
 const struct mb_test_bpb *mb_tests_getbpb(void);
-void mb_tests_snapshot_fs(uint16_t dev);
-void mb_tests_restore_fs(void);
 void mb_tests_set_readonly(const char name83[11]);
 void mb_fat_tests_init_context(struct mb_fat_test_ctx *t);
 

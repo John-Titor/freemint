@@ -3,6 +3,8 @@
 
 #include "mintboot/mb_lib.h"
 
+#ifdef MB_WITH_FAT_CHECK
+
 #define MB_FAT_MAX_CLUSTERS 65536
 #define MB_FAT_MAX_DIR_DEPTH 64
 
@@ -202,7 +204,7 @@ long mb_fat_check(uint16_t dev, struct mb_fat_check_report *report)
 	if (report)
 		memset(report, 0, sizeof(*report));
 
-	if (dev > 25)
+	if (dev >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 
 	if (mb_fat_mount(dev) != 0)
@@ -254,3 +256,13 @@ long mb_fat_check(uint16_t dev, struct mb_fat_check_report *report)
 
 	return 0;
 }
+
+#else
+long mb_fat_check(uint16_t dev, struct mb_fat_check_report *report)
+{
+	(void)dev;
+	(void)report;
+	return 0;
+}
+
+#endif // MB_WITH_FAT_CHECK

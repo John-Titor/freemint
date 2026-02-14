@@ -14,7 +14,7 @@ long mb_bdos_dgetpath(char *buf, uint16_t drive)
 		drive = mb_bdos_get_current_drive();
 	else
 		drive = (uint16_t)(drive - 1);
-	if (drive >= 26)
+	if (drive >= MB_MAX_DRIVES)
 		return MB_ERR_DRIVE;
 
 	path = mb_bdos_get_current_path(drive);
