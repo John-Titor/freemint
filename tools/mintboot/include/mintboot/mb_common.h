@@ -31,9 +31,9 @@ void mb_log_hex32(uint32_t value);
 void mb_log_hex64(uint64_t value);
 void mb_log_u32(uint32_t value);
 void mb_log_i32(int32_t value);
-void mb_log_printf(const char *fmt, ...);
-void mb_log_vprintf(const char *fmt, va_list ap);
-void mb_panic(const char *fmt, ...);
+void mb_log_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void mb_log_vprintf(const char *fmt, va_list ap) __attribute__((format(printf, 1, 0)));
+void mb_panic(const char *fmt, ...) __attribute__((format(printf, 1, 2))) __attribute__((noreturn));
 
 struct mb_exception_context *mb_last_exception_context(void);
 uint32_t mb_last_user_usp(void);
