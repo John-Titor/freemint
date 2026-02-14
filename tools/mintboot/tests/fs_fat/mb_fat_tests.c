@@ -10,7 +10,7 @@ void mb_fat_run_tests(void)
 	mb_tests_snapshot_fs(mb_tests_drive_dev);
 	mb_fat_tests_init_context(&t);
 
-	mb_log_puts("mintboot: FAT test start\r\n");
+	mb_log_puts("mintboot: FAT test start\n");
 	bpb = mb_tests_getbpb();
 	if (bpb->clsiz <= 0 || bpb->rdlen <= 0 || bpb->datrec <= 0 ||
 	    bpb->numcl == 0)
@@ -21,6 +21,6 @@ void mb_fat_run_tests(void)
 	mb_fat_tests_phase_rename_attr_seek(&t);
 	mb_fat_tests_phase_dir_integrity(&t);
 
-	mb_log_puts("mintboot: FAT test done\r\n");
+	mb_log_puts("mintboot: FAT test done\n");
 	mb_tests_restore_fs();
 }

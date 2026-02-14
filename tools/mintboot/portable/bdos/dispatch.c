@@ -52,7 +52,7 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_bdos_fcntl(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg16(args, 3));
 	default:
 		if (fnum != 0xffffu)
-			mb_log_printf("bdos: unhandled 0x%04x\r\n", (uint32_t)fnum);
+			mb_log_printf("bdos: unhandled 0x%04x\n", (uint32_t)fnum);
 		return MB_ERR_INVFN;
 	}
 }

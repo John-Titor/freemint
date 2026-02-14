@@ -49,7 +49,7 @@ long mb_xbios_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_xbios_vsetscreen(mb_arg32w(args, 0), mb_arg32w(args, 2),
 				 mb_arg16(args, 4), mb_arg16(args, 5));
 	default:
-		mb_log_printf("xbios: unhandled 0x%04x\r\n", (uint32_t)fnum);
+		mb_log_printf("xbios: unhandled 0x%04x\n", (uint32_t)fnum);
 		return MB_ERR_INVFN;
 	}
 }

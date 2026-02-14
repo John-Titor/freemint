@@ -3,6 +3,7 @@
 #include "mintboot/mb_portable.h"
 #include "mintboot/mb_kernel.h"
 #include "mintboot/mb_osbind.h"
+#include "mintboot/mb_cpu.h"
 
 #include <stdarg.h>
 
@@ -279,26 +280,26 @@ void mb_panic(const char *fmt, ...)
 	uint32_t entry_sp = 0;
 	uint32_t ssp = 0;
 	uint32_t vbr = 0;
-	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
+	ssp = mb_cpu_get_sp();
 	if (!mb_user_mode) {
-		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
-		__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
+		usp = mb_cpu_get_usp();
+		vbr = mb_cpu_get_vbr();
 	}
 	usp_cached = mb_last_user_usp();
 	entry_usp = mb_last_entry_usp();
 	entry_sp = mb_last_entry_sp();
 	usp_dump = usp ? usp : usp_cached;
 
-	mb_log_puts("\r\nmintboot panic: ");
+	mb_log_puts("\nmintboot panic: ");
 	va_start(ap, fmt);
 	mb_log_vprintf(fmt, ap);
 	va_end(ap);
-	mb_log_puts("\r\n");
+	mb_log_puts("\n");
 
 	ctx = mb_last_exception_context();
-	mb_log_printf("  USP=%08x USP(cached)=%08x SSP=%08x\r\n",
+	mb_log_printf("  USP=%08x USP(cached)=%08x SSP=%08x\n",
 		      usp, usp_cached, ssp);
-	mb_log_printf("  Entry USP=%08x Entry SP=%08x\r\n",
+	mb_log_printf("  Entry USP=%08x Entry SP=%08x\n",
 		      entry_usp, entry_sp);
 	if (ctx) {
 		uint32_t pc_raw = ctx->frame.pc;
@@ -331,30 +332,30 @@ void mb_panic(const char *fmt, ...)
 		} else if (pc < mb_end) {
 			where = "mintboot";
 		}
-		mb_log_printf("  SR=%04x PC=%08x FMT=%04x\r\n",
+		mb_log_printf("  SR=%04x PC=%08x FMT=%04x\n",
 			      (uint32_t)ctx->frame.sr,
 			      pc,
 			      (uint32_t)ctx->frame.format);
 		if (pc != pc_raw)
-			mb_log_printf("  PC(raw)=%08x (wordswapped)\r\n", pc_raw);
-		mb_log_printf("  Frame decode: fmt=%x (%s) vec_off=%03x words=%u\r\n",
+			mb_log_printf("  PC(raw)=%08x (wordswapped)\n", pc_raw);
+		mb_log_printf("  Frame decode: fmt=%x (%s) vec_off=%03x words=%u\n",
 			      (uint32_t)frame.fmt_id, frame.name,
 			      (uint32_t)frame.vec_off, frame.words);
 		if (frame.has_fault_addr &&
 		    sp + 2u * (frame.fault_addr_word + 2u) <= phystop) {
 			uint32_t fault_addr = ((uint32_t)raw[frame.fault_addr_word] << 16) |
 					      (uint32_t)raw[frame.fault_addr_word + 1u];
-			mb_log_printf("  Fault addr=%08x\r\n", fault_addr);
+			mb_log_printf("  Fault addr=%08x\n", fault_addr);
 		}
-		mb_log_printf("  VBR=%08x VECTOR=%u\r\n", vbr, (uint32_t)vec);
+		mb_log_printf("  VBR=%08x VECTOR=%u\n", vbr, (uint32_t)vec);
 		if (vec != 0xffffu) {
 			uint32_t *vt = (uint32_t *)(uintptr_t)(vbr + ((uint32_t)vec << 2));
 			vec_entry = *vt;
-			mb_log_printf("  VEC[%u]=%08x\r\n", (uint32_t)vec, vec_entry);
+			mb_log_printf("  VEC[%u]=%08x\n", (uint32_t)vec, vec_entry);
 		}
-		mb_log_printf("  PC region: %s\r\n", where);
-		mb_log_printf("  PHYTOP=%08x SP=%08x\r\n", phystop, sp);
-		mb_log_printf("  SP region: %s\r\n",
+		mb_log_printf("  PC region: %s\n", where);
+		mb_log_printf("  PHYTOP=%08x SP=%08x\n", phystop, sp);
+		mb_log_printf("  SP region: %s\n",
 			      (sp < phystop) ? "st-ram" : "invalid");
 		if (pc < phystop) {
 			uint32_t pc_start = (pc >= 8u) ? (pc - 8u) : 0u;
@@ -367,21 +368,21 @@ void mb_panic(const char *fmt, ...)
 			count = (pc_end - pc_start) / 2u;
 			code = (uint16_t *)(uintptr_t)pc_start;
 
-			mb_log_printf("  PC words: pc=%08x start=%08x end=%08x\r\n",
+			mb_log_printf("  PC words: pc=%08x start=%08x end=%08x\n",
 				      pc, pc_start, pc_end);
 			mb_log_puts("  Code:");
 			for (i = 0; i < (int)count; i++) {
 				uint32_t addr = pc_start + ((uint32_t)i * 2u);
 
 				if ((i % 6) == 0)
-					mb_log_puts("\r\n   ");
+					mb_log_puts("\n   ");
 				if (addr == pc)
 					mb_log_puts(">");
 				else
 					mb_log_puts(" ");
 				mb_log_printf("%04x", (uint32_t)code[i]);
 			}
-			mb_log_puts("\r\n");
+			mb_log_puts("\n");
 		}
 		if (sp < phystop) {
 			uint32_t avail_words = (phystop - sp) / 2u;
@@ -391,14 +392,14 @@ void mb_panic(const char *fmt, ...)
 			mb_log_puts("  Frame words:");
 			for (i = 0; i < (int)dump_words; i++) {
 				if ((i % 6) == 0)
-					mb_log_puts("\r\n   ");
+					mb_log_puts("\n   ");
 				mb_log_printf(" %04x", (uint32_t)raw[i]);
 			}
 			if (dump_words < want_words)
 				mb_log_puts(" (partial)");
-			mb_log_puts("\r\n");
+			mb_log_puts("\n");
 		} else {
-			mb_log_puts("  Frame words: unavailable\r\n");
+			mb_log_puts("  Frame words: unavailable\n");
 		}
 		if (sp < phystop) {
 			uint32_t avail_words = (phystop - sp) / 2u;
@@ -407,24 +408,24 @@ void mb_panic(const char *fmt, ...)
 			mb_log_puts("  SSP words:");
 			for (i = 0; i < (int)dump_words; i++) {
 				if ((i % 8) == 0)
-					mb_log_puts("\r\n   ");
+					mb_log_puts("\n   ");
 				mb_log_printf(" %04x", (uint32_t)raw[i]);
 			}
 			if (dump_words < 48u)
 				mb_log_puts(" (partial)");
-			mb_log_puts("\r\n");
+			mb_log_puts("\n");
 		} else {
-			mb_log_puts("  SSP words: unavailable\r\n");
+			mb_log_puts("  SSP words: unavailable\n");
 		}
 		if (frame.words && sp + 2u * (frame.words + 16u) <= phystop) {
 			uint16_t *post = raw + frame.words;
 			mb_log_puts("  Post-frame words:");
 			for (i = 0; i < 16; i++) {
 				if ((i % 8) == 0)
-					mb_log_puts("\r\n   ");
+					mb_log_puts("\n   ");
 				mb_log_printf(" %04x", (uint32_t)post[i]);
 			}
-			mb_log_puts("\r\n");
+			mb_log_puts("\n");
 			if (sp + 2u * (frame.words + 32u) <= phystop) {
 				uint32_t *pdw = (uint32_t *)(uintptr_t)post;
 				int printed = 0;
@@ -439,7 +440,7 @@ void mb_panic(const char *fmt, ...)
 				}
 				if (!printed)
 					mb_log_puts(" none");
-				mb_log_puts("\r\n");
+				mb_log_puts("\n");
 			}
 		}
 		if (sp + 4u * 24u <= phystop) {
@@ -456,7 +457,7 @@ void mb_panic(const char *fmt, ...)
 			}
 			if (!printed)
 				mb_log_puts(" none");
-			mb_log_puts("\r\n");
+			mb_log_puts("\n");
 		}
 		if (usp_dump && usp_dump < phystop) {
 			uint32_t start = (usp_dump >= 2u * 16u) ? (usp_dump - 2u * 16u) : 0u;
@@ -469,39 +470,39 @@ void mb_panic(const char *fmt, ...)
 			if (end > start + 1u) {
 				count = (end - start) / 2u;
 				u = (uint16_t *)(uintptr_t)start;
-				mb_log_printf("  USP window (%s): USP=%08x start=%08x end=%08x\r\n",
+				mb_log_printf("  USP window (%s): USP=%08x start=%08x end=%08x\n",
 					      usp ? "live" : "cached",
 					      usp_dump, start, end);
 				mb_log_puts("  USP words (around):");
 				for (i = 0; i < (int)count; i++) {
 					if ((i % 8) == 0)
-						mb_log_puts("\r\n   ");
+						mb_log_puts("\n   ");
 					if (start + (uint32_t)(i * 2) == usp_dump)
 						mb_log_puts(">");
 					else
 						mb_log_puts(" ");
 					mb_log_printf("%04x", (uint32_t)u[i]);
 				}
-				mb_log_puts("\r\n");
+				mb_log_puts("\n");
 			}
 		}
-		mb_log_printf("  D0=%08x (%d)\r\n", ctx->d[0], (int32_t)ctx->d[0]);
-		mb_log_printf("  D1=%08x (%d)\r\n", ctx->d[1], (int32_t)ctx->d[1]);
-		mb_log_printf("  D2=%08x (%d)\r\n", ctx->d[2], (int32_t)ctx->d[2]);
-		mb_log_printf("  D3=%08x (%d)\r\n", ctx->d[3], (int32_t)ctx->d[3]);
-		mb_log_printf("  D4=%08x (%d)\r\n", ctx->d[4], (int32_t)ctx->d[4]);
-		mb_log_printf("  D5=%08x (%d)\r\n", ctx->d[5], (int32_t)ctx->d[5]);
-		mb_log_printf("  D6=%08x (%d)\r\n", ctx->d[6], (int32_t)ctx->d[6]);
-		mb_log_printf("  D7=%08x (%d)\r\n", ctx->d[7], (int32_t)ctx->d[7]);
-		mb_log_printf("  A0=%08x (%u)\r\n", ctx->a[0], ctx->a[0]);
-		mb_log_printf("  A1=%08x (%u)\r\n", ctx->a[1], ctx->a[1]);
-		mb_log_printf("  A2=%08x (%u)\r\n", ctx->a[2], ctx->a[2]);
-		mb_log_printf("  A3=%08x (%u)\r\n", ctx->a[3], ctx->a[3]);
-		mb_log_printf("  A4=%08x (%u)\r\n", ctx->a[4], ctx->a[4]);
-		mb_log_printf("  A5=%08x (%u)\r\n", ctx->a[5], ctx->a[5]);
-		mb_log_printf("  A6=%08x (%u)\r\n", ctx->a[6], ctx->a[6]);
+		mb_log_printf("  D0=%08x (%d)\n", ctx->d[0], (int32_t)ctx->d[0]);
+		mb_log_printf("  D1=%08x (%d)\n", ctx->d[1], (int32_t)ctx->d[1]);
+		mb_log_printf("  D2=%08x (%d)\n", ctx->d[2], (int32_t)ctx->d[2]);
+		mb_log_printf("  D3=%08x (%d)\n", ctx->d[3], (int32_t)ctx->d[3]);
+		mb_log_printf("  D4=%08x (%d)\n", ctx->d[4], (int32_t)ctx->d[4]);
+		mb_log_printf("  D5=%08x (%d)\n", ctx->d[5], (int32_t)ctx->d[5]);
+		mb_log_printf("  D6=%08x (%d)\n", ctx->d[6], (int32_t)ctx->d[6]);
+		mb_log_printf("  D7=%08x (%d)\n", ctx->d[7], (int32_t)ctx->d[7]);
+		mb_log_printf("  A0=%08x (%u)\n", ctx->a[0], ctx->a[0]);
+		mb_log_printf("  A1=%08x (%u)\n", ctx->a[1], ctx->a[1]);
+		mb_log_printf("  A2=%08x (%u)\n", ctx->a[2], ctx->a[2]);
+		mb_log_printf("  A3=%08x (%u)\n", ctx->a[3], ctx->a[3]);
+		mb_log_printf("  A4=%08x (%u)\n", ctx->a[4], ctx->a[4]);
+		mb_log_printf("  A5=%08x (%u)\n", ctx->a[5], ctx->a[5]);
+		mb_log_printf("  A6=%08x (%u)\n", ctx->a[6], ctx->a[6]);
 	} else {
-		mb_log_puts("  no exception context\r\n");
+		mb_log_puts("  no exception context\n");
 	}
 
 	mb_board_exit(1);

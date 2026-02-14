@@ -4,6 +4,7 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_linea.h"
 #include "mintboot/mb_trap_helpers.h"
+#include "mintboot/mb_cpu.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -22,7 +23,7 @@ static inline uint16_t *mb_trap_args(struct mb_exception_context *ctx)
 	uint32_t sp = ctx->sp;
 
 	if ((ctx->frame.sr & 0x2000u) == 0) {
-		__asm__ volatile("move.l %%usp, %0" : "=a"(sp));
+		sp = mb_cpu_get_usp();
 		return (uint16_t *)(uintptr_t)sp;
 	}
 
@@ -77,14 +78,14 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 	uint32_t usp = 0;
 
 	mb_user_mode = (ctx->frame.sr & 0x2000u) ? 0u : 1u;
-	__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+	usp = mb_cpu_get_usp();
 	mb_cached_user_usp = usp;
 
-	mb_log_printf("trap1: fnum=%04x args=%04x %04x %04x %04x %04x %04x\r\n",
+	mb_log_printf("trap1: fnum=%04x args=%04x %04x %04x %04x %04x %04x\n",
 		      (uint32_t)fnum,
 		      (uint32_t)args[1], (uint32_t)args[2], (uint32_t)args[3],
 		      (uint32_t)args[4], (uint32_t)args[5], (uint32_t)args[6]);
-	mb_log_printf("trap1: sr=%04x s=%u\r\n",
+	mb_log_printf("trap1: sr=%04x s=%u\n",
 		      (uint32_t)ctx->frame.sr,
 		      (ctx->frame.sr & 0x2000u) ? 1u : 0u);
 
@@ -94,7 +95,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 		uint16_t sbit = (uint16_t)(sr & 0x2000u);
 		uint32_t old_ssp = ctx->sp + (uint32_t)sizeof(struct mb_exception_frame);
 
-		mb_log_printf("Super(newsp=%08x) sr=%04x s=%u usp=%08x\r\n",
+		mb_log_printf("Super(newsp=%08x) sr=%04x s=%u usp=%08x\n",
 			      newsp, sr, sbit ? 1u : 0u, usp);
 
 		if (newsp == 1u) {
@@ -128,7 +129,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 			 */
 			if (!mb_super_stack_reasonable(user_sp)) {
 				user_sp = newsp;
-				__asm__ volatile("move.l %0, %%usp" : : "a"(user_sp));
+				mb_cpu_set_usp(user_sp);
 				usp = user_sp;
 			}
 			if (mb_super_prepare_return(ctx, newsp, (uint16_t)(sr & 0xdfffu)) < 0)
@@ -144,7 +145,7 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 	ret = (uint32_t)mb_bdos_dispatch(fnum, args + 1);
 	ctx->d[0] = ret;
 out:
-	mb_log_printf("trap1: fnum=%04x ret=%08x\r\n",
+	mb_log_printf("trap1: fnum=%04x ret=%08x\n",
 		      (uint32_t)fnum, ctx->d[0]);
 }
 
@@ -391,7 +392,7 @@ void mb_fatal_vector_handler(uint32_t vec, uint32_t sp, uint32_t usp)
 		uint32_t entry_sp = mb_cached_entry_sp;
 
 		if ((entry_sp & 1u) == 0 && entry_sp + 8u <= phystop) {
-			mb_log_printf("fatal vec%u: using entry_sp=%08x (arg sp=%08x)\r\n",
+			mb_log_printf("fatal vec%u: using entry_sp=%08x (arg sp=%08x)\n",
 				      vec, entry_sp, sp);
 			frame_sp = entry_sp;
 		}
@@ -406,10 +407,10 @@ void mb_fatal_vector_handler(uint32_t vec, uint32_t sp, uint32_t usp)
 		ctx.frame.format = raw[3];
 		if (mb_decode_frame_info(ctx.frame.format, &fi) && fi.words != 0u) {
 			if (frame_sp + (fi.words * 2u) > phystop)
-				mb_log_printf("fatal vec%u: frame truncated fmt=%x words=%u sp=%08x phystop=%08x\r\n",
+				mb_log_printf("fatal vec%u: frame truncated fmt=%x words=%u sp=%08x phystop=%08x\n",
 					      vec, (uint32_t)fi.fmt_id, fi.words, frame_sp, phystop);
 			if (fi.vec != (uint16_t)vec)
-				mb_log_printf("fatal vec%u: frame vector says %u (fmt=%04x)\r\n",
+				mb_log_printf("fatal vec%u: frame vector says %u (fmt=%04x)\n",
 					      vec, (uint32_t)fi.vec, (uint32_t)ctx.frame.format);
 		}
 	}
@@ -420,11 +421,11 @@ void mb_fatal_vector_handler(uint32_t vec, uint32_t sp, uint32_t usp)
 	pc_swapped = (ctx.frame.pc << 16) | (ctx.frame.pc >> 16);
 
 	if (vec == 12u && (ctx.frame.pc == 0x03f0c948u || pc_swapped == 0x03f0c948u))
-		mb_log_printf("fatal vec12 self-fault near 03f0c948 sp=%08x usp=%08x\r\n",
+		mb_log_printf("fatal vec12 self-fault near 03f0c948 sp=%08x usp=%08x\n",
 			      sp, usp);
 	if (vec == 2u &&
 	    (pc_swapped >= 0x03f0c900u && pc_swapped < 0x03f0ca40u))
-		mb_log_printf("fatal vec2 while entering reserved/line stubs pc(raw)=%08x pc(sw)=%08x\r\n",
+		mb_log_printf("fatal vec2 while entering reserved/line stubs pc(raw)=%08x pc(sw)=%08x\n",
 			      ctx.frame.pc, pc_swapped);
 
 	mb_panic("fatal vector %u (%s)", vec, mb_vector_name((uint16_t)vec));

@@ -5,6 +5,9 @@
 mb_entry:
 	/* Set up a temporary stack and jump into C. */
 	lea _mb_stack_top, %sp
+	move.l %sp, %a0
+	sub.l #32768, %a0
+	move.l %a0, %usp
 	jsr mb_virt_start
 
 1:

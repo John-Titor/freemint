@@ -58,16 +58,16 @@ static void mb_virt_parse_bootinfo(void)
 	addr = (addr + 3u) & ~3u;
 	rec = (const struct mb_linux_bootinfo *)addr;
 
-	/* mb_log_printf("mintboot virt: bootinfo @ 0x%08x\r\n",
+	/* mb_log_printf("mintboot virt: bootinfo @ 0x%08x\n",
 		      (uint32_t)addr); */
 
 	for (idx = 0; idx < 128; idx++) {
 		if (rec->tag == 0) {
-			/* mb_log_printf("mintboot virt: bootinfo end tag\r\n"); */
+			/* mb_log_printf("mintboot virt: bootinfo end tag\n"); */
 			break;
 		}
 
-		/* mb_log_printf("mintboot virt: bootinfo tag=0x%04x\r\n",
+		/* mb_log_printf("mintboot virt: bootinfo tag=0x%04x\n",
 			      rec->tag); */
 
 		if (rec->tag == MB_LINUX_BI_MEMCHUNK) {
@@ -103,7 +103,7 @@ static void mb_virt_parse_bootinfo(void)
 			}
 
 			cpu = (const struct mb_linux_bootinfo_cputype *)rec;
-			/* mb_log_printf("mintboot virt: cputype=%u\r\n",
+			/* mb_log_printf("mintboot virt: cputype=%u\n",
 				      cpu->cpu_type); */
 			if (cpu->cpu_type != 4) {
 				mb_panic("bootinfo cputype=%u expected=4",
@@ -123,7 +123,7 @@ static void mb_virt_parse_bootinfo(void)
 			mb_virt_boot.ramdisk_base = (void *)(uintptr_t)rd->addr;
 			mb_virt_boot.ramdisk_size = rd->size_bytes;
 			saw_ramdisk = 1;
-			/* mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\r\n",
+			/* mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\n",
 				      rd->addr, rd->size_bytes); */
 		}
 
@@ -148,7 +148,7 @@ static void mb_virt_parse_bootinfo(void)
 		}
 
 		if (rec->size == 0) {
-			/* mb_log_printf("mintboot virt: bootinfo size=0, stop\r\n"); */
+			/* mb_log_printf("mintboot virt: bootinfo size=0, stop\n"); */
 			break;
 		}
 

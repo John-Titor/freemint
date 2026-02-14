@@ -15,7 +15,7 @@ long mb_bios_setexc(uint16_t vnum, uint32_t vptr)
 	prev = vectors[vnum];
 
 	if (vnum == 11) {
-		mb_log_printf("Setexc(vnum=%u, vptr=%08x) prev=%08x\r\n",
+		mb_log_printf("Setexc(vnum=%u, vptr=%08x) prev=%08x\n",
 			      (uint32_t)vnum, vptr, prev);
 	}
 

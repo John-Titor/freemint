@@ -20,7 +20,7 @@ long mb_xbios_supexec(uint32_t func)
 	if (ret == last_ret) {
 		stable_calls++;
 		if ((stable_calls % 200000u) == 0u) {
-			mb_log_printf("Supexec stable ret=%08x stable=%u hz=%u fr=%u vb=%u\r\n",
+			mb_log_printf("Supexec stable ret=%08x stable=%u hz=%u fr=%u vb=%u\n",
 				      (uint32_t)ret, stable_calls,
 				      *mb_lm_hz_200(), *mb_lm_frclock(), *mb_lm_vbclock());
 		}
@@ -28,7 +28,7 @@ long mb_xbios_supexec(uint32_t func)
 		last_ret = ret;
 		stable_calls = 0;
 		if ((calls % 20000u) == 0u) {
-			mb_log_printf("Supexec ret=%08x hz=%u fr=%u vb=%u\r\n",
+			mb_log_printf("Supexec ret=%08x hz=%u fr=%u vb=%u\n",
 				      (uint32_t)ret,
 				      *mb_lm_hz_200(), *mb_lm_frclock(), *mb_lm_vbclock());
 		}

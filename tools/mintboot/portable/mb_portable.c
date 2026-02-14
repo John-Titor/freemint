@@ -6,6 +6,7 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
+#include "mintboot/mb_cpu.h"
 
 #ifndef str
 #define str(x) _stringify(x)
@@ -239,7 +240,7 @@ void mb_portable_setup_vectors(void)
 			dst[i] = src[i];
 	}
 
-	__asm__ volatile("movec %0, %%vbr" : : "r"(0) : "memory");
+	mb_cpu_set_vbr(0);
 }
 
 uint32_t mb_portable_vector_base(void)
@@ -259,20 +260,21 @@ void mb_portable_boot(struct mb_boot_info *info)
 	mb_board_init_cookies();
 	mb_portable_init_boot_drive();
 	mb_portable_setup_vectors();
-	__asm__ volatile("move.w #0x2000, %%sr" : : : "cc", "memory");
+	mb_cpu_enable_interrupts();
+	mb_cpu_write_sr((uint16_t)(mb_cpu_read_sr() & (uint16_t)~0x2000u));
 	mb_portable_run_tests();
 	{
 		char kernel_path[384];
 		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
-			mb_log_printf("mintboot: kernel candidate %s\r\n", kernel_path);
+			mb_log_printf("mintboot: kernel candidate %s\n", kernel_path);
 			if (mb_portable_load_kernel(kernel_path, 1) != 0)
-				mb_log_puts("mintboot: kernel load failed\r\n");
+				mb_log_puts("mintboot: kernel load failed\n");
 			else
-				mb_log_puts("mintboot: kernel loaded (jump)\r\n");
+				mb_log_puts("mintboot: kernel loaded (jump)\n");
 		} else {
-			mb_log_puts("mintboot: kernel not found\r\n");
+			mb_log_puts("mintboot: kernel not found\n");
 		}
 	}
-	mb_log_puts("mintboot: portable init complete\r\n");
+	mb_log_puts("mintboot: portable init complete\n");
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
 }

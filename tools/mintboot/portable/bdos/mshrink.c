@@ -4,7 +4,7 @@
 
 long mb_bdos_mshrink(uint16_t zero, uint32_t base, uint32_t len)
 {
-	mb_log_printf("Mshrink(zero=%u, base=%08x, len=%u)\r\n",
+	mb_log_printf("Mshrink(zero=%u, base=%08x, len=%u)\n",
 		      (uint32_t)zero, base, len);
 	if (zero != 0)
 		return MB_ERR_INVFN;

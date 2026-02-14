@@ -77,7 +77,7 @@ void mb_coverage_dump(void)
 	if (&__gcov_info_start[0] >= &__gcov_info_end[0])
 		return;
 
-	mb_log_puts("MB-COV-BEGIN\r\n");
+	mb_log_puts("MB-COV-BEGIN\n");
 	for (info = __gcov_info_start; info < __gcov_info_end; info++) {
 		struct mb_cov_ctx ctx;
 
@@ -90,7 +90,7 @@ void mb_coverage_dump(void)
 					    &ctx);
 		}
 	}
-	mb_log_puts("MB-COV-END\r\n");
+	mb_log_puts("MB-COV-END\n");
 }
 
 void __gcov_merge_add(void *counters, unsigned int n);

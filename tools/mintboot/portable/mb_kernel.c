@@ -3,6 +3,7 @@
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_board.h"
+#include "mintboot/mb_cpu.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -124,19 +125,19 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	uint8_t buf[256];
 
 	if (Fseek((int32_t)reloc_off, handle, 0) < 0) {
-		mb_log_printf("mintboot: reloc seek failed off=%08x\r\n", reloc_off);
+		mb_log_printf("mintboot: reloc seek failed off=%08x\n", reloc_off);
 		return -1;
 	}
 
 	if (mb_read_exact(handle, &relst, sizeof(relst)) != 0) {
-		mb_log_printf("mintboot: reloc read start failed\r\n");
+		mb_log_printf("mintboot: reloc read start failed\n");
 		return -1;
 	}
 
 	if (relst == 0)
 		return 0;
 
-	mb_log_printf("mintboot: PRG relocation base=%08x\r\n",
+	mb_log_printf("mintboot: PRG relocation base=%08x\n",
 		      (uint32_t)(uintptr_t)tbase);
 
 	offset = relst;
@@ -149,11 +150,11 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 		uint32_t i;
 
 		if (rc < 0) {
-			mb_log_printf("mintboot: reloc read failed rc=%ld\r\n", rc);
+			mb_log_printf("mintboot: reloc read failed rc=%ld\n", rc);
 			return -1;
 		}
 		if (rc == 0) {
-			mb_log_printf("mintboot: reloc read hit EOF\r\n");
+			mb_log_printf("mintboot: reloc read hit EOF\n");
 			break;
 		}
 
@@ -169,7 +170,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 				offset += b;
 			}
 			if (offset >= text_data_len) {
-				mb_log_printf("mintboot: reloc offset=%08x exceeds len=%08x\r\n",
+				mb_log_printf("mintboot: reloc offset=%08x exceeds len=%08x\n",
 					      offset, text_data_len);
 				return -1;
 			}
@@ -177,7 +178,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 		}
 	}
 
-	mb_log_printf("mintboot: reloc failed (unexpected end)\r\n");
+	mb_log_printf("mintboot: reloc failed (unexpected end)\n");
 	return -1;
 }
 
@@ -317,7 +318,7 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	if (file_text_len) {
 		long rc = mb_read_exact(handle, tbase + entry_off, file_text_len);
 		if (rc != 0) {
-			mb_log_printf("mintboot: load kernel text read failed rc=%ld\r\n", rc);
+			mb_log_printf("mintboot: load kernel text read failed rc=%ld\n", rc);
 			Fclose(handle);
 			return -1;
 		}
@@ -325,7 +326,7 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 	if (file_data_len) {
 		long rc = mb_read_exact(handle, dbase, file_data_len);
 		if (rc != 0) {
-			mb_log_printf("mintboot: load kernel data read failed rc=%ld\r\n", rc);
+			mb_log_printf("mintboot: load kernel data read failed rc=%ld\n", rc);
 			Fclose(handle);
 			return -1;
 		}
@@ -335,47 +336,33 @@ int mb_portable_load_kernel(const char *path, int do_jump)
 
 	if (hdr.abs == 0) {
 		reloc_off = text_off + file_text_len + file_data_len + hdr.slen;
-		mb_log_printf("mintboot: reloc off=%08x len=%08x\r\n",
+		mb_log_printf("mintboot: reloc off=%08x len=%08x\n",
 			      reloc_off, text_data_len);
 		if (mb_relocate_prg(handle, reloc_off, tbase, text_data_len) != 0) {
-			mb_log_printf("mintboot: load kernel relocation failed\r\n");
+			mb_log_printf("mintboot: load kernel relocation failed\n");
 			Fclose(handle);
 			return -1;
 		}
 	}
 	Fclose(handle);
-	mb_log_printf("mintboot: load kernel success\r\n");
+	mb_log_printf("mintboot: load kernel success\n");
 	{
 		uint16_t *ins = (uint16_t *)(tbase + entry_off);
-		mb_log_printf("mintboot: entry off=%08x ins=%04x %04x %04x %04x\r\n",
+		mb_log_printf("mintboot: entry off=%08x ins=%04x %04x %04x %04x\n",
 			      entry_off, ins[0], ins[1], ins[2], ins[3]);
 	}
 
 	if (do_jump) {
-		void (*entry)(void) = (void (*)(void))(tbase + entry_off);
-		uint32_t ssp = tpa_end & ~3u;
-		uint32_t user_sp = (tpa_end - MB_PRG_STACK_SUP) & ~3u;
-		uint32_t *user_stack = (uint32_t *)(uintptr_t)(user_sp - 8u);
+		void (*entry)(void *) = (void (*)(void *))(tbase + entry_off);
 
-		user_stack[0] = 0;
-		user_stack[1] = (uint32_t)(uintptr_t)bp;
-		mb_log_printf("mintboot: jump entry=%08x bp=%08x sp=%08x\r\n",
+		mb_log_printf("mintboot: jump entry=%08x bp=%08x\n",
 			      (uint32_t)(uintptr_t)entry,
-			      (uint32_t)(uintptr_t)bp, ssp);
-		mb_log_printf("mintboot: tpa=%08x..%08x memtop=%08x phystop=%08x membot=%08x\r\n",
+			      (uint32_t)(uintptr_t)bp);
+		mb_log_printf("mintboot: tpa=%08x..%08x memtop=%08x phystop=%08x membot=%08x\n",
 			      tpa_start, tpa_end, *mb_lm_memtop(),
 			      *mb_lm_phystop(), *mb_lm_membot());
-		__asm__ volatile("movec %0, %%msp" : : "r"(ssp) : "memory");
-		__asm__ volatile("movec %0, %%isp" : : "r"(ssp) : "memory");
-		asm volatile(
-			"move.l %0,%%sp\n\t"
-			"move.l %1,%%usp\n\t"
-			"move.l %2,-(%%sp)\n\t"
-			"move.w %3,-(%%sp)\n\t"
-			"rte\n\t"
-			:
-			: "a"(ssp), "a"(user_stack), "r"(entry), "r"((uint16_t)0x0000u)
-			: "memory");
+
+		entry(bp);
 	}
 
 	return 0;
