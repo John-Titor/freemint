@@ -6,6 +6,7 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_cpu.h"
+#include "mintboot/mb_osbind.h"
 
 #include <stddef.h>
 
@@ -13,7 +14,6 @@ extern uint32_t mb_vector_table[];
 extern uint8_t _mb_image_end[] __attribute__((weak));
 
 char mb_cmdline[128];
-static uint16_t mb_boot_drive = 0xffffu;
 
 static void mb_etv_critic_stub(void)
 {
@@ -40,6 +40,7 @@ static void mb_common_init_lowmem(void)
 	*mb_lm_hz_200() = 0;
 	*mb_lm_vblsem() = 0;
 	*mb_lm_v_bas_ad() = 0xffffffffu;
+	*mb_lm_bootdev() = 0xffffu;
 	mb_linea_init();
 }
 
@@ -66,37 +67,31 @@ __attribute__((weak)) void mb_board_init_cookies(void)
 {
 }
 
-__attribute__((weak)) uint32_t mb_board_kernel_tpa_start(void)
-{
-	return 0;
-}
-
 static void mb_common_init_boot_drive(void)
 {
-	uint32_t map = (uint32_t)mb_rom_dispatch.drvmap();
+	uint32_t map = (uint32_t)Drvmap();
+	uint16_t boot_drive = 0xffffu;
 	uint16_t i;
 
-	mb_boot_drive = 0xffffu;
 	*mb_lm_drvbits() = map;
 	if (map == 0)
 		goto out;
 
 	for (i = 0; i < 26; i++) {
 		if (map & (1u << i)) {
-			mb_boot_drive = i;
+			boot_drive = i;
 			break;
 		}
 	}
 out:
-	if (mb_boot_drive < 26)
-		*mb_lm_bootdev() = mb_boot_drive;
-	if (mb_boot_drive < 26)
-		mb_bdos_set_current_drive(mb_boot_drive);
+	*mb_lm_bootdev() = boot_drive;
+	if (boot_drive < 26)
+		mb_bdos_set_current_drive(boot_drive);
 }
 
 uint16_t mb_common_boot_drive(void)
 {
-	return mb_boot_drive;
+	return *mb_lm_bootdev();
 }
 
 void mb_common_setup_vectors(void)
@@ -127,24 +122,12 @@ void mb_common_start(void)
 	mb_common_init_lowmem();
 	mb_cookie_init_defaults();
 	mb_board_init_cookies();
-	mb_common_init_boot_drive();
 	mb_common_setup_vectors();
 	mb_cpu_enable_interrupts();
 	mb_cpu_write_sr((uint16_t)(mb_cpu_read_sr() & (uint16_t)~0x2000u));
+	mb_common_init_boot_drive();
 	mb_common_run_tests();
-	{
-		char kernel_path[384];
-		if (mb_common_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
-			mb_log_printf("mintboot: kernel candidate %s\n", kernel_path);
-			if (mb_common_load_kernel(kernel_path, 1) != 0)
-				mb_log_puts("mintboot: kernel load failed\n");
-			else
-				mb_log_puts("mintboot: kernel loaded (jump)\n");
-		} else {
-			mb_log_puts("mintboot: kernel not found\n");
-		}
-	}
-	mb_log_puts("mintboot: common init complete\n");
+	mb_common_boot();
 	mb_board_exit(0);
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
 }

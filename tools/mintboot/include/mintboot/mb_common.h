@@ -11,6 +11,7 @@ extern char mb_cmdline[128];
 void mb_common_start(void);
 
 /* Common kernel loader. */
+void mb_common_boot(void);
 int mb_common_load_kernel(const char *path, int do_jump);
 int mb_common_find_kernel_path(char *out, size_t outsz);
 uint32_t mb_common_last_basepage(void);

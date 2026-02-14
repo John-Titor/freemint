@@ -119,6 +119,22 @@ int mb_common_find_kernel_path(char *out, size_t outsz)
 	return -1;
 }
 
+void mb_common_boot(void)
+{
+	char kernel_path[384];
+
+	if (mb_common_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
+		mb_log_printf("mintboot: kernel candidate %s\n", kernel_path);
+		if (mb_common_load_kernel(kernel_path, 1) != 0)
+			mb_log_puts("mintboot: kernel load failed\n");
+		else
+			mb_log_puts("mintboot: kernel loaded (jump)\n");
+	} else {
+		mb_log_puts("mintboot: kernel not found\n");
+	}
+	mb_log_puts("mintboot: common init complete\n");
+}
+
 struct mb_prg_header {
 	uint16_t magic;
 	uint32_t tlen;
@@ -331,9 +347,7 @@ int mb_common_load_kernel(const char *path, int do_jump)
 
 	text_data_len = hdr.tlen + hdr.dlen;
 	total_len = (uint32_t)sizeof(*bp) + text_data_len + hdr.blen;
-	tpa_start = mb_board_kernel_tpa_start();
-	if (tpa_start == 0)
-		tpa_start = MB_PRG_BASE_ADDR;
+	tpa_start = MB_PRG_BASE_ADDR;
 	tpa_end = *mb_lm_memtop();
 	if (tpa_end == 0)
 		tpa_end = *mb_lm_phystop();
