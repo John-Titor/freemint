@@ -51,7 +51,6 @@ LIBS = -lgcc $(MINTBOOT_EXTRA_LIBS)
 
 $(TARGET): $(OBJS)
 	$(LD) -o $@ -Wl,-Map,$(@F).map -Wall $^ $(LIBS)
-	$(STRIP) $@
 else
 $(TARGET): $(OBJS)
 	$(AR) rcs $@.$$$$ $(OBJS) && mv $@.$$$$ $@ || { $(RM) $@.$$$$; false; }

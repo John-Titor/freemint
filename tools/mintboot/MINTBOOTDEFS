@@ -92,7 +92,7 @@ endif
 MINTBOOT_CROSSPREFIX ?= m68k-atari-mintelf-
 
 ifeq ($(mintboot),virt)
-TARGET = ../mintboot-virt.elf
+TARGET = mintboot-virt.elf
 CPU = 040
 BUILD_ELF = yes
 COBJS = \
@@ -186,6 +186,8 @@ LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
 endif
 
 mintboottargets = generic virt
+
+cflags += -msoft-float
 
 MINTBOOT_COVERAGE ?= no
 ifeq ($(MINTBOOT_COVERAGE),yes)

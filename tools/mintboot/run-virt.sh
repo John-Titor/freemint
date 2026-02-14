@@ -4,7 +4,7 @@ set -e
 QEMU_DEFAULT=/Users/agent/work/Agent/M68K/_Emulators/qemu/qemu/build/qemu-system-m68k-unsigned
 QEMU=${QEMU:-$QEMU_DEFAULT}
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ELF="$ROOT/mintboot-virt.elf"
+ELF=${ELF:-$ROOT/.compile_virt/mintboot-virt.elf}
 RAMDISK="$ROOT/ramdisk.img"
 RAMDISK_DIR="$ROOT/ramdisk.d"
 RAMDISK_SIZE_MIB=32

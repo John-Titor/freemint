@@ -54,11 +54,14 @@ mintboottarget = _stmp_$(mintboot)
 realtarget = $(mintboottarget)
 
 $(mintboottarget): $(compile_dir)
+$(mintboottarget): $(compile_dir)/Makefile
 	cd $(compile_dir); $(MAKE) all
 
-$(compile_dir): Makefile.objs
+$(compile_dir):
 	$(MKDIR) -p $@
-	$(CP) $< $@/Makefile
+
+$(compile_dir)/Makefile: Makefile.objs | $(compile_dir)
+	$(CP) $< $@
 
 else
 
