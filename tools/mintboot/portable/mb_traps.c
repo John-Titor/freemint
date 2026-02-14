@@ -297,6 +297,12 @@ void mb_trap_return_sanity(uint32_t trapno, uint32_t exc_sp, uint32_t usp,
 			       uint32_t frame_sr)
 {
 	uint16_t sr = (uint16_t)frame_sr;
+	uint32_t membot = *mb_lm_membot();
+	uint32_t phystop = *mb_lm_phystop();
+
+	if (exc_sp < membot || exc_sp + sizeof(struct mb_exception_frame) > phystop)
+		mb_panic("trap%u: bad exc_sp=%08x sr=%04x membot=%08x phystop=%08x",
+			 trapno, exc_sp, (uint32_t)sr, membot, phystop);
 
 	if (sr & 0x2000u)
 		return;

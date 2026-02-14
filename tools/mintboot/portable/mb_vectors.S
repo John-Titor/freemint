@@ -73,50 +73,36 @@ mb_install_vector_base:
 	.globl \name
 	.type \name, @function
 \name:
-	move.l %d0, -(%sp)
-	move.l %d1, -(%sp)
-	move.l %a0, -(%sp)
-	move.l %a1, -(%sp)
-	move.l %a2, -(%sp)
 	move.l %usp, %a0
 	move.l %a0, mb_cached_entry_usp
 	move.l %sp, mb_cached_entry_sp
-	move.l %sp, %a0
-	add.l #20, %a0
+	move.l %sp, %a1
 	sub.l #MB_CTX_SIZE, %sp
-	lea (%sp), %a1
-	move.l %a0, (%a1)
-	move.l MB_CTX_SIZE+16(%sp), 4(%a1)
-	move.l MB_CTX_SIZE+12(%sp), 8(%a1)
-	move.l MB_CTX_SIZE+8(%sp), 36(%a1)
-	move.l MB_CTX_SIZE+4(%sp), 40(%a1)
-	move.w (%a0), MB_CTX_FRAME_OFF(%a1)
-	move.l 2(%a0), MB_CTX_FRAME_OFF+2(%a1)
-	move.w 6(%a0), MB_CTX_FRAME_OFF+6(%a1)
-	move.l %sp, %a0
+	lea (%sp), %a0
+	move.l %a1, (%a0)
+	movem.l %d0-%d7/%a0-%a6, 4(%a0)
+	move.w (%a1), MB_CTX_FRAME_OFF(%a0)
+	move.l 2(%a1), MB_CTX_FRAME_OFF+2(%a0)
+	move.w 6(%a1), MB_CTX_FRAME_OFF+6(%a0)
 	move.l %a0, -(%sp)
 	jsr \handler
 	add.l #4, %sp
-	move.l (%sp), %a2
-	move.l 4(%sp), %d0
-	add.l #MB_CTX_SIZE, %sp
-	move.l %d0, -(%sp)
-	lea 20(%sp), %a0
+	lea (%sp), %a1
+	move.l (%a1), %a0
+	move.w MB_CTX_FRAME_OFF(%a1), (%a0)
+	move.l MB_CTX_FRAME_OFF+2(%a1), 2(%a0)
+	move.w MB_CTX_FRAME_OFF+6(%a1), 6(%a0)
 	move.l #0, -(%sp)
-	move.w (%a0), 2(%sp)
-	move.l %usp, %a1
-	move.l %a1, -(%sp)
-	move.l %a0, -(%sp)
+	move.w MB_CTX_FRAME_OFF(%a1), 2(%sp)
+	move.l %usp, %a2
+	move.l %a2, -(%sp)
+	move.l (%a1), -(%sp)
 	move.l #\trapno, -(%sp)
 	jsr mb_trap_return_sanity
 	add.l #16, %sp
-	move.l (%sp)+, %d0
-	move.l %a2, %d1
-	move.l (%sp)+, %a2
-	move.l (%sp)+, %a1
-	move.l (%sp)+, %a0
-	add.l #8, %sp
-	move.l %d1, %sp
+	move.l (%a1), -(%sp)
+	movem.l 4(%a1), %d0-%d7/%a0-%a6
+	move.l (%sp)+, %sp
 	rte
 	.size \name, .-\name
 	.endm
