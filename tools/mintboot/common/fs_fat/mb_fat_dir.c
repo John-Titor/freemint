@@ -1,7 +1,7 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_rom.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 int mb_fat_find_in_dir(uint32_t dir_cluster, const uint8_t pat[11],
 		      uint16_t attr, struct mb_fat_dirent *ent, uint32_t *index)

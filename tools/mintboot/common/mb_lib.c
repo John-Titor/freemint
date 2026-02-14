@@ -1,10 +1,6 @@
-#include <stddef.h>
-#include <stdint.h>
+#include "mintboot/mb_lib.h"
 
-void *memcpy(void *dst, const void *src, size_t len);
-void *memset(void *dst, int value, size_t len);
-int memcmp(const void *a, const void *b, size_t len);
-size_t strlen(const char *s);
+#include <stdint.h>
 
 void *memcpy(void *dst, const void *src, size_t len)
 {
@@ -47,4 +43,35 @@ size_t strlen(const char *s)
 	while (s[len])
 		len++;
 	return len;
+}
+
+void strlcpy(char *dst, const char *src, size_t n)
+{
+	size_t i = 0;
+
+	if (!n)
+		return;
+
+	for (i = 0; i + 1 < n && src[i]; i++)
+		dst[i] = src[i];
+	dst[i] = '\0';
+}
+
+void strlcat(char *dst, const char *src, size_t n)
+{
+	size_t dlen = 0;
+	size_t i;
+
+	if (!n)
+		return;
+
+	while (dlen < n && dst[dlen])
+		dlen++;
+
+	if (dlen == n)
+		return;
+
+	for (i = 0; dlen + i + 1 < n && src[i]; i++)
+		dst[dlen + i] = src[i];
+	dst[dlen + i] = '\0';
 }

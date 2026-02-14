@@ -181,7 +181,7 @@ COBJS = \
 	common/bdos/mshrink.c \
 	board/virt/mb_board_virt.c \
 	board/virt/mb_rom_virt.c
-SOBJS = common/mb_vectors.S board/virt/mb_entry.S
+SOBJS = common/mb_vectors.S board/virt/mb_virt_entry.S
 LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
 endif
 

@@ -1,7 +1,7 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_rom.h"
 #include <stddef.h>
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 struct mb_fat_volume *mb_fat_vol;
 struct mb_fat_volume mb_fat_vols[MB_FAT_MAX_VOLS];

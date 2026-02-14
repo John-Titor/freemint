@@ -2,24 +2,17 @@
 #define MINTBOOT_MB_COMMON_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdarg.h>
-
-struct mb_boot_info {
-	uint32_t magic;
-	void *kernel_entry;
-	void *kernel_base;
-	uint32_t kernel_size;
-	void *ramdisk_base;
-	uint32_t ramdisk_size;
-};
 
 extern char mb_cmdline[128];
 
 /* Common boot flow entry point (called from board layer). */
-void mb_common_boot(struct mb_boot_info *info);
+void mb_common_start(void);
 
 /* Common kernel loader. */
 int mb_common_load_kernel(const char *path, int do_jump);
+int mb_common_find_kernel_path(char *out, size_t outsz);
 uint32_t mb_common_last_basepage(void);
 void mb_common_kernel_bounds(uint32_t *base, uint32_t *end);
 void mb_common_set_st_ram(uint32_t base, uint32_t size);

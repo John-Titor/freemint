@@ -3,9 +3,10 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_errors.h"
 #include "mb_virt_mmio.h"
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
-extern struct mb_boot_info mb_virt_boot;
+extern uintptr_t mb_virt_ramdisk_base;
+extern uint32_t mb_virt_ramdisk_size;
 
 static int mb_is_leap(int year)
 {
@@ -106,7 +107,7 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 	uint32_t end;
 	uint8_t *ramdisk;
 
-	ramdisk = (uint8_t *)mb_virt_boot.ramdisk_base;
+	ramdisk = (uint8_t *)mb_virt_ramdisk_base;
 	if (!ramdisk)
 		return -1;
 
@@ -117,7 +118,7 @@ static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 		return MB_ERR_DRIVE;
 
 	offset = (uint32_t)recno * 512u;
-	size = mb_virt_boot.ramdisk_size;
+	size = mb_virt_ramdisk_size;
 	end = offset + ((uint32_t)count * 512u);
 	if (end > size)
 		return -1;

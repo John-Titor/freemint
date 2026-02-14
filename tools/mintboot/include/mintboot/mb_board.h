@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-struct mb_boot_info;
-
 /* Board-specific early init (clocks, memory, console). */
 void mb_board_early_init(void);
 

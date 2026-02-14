@@ -4,7 +4,7 @@
 #include "mintboot/mb_errors.h"
 #include "mb_tests_internal.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
 long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);

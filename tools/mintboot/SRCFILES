@@ -102,7 +102,7 @@ COBJS_SRC = \
 
 SOBJS_SRC = \
 	common/mb_vectors.S \
-	board/virt/mb_entry.S
+	board/virt/mb_virt_entry.S
 
 DOCS = \
 	README.md \

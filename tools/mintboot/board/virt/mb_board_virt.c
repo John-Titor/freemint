@@ -7,13 +7,12 @@
 
 #include <stdint.h>
 
-void mb_virt_start(void);
-
 static uint8_t mb_virt_rx;
 static const uint32_t mb_virt_tmr_ms = 20;
 static const uint32_t mb_virt_hz200_step = 4;
 
-struct mb_boot_info mb_virt_boot;
+uintptr_t mb_virt_ramdisk_base;
+uint32_t mb_virt_ramdisk_size;
 
 struct mb_linux_bootinfo {
 	uint16_t tag;
@@ -120,8 +119,8 @@ static void mb_virt_parse_bootinfo(void)
 			}
 
 			rd = (const struct mb_linux_bootinfo_ramdisk *)rec;
-			mb_virt_boot.ramdisk_base = (void *)(uintptr_t)rd->addr;
-			mb_virt_boot.ramdisk_size = rd->size_bytes;
+			mb_virt_ramdisk_base = (uintptr_t)rd->addr;
+			mb_virt_ramdisk_size = rd->size_bytes;
 			saw_ramdisk = 1;
 			/* mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\n",
 				      rd->addr, rd->size_bytes); */
@@ -188,13 +187,6 @@ static void mb_virt_enable_pic_irq(uint32_t pic, uint32_t irq)
 	base = VIRT_GF_PIC_MMIO_BASE + ((pic - 1u) * VIRT_GF_PIC_STRIDE);
 
 	mb_mmio_write32(base + GOLDFISH_PIC_ENABLE, (1u << (irq - 1u)));
-}
-
-void mb_virt_start(void)
-{
-	mb_board_early_init();
-	mb_common_boot(&mb_virt_boot);
-	mb_board_exit(0);
 }
 
 void mb_board_early_init(void)

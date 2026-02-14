@@ -3,7 +3,7 @@
 #include "mintboot/mb_util.h"
 #include "mintboot/mb_common.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 static int mb_fat_find_free_open_slot(uint32_t *idx_out)
 {

@@ -2,7 +2,7 @@
 #include "mintboot/mb_osbind.h"
 #include "mb_tests_internal.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 #ifndef str
 #define str(x) _stringify(x)

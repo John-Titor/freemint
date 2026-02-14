@@ -4,9 +4,16 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_cpu.h"
+#include "mintboot/mb_cookie.h"
 
 #include <stddef.h>
-#include <string.h>
+#include "mintboot/mb_lib.h"
+
+#ifndef str
+#define str(x) _stringify(x)
+#define _stringify(x) #x
+#endif
+#include "../../../sys/buildinfo/version.h"
 
 #define MB_PRG_MAGIC 0x601au
 #define MB_PRG_HDR_SIZE 28u
@@ -34,6 +41,82 @@ void mb_common_kernel_bounds(uint32_t *base, uint32_t *end)
 		*base = mb_kernel_base;
 	if (end)
 		*end = mb_kernel_end;
+}
+
+static int mb_path_exists(const char *path)
+{
+	long fh;
+
+	fh = Fopen(path, 0);
+	if (fh < 0)
+		return 0;
+	Fclose((uint16_t)fh);
+	return 1;
+}
+
+static int mb_find_boot_drive(char *drive_out)
+{
+	uint16_t boot_drive = mb_common_boot_drive();
+
+	if (boot_drive >= 26)
+		return -1;
+	*drive_out = (char)('A' + boot_drive);
+	return 0;
+}
+
+int mb_common_find_kernel_path(char *out, size_t outsz)
+{
+	const char *name = "mint000.prg";
+	uint32_t cpu;
+	char drive;
+	char prefix[4];
+
+	if (!out || outsz < 4)
+		return -1;
+
+	if (mb_find_boot_drive(&drive) != 0)
+		return -1;
+	prefix[0] = drive;
+	prefix[1] = ':';
+	prefix[2] = '\\';
+	prefix[3] = '\0';
+
+	strlcpy(out, prefix, outsz);
+	strlcat(out, "MINT\\", outsz);
+	strlcat(out, MINT_VERS_PATH_STRING, outsz);
+	strlcat(out, "\\", outsz);
+	strlcat(out, name, outsz);
+	if (mb_path_exists(out))
+		return 0;
+
+	if (mb_cookie_get(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), &cpu) == 0) {
+		switch (cpu) {
+		case 20:
+			name = "mint020.prg";
+			break;
+		case 30:
+			name = "mint030.prg";
+			break;
+		case 40:
+			name = "mint040.prg";
+			break;
+		case 60:
+			name = "mint060.prg";
+			break;
+		default:
+			break;
+		}
+	}
+
+	strlcpy(out, prefix, outsz);
+	strlcat(out, "MINT\\", outsz);
+	strlcat(out, MINT_VERS_PATH_STRING, outsz);
+	strlcat(out, "\\", outsz);
+	strlcat(out, name, outsz);
+	if (mb_path_exists(out))
+		return 0;
+
+	return -1;
 }
 
 struct mb_prg_header {

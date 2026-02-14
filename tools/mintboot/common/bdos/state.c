@@ -2,7 +2,7 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_errors.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 #define MB_EMUTOS_DTA_SIZE 44
 #define MB_GEMDOS_PATH_MAX 256

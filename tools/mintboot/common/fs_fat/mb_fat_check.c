@@ -1,7 +1,7 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_fat.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 #define MB_FAT_MAX_CLUSTERS 65536
 #define MB_FAT_MAX_DIR_DEPTH 64

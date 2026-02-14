@@ -1,6 +1,6 @@
 #include "mb_fat_tests_internal.h"
 
-#include <string.h>
+#include "mintboot/mb_lib.h"
 
 void mb_fat_tests_phase_core_helpers(struct mb_fat_test_ctx *t)
 {
