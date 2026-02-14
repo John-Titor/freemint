@@ -9,6 +9,72 @@
 extern uint8_t _mb_image_end[] __attribute__((weak));
 extern volatile uint16_t mb_user_mode;
 
+static int mb_pc_in_known_region(uint32_t pc, uint32_t kbase, uint32_t kend,
+				 uint32_t mb_end)
+{
+	if (kbase && kend && pc >= kbase && pc < kend)
+		return 1;
+	if (mb_end && pc < mb_end)
+		return 1;
+	return 0;
+}
+
+static uint32_t mb_wordswap32(uint32_t v)
+{
+	return (v << 16) | (v >> 16);
+}
+
+struct mb_frame_decode {
+	uint16_t fmt_id;
+	uint16_t vec;
+	uint16_t vec_off;
+	uint32_t words;
+	uint32_t fault_addr_word;
+	int has_fault_addr;
+	const char *name;
+};
+
+static struct mb_frame_decode mb_decode_exception_frame(uint16_t fmt_word)
+{
+	struct mb_frame_decode d;
+
+	d.fmt_id = (uint16_t)((fmt_word >> 12) & 0x0fu);
+	d.vec_off = (uint16_t)(fmt_word & 0x0fffu);
+	d.vec = 0xffffu;
+	d.words = 0;
+	d.fault_addr_word = 0;
+	d.has_fault_addr = 0;
+	d.name = "unknown";
+
+	if ((d.vec_off & 3u) == 0 && d.vec_off <= 0x3fcu)
+		d.vec = (uint16_t)(d.vec_off >> 2);
+
+	switch (d.fmt_id) {
+	case 0x0u:
+		d.name = "short";
+		d.words = 4;
+		break;
+	case 0x1u:
+		d.name = "throwaway";
+		d.words = 4;
+		break;
+	case 0x2u:
+		d.name = "format2";
+		d.words = 6;
+		break;
+	case 0x7u:
+		d.name = "68040 access";
+		d.words = 29;
+		d.has_fault_addr = 1;
+		d.fault_addr_word = 4;
+		break;
+	default:
+		break;
+	}
+
+	return d;
+}
+
 static void mb_log_putc(int ch)
 {
 	if (ch == '\n')
@@ -214,6 +280,10 @@ void mb_panic(const char *fmt, ...)
 	uint32_t ssp = 0;
 	uint32_t vbr = 0;
 	__asm__ volatile("move.l %%sp, %0" : "=a"(ssp));
+	if (!mb_user_mode) {
+		__asm__ volatile("move.l %%usp, %0" : "=a"(usp));
+		__asm__ volatile("movec %%vbr, %0" : "=r"(vbr));
+	}
 	usp_cached = mb_last_user_usp();
 	entry_usp = mb_last_entry_usp();
 	entry_sp = mb_last_entry_sp();
@@ -231,7 +301,8 @@ void mb_panic(const char *fmt, ...)
 	mb_log_printf("  Entry USP=%08x Entry SP=%08x\r\n",
 		      entry_usp, entry_sp);
 	if (ctx) {
-		uint32_t pc = ctx->frame.pc;
+		uint32_t pc_raw = ctx->frame.pc;
+		uint32_t pc = pc_raw;
 		uint32_t kbase = 0;
 		uint32_t kend = 0;
 		uint32_t mb_end = 0;
@@ -239,14 +310,22 @@ void mb_panic(const char *fmt, ...)
 		uint16_t *raw = (uint16_t *)(uintptr_t)ctx->sp;
 		uint32_t phystop = *mb_lm_phystop();
 		uint32_t sp = ctx->sp;
-		uint16_t vec = 0xffffu;
+		struct mb_frame_decode frame = mb_decode_exception_frame(ctx->frame.format);
+		uint16_t vec = frame.vec;
 		uint32_t vec_entry = 0;
-		uint32_t frame_words = 0;
 		int i;
 
 		mb_portable_kernel_bounds(&kbase, &kend);
 		if (_mb_image_end)
 			mb_end = (uint32_t)(uintptr_t)_mb_image_end;
+		{
+			uint32_t pc_swapped = mb_wordswap32(pc_raw);
+			int raw_known = mb_pc_in_known_region(pc_raw, kbase, kend, mb_end);
+			int swapped_known = mb_pc_in_known_region(pc_swapped, kbase, kend, mb_end);
+
+			if (!raw_known && swapped_known)
+				pc = pc_swapped;
+		}
 		if (kbase && kend && pc >= kbase && pc < kend) {
 			where = "kernel";
 		} else if (pc < mb_end) {
@@ -256,10 +335,16 @@ void mb_panic(const char *fmt, ...)
 			      (uint32_t)ctx->frame.sr,
 			      pc,
 			      (uint32_t)ctx->frame.format);
-		{
-			uint16_t off = (uint16_t)(ctx->frame.format & 0x0fffu);
-			if ((off & 3u) == 0 && off <= 0x3fcu)
-				vec = (uint16_t)(off >> 2);
+		if (pc != pc_raw)
+			mb_log_printf("  PC(raw)=%08x (wordswapped)\r\n", pc_raw);
+		mb_log_printf("  Frame decode: fmt=%x (%s) vec_off=%03x words=%u\r\n",
+			      (uint32_t)frame.fmt_id, frame.name,
+			      (uint32_t)frame.vec_off, frame.words);
+		if (frame.has_fault_addr &&
+		    sp + 2u * (frame.fault_addr_word + 2u) <= phystop) {
+			uint32_t fault_addr = ((uint32_t)raw[frame.fault_addr_word] << 16) |
+					      (uint32_t)raw[frame.fault_addr_word + 1u];
+			mb_log_printf("  Fault addr=%08x\r\n", fault_addr);
 		}
 		mb_log_printf("  VBR=%08x VECTOR=%u\r\n", vbr, (uint32_t)vec);
 		if (vec != 0xffffu) {
@@ -267,48 +352,72 @@ void mb_panic(const char *fmt, ...)
 			vec_entry = *vt;
 			mb_log_printf("  VEC[%u]=%08x\r\n", (uint32_t)vec, vec_entry);
 		}
-		switch (ctx->frame.format & 0xf000u) {
-		case 0x0000u:
-			frame_words = 4;
-			break;
-		case 0x2000u:
-			frame_words = 10;
-			break;
-		case 0x7000u:
-			frame_words = 29;
-			break;
-		default:
-			frame_words = 0;
-			break;
-		}
 		mb_log_printf("  PC region: %s\r\n", where);
 		mb_log_printf("  PHYTOP=%08x SP=%08x\r\n", phystop, sp);
 		mb_log_printf("  SP region: %s\r\n",
 			      (sp < phystop) ? "st-ram" : "invalid");
-		if (sp + 2u * 12u <= phystop) {
+		if (pc < phystop) {
+			uint32_t pc_start = (pc >= 8u) ? (pc - 8u) : 0u;
+			uint32_t pc_end = pc + 8u;
+			uint16_t *code;
+			uint32_t count;
+
+			if (pc_end > phystop)
+				pc_end = phystop;
+			count = (pc_end - pc_start) / 2u;
+			code = (uint16_t *)(uintptr_t)pc_start;
+
+			mb_log_printf("  PC words: pc=%08x start=%08x end=%08x\r\n",
+				      pc, pc_start, pc_end);
+			mb_log_puts("  Code:");
+			for (i = 0; i < (int)count; i++) {
+				uint32_t addr = pc_start + ((uint32_t)i * 2u);
+
+				if ((i % 6) == 0)
+					mb_log_puts("\r\n   ");
+				if (addr == pc)
+					mb_log_puts(">");
+				else
+					mb_log_puts(" ");
+				mb_log_printf("%04x", (uint32_t)code[i]);
+			}
+			mb_log_puts("\r\n");
+		}
+		if (sp < phystop) {
+			uint32_t avail_words = (phystop - sp) / 2u;
+			uint32_t want_words = frame.words ? frame.words : 12u;
+			uint32_t dump_words = (avail_words < want_words) ? avail_words : want_words;
+
 			mb_log_puts("  Frame words:");
-			for (i = 0; i < 12; i++) {
+			for (i = 0; i < (int)dump_words; i++) {
 				if ((i % 6) == 0)
 					mb_log_puts("\r\n   ");
 				mb_log_printf(" %04x", (uint32_t)raw[i]);
 			}
+			if (dump_words < want_words)
+				mb_log_puts(" (partial)");
 			mb_log_puts("\r\n");
 		} else {
 			mb_log_puts("  Frame words: unavailable\r\n");
 		}
-		if (sp + 2u * 48u <= phystop) {
+		if (sp < phystop) {
+			uint32_t avail_words = (phystop - sp) / 2u;
+			uint32_t dump_words = (avail_words < 48u) ? avail_words : 48u;
+
 			mb_log_puts("  SSP words:");
-			for (i = 0; i < 48; i++) {
+			for (i = 0; i < (int)dump_words; i++) {
 				if ((i % 8) == 0)
 					mb_log_puts("\r\n   ");
 				mb_log_printf(" %04x", (uint32_t)raw[i]);
 			}
+			if (dump_words < 48u)
+				mb_log_puts(" (partial)");
 			mb_log_puts("\r\n");
 		} else {
 			mb_log_puts("  SSP words: unavailable\r\n");
 		}
-		if (frame_words && sp + 2u * (frame_words + 16u) <= phystop) {
-			uint16_t *post = raw + frame_words;
+		if (frame.words && sp + 2u * (frame.words + 16u) <= phystop) {
+			uint16_t *post = raw + frame.words;
 			mb_log_puts("  Post-frame words:");
 			for (i = 0; i < 16; i++) {
 				if ((i % 8) == 0)
@@ -316,7 +425,7 @@ void mb_panic(const char *fmt, ...)
 				mb_log_printf(" %04x", (uint32_t)post[i]);
 			}
 			mb_log_puts("\r\n");
-			if (sp + 2u * (frame_words + 32u) <= phystop) {
+			if (sp + 2u * (frame.words + 32u) <= phystop) {
 				uint32_t *pdw = (uint32_t *)(uintptr_t)post;
 				int printed = 0;
 

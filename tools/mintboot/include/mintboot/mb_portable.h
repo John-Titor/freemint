@@ -70,6 +70,7 @@ void mb_trap13_handler(struct mb_exception_context *ctx);
 void mb_trap14_handler(struct mb_exception_context *ctx);
 void mb_trace_exception_handler(struct mb_exception_context *ctx);
 void mb_linea_exception_handler(struct mb_exception_context *ctx);
+void mb_fatal_vector_handler(uint32_t vec, uint32_t sp, uint32_t usp);
 
 /* IRQ handlers. */
 void mb_spurious_irq_handler(void);

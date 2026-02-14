@@ -10,6 +10,8 @@ long mb_xbios_dispatch(uint16_t fnum, uint16_t *args)
 		return mb_xbios_initmous(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
 	case 0x02:
 		return mb_xbios_physbase();
+	case 0x03:
+		return mb_xbios_logbase();
 	case 0x04:
 		return mb_xbios_getrez();
 	case 0x0e:

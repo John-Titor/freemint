@@ -57,6 +57,7 @@ long mb_bios_kbshift(uint16_t data);
 
 long mb_xbios_initmous(uint16_t type, uint32_t param, uint32_t vptr);
 long mb_xbios_physbase(void);
+long mb_xbios_logbase(void);
 long mb_xbios_getrez(void);
 long mb_xbios_iorec(uint16_t io_dev);
 long mb_xbios_rsconf(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs, uint16_t ts, uint16_t sc);

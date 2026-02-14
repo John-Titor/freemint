@@ -1,4 +1,5 @@
 #include "mb_fat_tests_internal.h"
+#include "mintboot/mb_util.h"
 
 void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 {
@@ -18,6 +19,11 @@ void mb_fat_tests_phase_lookup_io(struct mb_fat_test_ctx *t)
 	const char *bad_drive = "1:\\HELLO.TXT";
 	const char expect[] = "mintboot FAT16 test file\n";
 	const char expect_inner[] = "mintboot nested file\n";
+
+	if (t->ddelete_file[0] == '\0' || t->ddelete_file[1] != ':' ||
+	    t->ddelete_file[2] != '\\')
+		mb_panic("FAT test: bad open path '%s'",
+			 mb_guarded_str(t->ddelete_file));
 
 	fh = Fopen(t->ddelete_file, 0);
 	if (fh < 0)

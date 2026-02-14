@@ -127,9 +127,9 @@ mb_spurious_stub:
 	.globl \name
 	.type \name, @function
 \name:
-	movem.l %d0-%d1/%a0-%a1, -(%sp)
+	movem.l %d0-%d7/%a0-%a6, -(%sp)
 	jsr \handler
-	movem.l (%sp)+, %d0-%d1/%a0-%a1
+	movem.l (%sp)+, %d0-%d7/%a0-%a6
 	rte
 	.size \name, .-\name
 	.endm
@@ -168,6 +168,23 @@ mb_spurious_stub:
 	.size \name, .-\name
 	.endm
 
+	.macro MB_FATAL_VEC_STUB name, vecno
+	.globl \name
+	.type \name, @function
+\name:
+	move.l %usp, %a1
+	move.l %sp, %a0
+	sub.l #32, %sp
+	move.l %a1, -(%sp)
+	move.l %a0, -(%sp)
+	move.l #\vecno, -(%sp)
+	jsr mb_fatal_vector_handler
+	add.l #12, %sp
+1:
+	bra 1b
+	.size \name, .-\name
+	.endm
+
 	.globl mb_default_exception_stub
 	.type mb_default_exception_stub, @function
 mb_default_exception_stub:
@@ -191,8 +208,8 @@ mb_default_exception_stub:
 	bra 1b
 	.size mb_default_exception_stub, .-mb_default_exception_stub
 
-	MB_EXC_STUB mb_bus_error_stub, rte
-	MB_EXC_STUB mb_address_error_stub, rte
+	MB_FATAL_VEC_STUB mb_bus_error_stub, 2
+	MB_FATAL_VEC_STUB mb_address_error_stub, 3
 	MB_EXC_STUB mb_illegal_instruction_stub, rte
 	MB_EXC_STUB mb_zero_divide_stub, rte
 	MB_EXC_STUB mb_chk_exception_stub, rte
@@ -247,10 +264,11 @@ mb_line1010_stub:
 	add.l #MB_CTX_SIZE, %sp
 	rte
 	.size mb_line1010_stub, .-mb_line1010_stub
-	MB_EXC_STUB mb_line1111_stub, rte
-	MB_EXC_STUB mb_reserved12_stub, rte
-	MB_EXC_STUB mb_reserved13_stub, rte
-	MB_EXC_STUB mb_reserved14_stub, rte
-	MB_EXC_STUB mb_reserved15_stub, rte
+
+	MB_FATAL_VEC_STUB mb_line1111_stub, 11
+	MB_FATAL_VEC_STUB mb_reserved12_stub, 12
+	MB_FATAL_VEC_STUB mb_reserved13_stub, 13
+	MB_FATAL_VEC_STUB mb_reserved14_stub, 14
+	MB_FATAL_VEC_STUB mb_reserved15_stub, 15
 
 	.section .note.GNU-stack,"",@progbits

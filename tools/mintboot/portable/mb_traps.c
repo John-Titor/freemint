@@ -6,6 +6,7 @@
 #include "mintboot/mb_trap_helpers.h"
 
 #include <stdint.h>
+#include <string.h>
 
 long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);
 long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
@@ -33,8 +34,8 @@ static int mb_super_prepare_return(struct mb_exception_context *ctx,
 {
 	uint32_t frame_size = (uint32_t)sizeof(struct mb_exception_frame);
 	uint32_t frame_dst;
-	struct mb_exception_frame *src;
-	struct mb_exception_frame *dst;
+	uint32_t phystop = *mb_lm_phystop();
+	uint32_t frame_end_limit = phystop + 2u;
 
 	if (sp_after_rte < frame_size)
 		return -1;
@@ -43,13 +44,29 @@ static int mb_super_prepare_return(struct mb_exception_context *ctx,
 		return -1;
 	if (frame_dst & 1u)
 		return -1;
+	if (frame_dst + frame_size > frame_end_limit)
+		return -1;
 
-	src = (struct mb_exception_frame *)(uintptr_t)ctx->sp;
-	dst = (struct mb_exception_frame *)(uintptr_t)frame_dst;
-	*dst = *src;
-	dst->sr = sr_after_rte;
+	/* Trap stub writes ctx->frame to ctx->sp before RTE. */
 	ctx->sp = frame_dst;
+	ctx->frame.sr = sr_after_rte;
 	return 0;
+}
+
+static int mb_super_stack_reasonable(uint32_t sp_after_rte)
+{
+	uint32_t membot = *mb_lm_membot();
+	uint32_t phystop = *mb_lm_phystop();
+	uint32_t frame_size = (uint32_t)sizeof(struct mb_exception_frame);
+	uint32_t max_sp = phystop + frame_size;
+
+	if ((sp_after_rte & 1u) != 0)
+		return 0;
+	if (sp_after_rte < membot + frame_size)
+		return 0;
+	if (sp_after_rte > max_sp)
+		return 0;
+	return 1;
 }
 
 void mb_trap1_handler(struct mb_exception_context *ctx)
@@ -67,13 +84,15 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 		      (uint32_t)fnum,
 		      (uint32_t)args[1], (uint32_t)args[2], (uint32_t)args[3],
 		      (uint32_t)args[4], (uint32_t)args[5], (uint32_t)args[6]);
+	mb_log_printf("trap1: sr=%04x s=%u\r\n",
+		      (uint32_t)ctx->frame.sr,
+		      (ctx->frame.sr & 0x2000u) ? 1u : 0u);
 
 	if (fnum == 0x20) {
 		uint32_t newsp = mb_arg32(args + 1, 0);
 		uint16_t sr = ctx->frame.sr;
 		uint16_t sbit = (uint16_t)(sr & 0x2000u);
 		uint32_t old_ssp = ctx->sp + (uint32_t)sizeof(struct mb_exception_frame);
-		uint32_t sup_sp_after = old_ssp;
 
 		mb_log_printf("Super(newsp=%08x) sr=%04x s=%u usp=%08x\r\n",
 			      newsp, sr, sbit ? 1u : 0u, usp);
@@ -87,6 +106,9 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 
 		if (newsp == 0u) {
 			if (!sbit) {
+				if (!mb_super_stack_reasonable(usp))
+					mb_panic("Super(0): invalid usp=%08x membot=%08x phystop=%08x",
+						 usp, *mb_lm_membot(), *mb_lm_phystop());
 				if (mb_super_prepare_return(ctx, usp,
 							    (uint16_t)(sr | 0x2000u)) < 0)
 					mb_panic("Super(0): invalid usp=%08x", usp);
@@ -97,11 +119,21 @@ void mb_trap1_handler(struct mb_exception_context *ctx)
 			goto out;
 		}
 
-		if (sbit) {
-			/* Return to user mode at this callsite using current supervisor stack. */
-			__asm__ volatile("move.l %0, %%usp" : : "a"(sup_sp_after));
+			if (sbit) {
+				uint32_t user_sp = usp;
+				/*
+				 * Super(value) from supervisor mode sets the supervisor stack
+				 * used after the switch back from user mode. Preserve the
+			 * current USP so user mode resumes on its existing stack.
+			 */
+			if (!mb_super_stack_reasonable(user_sp)) {
+				user_sp = newsp;
+				__asm__ volatile("move.l %0, %%usp" : : "a"(user_sp));
+				usp = user_sp;
+			}
 			if (mb_super_prepare_return(ctx, newsp, (uint16_t)(sr & 0xdfffu)) < 0)
-				mb_panic("Super(%08x): invalid ssp", newsp);
+				mb_panic("Super(%08x): invalid return frame membot=%08x phystop=%08x sp=%08x",
+					 newsp, *mb_lm_membot(), *mb_lm_phystop(), ctx->sp);
 		}
 		ret = usp;
 		ctx->d[0] = ret;
@@ -224,14 +256,14 @@ void mb_linea_exception_handler(struct mb_exception_context *ctx)
 static const char *mb_vector_name(uint16_t vec)
 {
 	switch (vec) {
-	case 0: return "reset";
-	case 1: return "bus error";
-	case 2: return "address error";
-	case 3: return "illegal instruction";
-	case 4: return "zero divide";
-	case 5: return "chk";
-	case 6: return "trapv";
-	case 7: return "reserved 7";
+	case 0: return "initial SSP";
+	case 1: return "initial PC";
+	case 2: return "bus error";
+	case 3: return "address error";
+	case 4: return "illegal instruction";
+	case 5: return "zero divide";
+	case 6: return "chk";
+	case 7: return "trapv";
 	case 8: return "privilege violation";
 	case 9: return "trace";
 	case 10: return "line 1010";
@@ -297,12 +329,6 @@ void mb_trap_return_sanity(uint32_t trapno, uint32_t exc_sp, uint32_t usp,
 			       uint32_t frame_sr)
 {
 	uint16_t sr = (uint16_t)frame_sr;
-	uint32_t membot = *mb_lm_membot();
-	uint32_t phystop = *mb_lm_phystop();
-
-	if (exc_sp < membot || exc_sp + sizeof(struct mb_exception_frame) > phystop)
-		mb_panic("trap%u: bad exc_sp=%08x sr=%04x membot=%08x phystop=%08x",
-			 trapno, exc_sp, (uint32_t)sr, membot, phystop);
 
 	if (sr & 0x2000u)
 		return;
@@ -313,14 +339,95 @@ void mb_trap_return_sanity(uint32_t trapno, uint32_t exc_sp, uint32_t usp,
 		mb_panic("trap%u: odd usp=%08x sr=%04x", trapno, usp, (uint32_t)sr);
 }
 
-static int mb_decode_vector(uint16_t fmt, uint16_t *vec)
+struct mb_frame_info {
+	uint16_t fmt_id;
+	uint16_t vec;
+	uint32_t words;
+};
+
+static int mb_decode_frame_info(uint16_t fmt, struct mb_frame_info *info)
 {
 	uint16_t off = fmt & 0x0fff;
+	uint16_t fmt_id = (uint16_t)((fmt >> 12) & 0x000fu);
+
+	info->fmt_id = fmt_id;
+	info->vec = 0xffffu;
+	info->words = 0;
 
 	if ((off & 3u) != 0 || off > 0x3fcu)
 		return 0;
-	*vec = (uint16_t)(off >> 2);
+
+	info->vec = (uint16_t)(off >> 2);
+
+	switch (fmt_id) {
+	case 0x0u:
+	case 0x1u:
+		info->words = 4u;
+		break;
+	case 0x2u:
+		info->words = 6u;
+		break;
+	case 0x7u:
+		info->words = 29u;
+		break;
+	default:
+		info->words = 0u;
+		break;
+	}
+
 	return 1;
+}
+
+void mb_fatal_vector_handler(uint32_t vec, uint32_t sp, uint32_t usp)
+{
+	struct mb_exception_context ctx;
+	struct mb_frame_info fi;
+	uint32_t phystop = *mb_lm_phystop();
+	uint32_t frame_sp = sp;
+	uint32_t pc_swapped;
+
+	memset(&ctx, 0, sizeof(ctx));
+	if ((frame_sp & 1u) != 0 || frame_sp + 8u > phystop) {
+		uint32_t entry_sp = mb_cached_entry_sp;
+
+		if ((entry_sp & 1u) == 0 && entry_sp + 8u <= phystop) {
+			mb_log_printf("fatal vec%u: using entry_sp=%08x (arg sp=%08x)\r\n",
+				      vec, entry_sp, sp);
+			frame_sp = entry_sp;
+		}
+	}
+
+	ctx.sp = frame_sp;
+	if ((frame_sp & 1u) == 0 && frame_sp + 8u <= phystop) {
+		volatile uint16_t *raw = (volatile uint16_t *)(uintptr_t)frame_sp;
+
+		ctx.frame.sr = raw[0];
+		ctx.frame.pc = ((uint32_t)raw[1] << 16) | raw[2];
+		ctx.frame.format = raw[3];
+		if (mb_decode_frame_info(ctx.frame.format, &fi) && fi.words != 0u) {
+			if (frame_sp + (fi.words * 2u) > phystop)
+				mb_log_printf("fatal vec%u: frame truncated fmt=%x words=%u sp=%08x phystop=%08x\r\n",
+					      vec, (uint32_t)fi.fmt_id, fi.words, frame_sp, phystop);
+			if (fi.vec != (uint16_t)vec)
+				mb_log_printf("fatal vec%u: frame vector says %u (fmt=%04x)\r\n",
+					      vec, (uint32_t)fi.vec, (uint32_t)ctx.frame.format);
+		}
+	}
+
+	mb_cached_user_usp = usp;
+	mb_last_ctx_storage = ctx;
+	mb_last_ctx = &mb_last_ctx_storage;
+	pc_swapped = (ctx.frame.pc << 16) | (ctx.frame.pc >> 16);
+
+	if (vec == 12u && (ctx.frame.pc == 0x03f0c948u || pc_swapped == 0x03f0c948u))
+		mb_log_printf("fatal vec12 self-fault near 03f0c948 sp=%08x usp=%08x\r\n",
+			      sp, usp);
+	if (vec == 2u &&
+	    (pc_swapped >= 0x03f0c900u && pc_swapped < 0x03f0ca40u))
+		mb_log_printf("fatal vec2 while entering reserved/line stubs pc(raw)=%08x pc(sw)=%08x\r\n",
+			      ctx.frame.pc, pc_swapped);
+
+	mb_panic("fatal vector %u (%s)", vec, mb_vector_name((uint16_t)vec));
 }
 
 void mb_default_exception_handler(struct mb_exception_context *ctx)
@@ -329,18 +436,26 @@ void mb_default_exception_handler(struct mb_exception_context *ctx)
 	uint16_t vec = 0xffffu;
 	uint32_t sp = ctx->sp;
 	uint32_t phystop = *mb_lm_phystop();
+	struct mb_frame_info fi;
+	int decoded;
 
 	mb_last_ctx_storage = *ctx;
 	ctx = &mb_last_ctx_storage;
 
+	decoded = mb_decode_frame_info(fmt, &fi);
+	if (decoded)
+		vec = fi.vec;
+
 	if (sp >= phystop) {
 		vec = 0xffffu;
-	} else if (!mb_decode_vector(fmt, &vec) && sp + 8 <= phystop) {
+	} else if ((!decoded || fi.words == 0u) && sp + 8u <= phystop) {
 		uint16_t *raw = (uint16_t *)(uintptr_t)sp;
 		uint16_t alt = raw[3];
 
-		if (mb_decode_vector(alt, &vec))
+		if (mb_decode_frame_info(alt, &fi)) {
+			vec = fi.vec;
 			fmt = alt;
+		}
 	}
 
 	ctx->frame.format = fmt;

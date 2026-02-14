@@ -1,5 +1,7 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_util.h"
+#include "mintboot/mb_portable.h"
 
 #include <string.h>
 
@@ -144,14 +146,26 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 	if (mode != 0)
 		return -1;
 
-	if (mb_fat_locate_parent(path, &dev, &dir_cluster, name83) != 0)
+	if (mb_fat_locate_parent(path, &dev, &dir_cluster, name83) != 0) {
+		mb_log_printf("fat_fopen: locate_parent fail path='%s'\r\n",
+			      mb_guarded_str(path));
 		return MB_ERR_FILNF;
-	if (mb_fat_mount(dev) != 0)
+	}
+	if (mb_fat_mount(dev) != 0) {
+		mb_log_printf("fat_fopen: mount fail dev=%u path='%s'\r\n",
+			      (uint32_t)dev, mb_guarded_str(path));
 		return MB_ERR_FILNF;
-	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &dir_index) != 0)
+	}
+	if (mb_fat_find_in_dir(dir_cluster, name83, 0xffffu, &ent, &dir_index) != 0) {
+		mb_log_printf("fat_fopen: find fail dev=%u dir=%u path='%s'\r\n",
+			      (uint32_t)dev, dir_cluster, mb_guarded_str(path));
 		return MB_ERR_FILNF;
-	if (ent.attr & MB_FAT_ATTR_DIR)
+	}
+	if (ent.attr & MB_FAT_ATTR_DIR) {
+		mb_log_printf("fat_fopen: target is dir path='%s'\r\n",
+			      mb_guarded_str(path));
 		return MB_ERR_FILNF;
+	}
 
 	if (mb_fat_find_free_open_slot(&idx) != 0)
 		return MB_ERR_NHNDL;
