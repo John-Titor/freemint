@@ -1,5 +1,5 @@
 #include "mintboot/mb_board.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_errors.h"
 #include "mb_virt_mmio.h"

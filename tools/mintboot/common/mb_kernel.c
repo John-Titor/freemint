@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_lowmem.h"
@@ -23,12 +23,12 @@ static struct mb_basepage *mb_kernel_last_basepage;
 static uint32_t mb_kernel_base;
 static uint32_t mb_kernel_end;
 
-uint32_t mb_portable_last_basepage(void)
+uint32_t mb_common_last_basepage(void)
 {
 	return (uint32_t)(uintptr_t)mb_kernel_last_basepage;
 }
 
-void mb_portable_kernel_bounds(uint32_t *base, uint32_t *end)
+void mb_common_kernel_bounds(uint32_t *base, uint32_t *end)
 {
 	if (base)
 		*base = mb_kernel_base;
@@ -182,7 +182,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	return -1;
 }
 
-int mb_portable_load_kernel(const char *path, int do_jump)
+int mb_common_load_kernel(const char *path, int do_jump)
 {
 	struct mb_prg_header hdr;
 	struct mb_aout_header aout;

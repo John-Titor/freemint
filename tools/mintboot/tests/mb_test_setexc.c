@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_osbind.h"
 #include "mb_tests_internal.h"
 

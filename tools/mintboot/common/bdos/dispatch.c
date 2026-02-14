@@ -1,7 +1,7 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_trap_helpers.h"
 #include "mintboot/mb_errors.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bdos_dispatch(uint16_t fnum, uint16_t *args)
 {

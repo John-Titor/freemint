@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_tests.h"
 #include "mb_tests_internal.h"
@@ -17,14 +17,14 @@ static void mb_tests_run_common(void)
 
 static void mb_tests_reset_state(void)
 {
-	uint16_t drive = mb_portable_boot_drive();
+	uint16_t drive = mb_common_boot_drive();
 
 	Dsetdrv((int16_t)drive);
 	if (Dsetpath("\\") != 0)
 		mb_panic("Test reset: Dsetpath failed");
 }
 
-void mb_portable_run_tests(void)
+void mb_common_run_tests(void)
 {
 	mb_tests_run_common();
 	mb_tests_reset_state();

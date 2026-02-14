@@ -1,10 +1,10 @@
 #ifndef MINTBOOT_MB_FAT_TESTS_INTERNAL_H
 #define MINTBOOT_MB_FAT_TESTS_INTERNAL_H
 
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
-#include "../../portable/fs_fat/mb_fat_internal.h"
+#include "../../common/fs_fat/mb_fat_internal.h"
 
 struct mb_test_dta {
 	uint16_t index;

@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_errors.h"
@@ -15,7 +15,7 @@ void mb_tests_drive_path(void)
 	char longbuf[300];
 	uint32_t i;
 
-	dev = mb_portable_boot_drive();
+	dev = mb_common_boot_drive();
 	if (dev >= 26)
 		mb_panic("Drive tests: invalid boot drive");
 	map = (uint32_t)mb_rom_dispatch.drvmap();

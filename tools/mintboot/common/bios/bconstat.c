@@ -1,5 +1,5 @@
 #include "mintboot/mb_rom.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bios_bconstat(uint16_t dev)
 {

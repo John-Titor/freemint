@@ -3,7 +3,7 @@
 Standalone bootloader and ROM_* syscall emulator scaffolding.
 
 Design split:
-- `portable/`: ROM calling conventions, vector setup, trap/exception handling,
+- `common/`: ROM calling conventions, vector setup, trap/exception handling,
   kernel image loading, and boot flow.
 - `board/`: board-specific startup and device drivers (console, timers, etc.).
 

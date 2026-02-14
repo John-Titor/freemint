@@ -1,5 +1,5 @@
-#ifndef MINTBOOT_MB_PORTABLE_H
-#define MINTBOOT_MB_PORTABLE_H
+#ifndef MINTBOOT_MB_COMMON_H
+#define MINTBOOT_MB_COMMON_H
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -15,23 +15,23 @@ struct mb_boot_info {
 
 extern char mb_cmdline[128];
 
-/* Portable boot flow entry point (called from board layer). */
-void mb_portable_boot(struct mb_boot_info *info);
+/* Common boot flow entry point (called from board layer). */
+void mb_common_boot(struct mb_boot_info *info);
 
-/* Portable kernel loader. */
-int mb_portable_load_kernel(const char *path, int do_jump);
-uint32_t mb_portable_last_basepage(void);
-void mb_portable_kernel_bounds(uint32_t *base, uint32_t *end);
-void mb_portable_set_st_ram(uint32_t base, uint32_t size);
+/* Common kernel loader. */
+int mb_common_load_kernel(const char *path, int do_jump);
+uint32_t mb_common_last_basepage(void);
+void mb_common_kernel_bounds(uint32_t *base, uint32_t *end);
+void mb_common_set_st_ram(uint32_t base, uint32_t size);
 void mb_coverage_dump(void);
 
-uint16_t mb_portable_boot_drive(void);
+uint16_t mb_common_boot_drive(void);
 
 /* Vector/trap setup helpers. */
-void mb_portable_setup_vectors(void);
-uint32_t mb_portable_vector_base(void);
+void mb_common_setup_vectors(void);
+uint32_t mb_common_vector_base(void);
 
-/* Minimal logging helpers (portable layer). */
+/* Minimal logging helpers (common layer). */
 void mb_log_puts(const char *s);
 void mb_log_hex32(uint32_t value);
 void mb_log_hex64(uint64_t value);
@@ -83,4 +83,4 @@ void mb_autovec_level6_handler(void);
 void mb_autovec_level7_handler(void);
 
 
-#endif /* MINTBOOT_MB_PORTABLE_H */
+#endif /* MINTBOOT_MB_COMMON_H */

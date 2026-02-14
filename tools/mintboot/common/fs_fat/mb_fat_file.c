@@ -1,7 +1,7 @@
 #include "mb_fat_internal.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_util.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 #include <string.h>
 

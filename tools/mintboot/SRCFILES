@@ -1,5 +1,5 @@
 HEADER = \
-	include/mintboot/mb_portable.h \
+	include/mintboot/mb_common.h \
 	include/mintboot/mb_board.h \
 	include/mintboot/mb_rom.h \
 	include/mintboot/mb_errors.h \
@@ -12,74 +12,74 @@ HEADER = \
 	include/mintboot/mb_fat.h \
 	include/mintboot/mb_bdos_state.h \
 	include/mintboot/mb_xbios_iorec.h \
-	portable/fs_fat/mb_fat_internal.h \
+	common/fs_fat/mb_fat_internal.h \
 	tests/mb_tests_internal.h \
 	tests/fs_fat/mb_fat_tests_internal.h \
 	board/virt/mb_virt_mmio.h
 
 COBJS_SRC = \
-	portable/mb_portable.c \
-	portable/mb_cookie.c \
-	portable/mb_traps.c \
-	portable/mb_coverage.c \
-	portable/bios/dispatch.c \
-	portable/bios/bconstat.c \
-	portable/bios/bconin.c \
-	portable/bios/bconout.c \
-	portable/bios/rwabs.c \
-	portable/bios/setexc.c \
-	portable/bios/getbpb.c \
-	portable/bios/bcostat.c \
-	portable/bios/drvmap.c \
-	portable/bios/kbshift.c \
-	portable/xbios/dispatch.c \
-	portable/xbios/initmous.c \
-	portable/xbios/getrez.c \
-	portable/xbios/iorec.c \
-	portable/xbios/rsconf.c \
-	portable/xbios/keytbl.c \
-	portable/xbios/cursconf.c \
-	portable/xbios/settime.c \
-	portable/xbios/gettime.c \
-	portable/xbios/bioskeys.c \
-	portable/xbios/offgibit.c \
-	portable/xbios/ongibit.c \
-	portable/xbios/dosound.c \
-	portable/xbios/kbdvbase.c \
-	portable/xbios/vsync.c \
-	portable/xbios/supexec.c \
-	portable/xbios/bconmap.c \
-	portable/xbios/vsetscreen.c \
-	portable/xbios/kbrate.c \
-	portable/bdos/state.c \
-	portable/bdos/dispatch.c \
-	portable/bdos/fsetdta.c \
-	portable/bdos/fgetdta.c \
-	portable/bdos/dfree.c \
-	portable/bdos/dsetpath.c \
-	portable/bdos/dsetdrv.c \
-	portable/bdos/dgetdrv.c \
-	portable/bdos/dgetpath.c \
-	portable/bdos/pterm0.c \
-	portable/bdos/cconin.c \
-	portable/bdos/cconws.c \
-	portable/bdos/mxalloc.c \
-	portable/bdos/fcreate.c \
-	portable/bdos/fopen.c \
-	portable/bdos/fclose.c \
-	portable/bdos/fread.c \
-	portable/bdos/fwrite.c \
-	portable/bdos/fdelete.c \
-	portable/bdos/fseek.c \
-	portable/bdos/flock.c \
-	portable/bdos/fcntl.c \
-	portable/bdos/mshrink.c \
-	portable/mb_log.c \
-	portable/fs_fat/mb_fat_core.c \
-	portable/fs_fat/mb_fat_dir.c \
-	portable/fs_fat/mb_fat_file.c \
-	portable/mb_util.c \
-	portable/mb_lib.c \
+	common/mb_common.c \
+	common/mb_cookie.c \
+	common/mb_traps.c \
+	common/mb_coverage.c \
+	common/bios/dispatch.c \
+	common/bios/bconstat.c \
+	common/bios/bconin.c \
+	common/bios/bconout.c \
+	common/bios/rwabs.c \
+	common/bios/setexc.c \
+	common/bios/getbpb.c \
+	common/bios/bcostat.c \
+	common/bios/drvmap.c \
+	common/bios/kbshift.c \
+	common/xbios/dispatch.c \
+	common/xbios/initmous.c \
+	common/xbios/getrez.c \
+	common/xbios/iorec.c \
+	common/xbios/rsconf.c \
+	common/xbios/keytbl.c \
+	common/xbios/cursconf.c \
+	common/xbios/settime.c \
+	common/xbios/gettime.c \
+	common/xbios/bioskeys.c \
+	common/xbios/offgibit.c \
+	common/xbios/ongibit.c \
+	common/xbios/dosound.c \
+	common/xbios/kbdvbase.c \
+	common/xbios/vsync.c \
+	common/xbios/supexec.c \
+	common/xbios/bconmap.c \
+	common/xbios/vsetscreen.c \
+	common/xbios/kbrate.c \
+	common/bdos/state.c \
+	common/bdos/dispatch.c \
+	common/bdos/fsetdta.c \
+	common/bdos/fgetdta.c \
+	common/bdos/dfree.c \
+	common/bdos/dsetpath.c \
+	common/bdos/dsetdrv.c \
+	common/bdos/dgetdrv.c \
+	common/bdos/dgetpath.c \
+	common/bdos/pterm0.c \
+	common/bdos/cconin.c \
+	common/bdos/cconws.c \
+	common/bdos/mxalloc.c \
+	common/bdos/fcreate.c \
+	common/bdos/fopen.c \
+	common/bdos/fclose.c \
+	common/bdos/fread.c \
+	common/bdos/fwrite.c \
+	common/bdos/fdelete.c \
+	common/bdos/fseek.c \
+	common/bdos/flock.c \
+	common/bdos/fcntl.c \
+	common/bdos/mshrink.c \
+	common/mb_log.c \
+	common/fs_fat/mb_fat_core.c \
+	common/fs_fat/mb_fat_dir.c \
+	common/fs_fat/mb_fat_file.c \
+	common/mb_util.c \
+	common/mb_lib.c \
 	tests/fs_fat/mb_fat_tests.c \
 	tests/fs_fat/mb_fat_test_support.c \
 	tests/fs_fat/mb_fat_test_lookup.c \
@@ -101,12 +101,12 @@ COBJS_SRC = \
 	board/virt/mb_rom_virt.c
 
 SOBJS_SRC = \
-	portable/mb_vectors.S \
+	common/mb_vectors.S \
 	board/virt/mb_entry.S
 
 DOCS = \
 	README.md \
-	portable/README.md \
+	common/README.md \
 	board/README.md \
 	board/virt/README.md \
 	board/virt/mb_virt.ld

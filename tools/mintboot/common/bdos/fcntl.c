@@ -1,5 +1,5 @@
 #include "mintboot/mb_rom.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bdos_fcntl(uint16_t f, uint32_t arg, uint16_t cmd)
 {

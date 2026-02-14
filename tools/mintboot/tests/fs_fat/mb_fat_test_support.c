@@ -28,7 +28,7 @@ void mb_tests_init_drive(void)
 {
 	uint16_t dev;
 
-	dev = mb_portable_boot_drive();
+	dev = mb_common_boot_drive();
 	if (dev >= 26)
 		mb_panic("FAT test: boot drive invalid");
 

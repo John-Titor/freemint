@@ -1,6 +1,6 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_errors.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bdos_mshrink(uint16_t zero, uint32_t base, uint32_t len)
 {

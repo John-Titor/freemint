@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_tests.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_cookie.h"
@@ -27,7 +27,7 @@ static uint16_t mb_boot_drive = 0xffffu;
 #define MB_COOKIE_STORAGE_ADDR  0x00000600u
 #define MB_COOKIE_CAPACITY      16u
 
-static void mb_portable_init_cookies(void)
+static void mb_common_init_cookies(void)
 {
 	struct mb_cookie *storage = (struct mb_cookie *)MB_COOKIE_STORAGE_ADDR;
 	volatile struct mb_cookie **jar_ptr = (volatile struct mb_cookie **)MB_COOKIE_PTR_ADDR;
@@ -58,7 +58,7 @@ static void mb_etv_timer_stub(void)
 		*mb_lm_vbclock() = *mb_lm_vbclock() + 1u;
 }
 
-static void mb_portable_init_lowmem(void)
+static void mb_common_init_lowmem(void)
 {
 	*mb_lm_etv_critic() = (uint32_t)(uintptr_t)mb_etv_critic_stub;
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
@@ -71,7 +71,7 @@ static void mb_portable_init_lowmem(void)
 	mb_linea_init();
 }
 
-void mb_portable_set_st_ram(uint32_t base, uint32_t size)
+void mb_common_set_st_ram(uint32_t base, uint32_t size)
 {
 	uint32_t membot = base;
 	uint32_t memtop = base + size;
@@ -99,7 +99,7 @@ __attribute__((weak)) uint32_t mb_board_kernel_tpa_start(void)
 	return 0;
 }
 
-static void mb_portable_init_boot_drive(void)
+static void mb_common_init_boot_drive(void)
 {
 	uint32_t map = (uint32_t)mb_rom_dispatch.drvmap();
 	uint16_t i;
@@ -122,7 +122,7 @@ out:
 		mb_bdos_set_current_drive(mb_boot_drive);
 }
 
-uint16_t mb_portable_boot_drive(void)
+uint16_t mb_common_boot_drive(void)
 {
 	return mb_boot_drive;
 }
@@ -229,7 +229,7 @@ static int mb_find_kernel_path(char *out, size_t outsz)
 	return -1;
 }
 
-void mb_portable_setup_vectors(void)
+void mb_common_setup_vectors(void)
 {
 	uint32_t *dst = (uint32_t *)(uintptr_t)0x8;
 	uint32_t *src = mb_vector_table + 2;
@@ -243,31 +243,31 @@ void mb_portable_setup_vectors(void)
 	mb_cpu_set_vbr(0);
 }
 
-uint32_t mb_portable_vector_base(void)
+uint32_t mb_common_vector_base(void)
 {
 	return 0;
 }
 
-void mb_portable_run_tests(void);
+void mb_common_run_tests(void);
 
-void mb_portable_boot(struct mb_boot_info *info)
+void mb_common_boot(struct mb_boot_info *info)
 {
 	(void)info;
 
 	mb_cmdline[0] = '\0';
-	mb_portable_init_lowmem();
-	mb_portable_init_cookies();
+	mb_common_init_lowmem();
+	mb_common_init_cookies();
 	mb_board_init_cookies();
-	mb_portable_init_boot_drive();
-	mb_portable_setup_vectors();
+	mb_common_init_boot_drive();
+	mb_common_setup_vectors();
 	mb_cpu_enable_interrupts();
 	mb_cpu_write_sr((uint16_t)(mb_cpu_read_sr() & (uint16_t)~0x2000u));
-	mb_portable_run_tests();
+	mb_common_run_tests();
 	{
 		char kernel_path[384];
 		if (mb_find_kernel_path(kernel_path, sizeof(kernel_path)) == 0) {
 			mb_log_printf("mintboot: kernel candidate %s\n", kernel_path);
-			if (mb_portable_load_kernel(kernel_path, 1) != 0)
+			if (mb_common_load_kernel(kernel_path, 1) != 0)
 				mb_log_puts("mintboot: kernel load failed\n");
 			else
 				mb_log_puts("mintboot: kernel loaded (jump)\n");
@@ -275,6 +275,6 @@ void mb_portable_boot(struct mb_boot_info *info)
 			mb_log_puts("mintboot: kernel not found\n");
 		}
 	}
-	mb_log_puts("mintboot: portable init complete\n");
+	mb_log_puts("mintboot: common init complete\n");
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */
 }

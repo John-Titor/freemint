@@ -1,6 +1,6 @@
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_lowmem.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_kernel.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_cpu.h"
@@ -316,7 +316,7 @@ void mb_panic(const char *fmt, ...)
 		uint32_t vec_entry = 0;
 		int i;
 
-		mb_portable_kernel_bounds(&kbase, &kend);
+		mb_common_kernel_bounds(&kbase, &kend);
 		if (_mb_image_end)
 			mb_end = (uint32_t)(uintptr_t)_mb_image_end;
 		{

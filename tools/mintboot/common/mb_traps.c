@@ -1,5 +1,5 @@
 #include "mintboot/mb_board.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_linea.h"

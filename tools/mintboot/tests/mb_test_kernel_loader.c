@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_osbind.h"
 #include "mb_tests_internal.h"
 
@@ -228,7 +228,7 @@ void mb_tests_kernel_loader(void)
 
 	mb_cmdline[0] = '\0';
 
-	dev = mb_portable_boot_drive();
+	dev = mb_common_boot_drive();
 	if (dev >= 26)
 		mb_panic("Kernel test: invalid boot drive");
 	drive = (char)('A' + dev);
@@ -265,11 +265,11 @@ void mb_tests_kernel_loader(void)
 	 * Loader test must not transfer control to the kernel; we only validate
 	 * load/relocation and basepage state here.
 	 */
-	rc = mb_portable_load_kernel(kernel_path, do_jump);
+	rc = mb_common_load_kernel(kernel_path, do_jump);
 	if (rc != 0)
 		mb_panic("Kernel test: load rc=%d", (int)rc);
 
-	bp_addr = mb_portable_last_basepage();
+	bp_addr = mb_common_last_basepage();
 	if (bp_addr == 0)
 		mb_panic("Kernel test: basepage missing");
 	bp = (struct mb_test_basepage *)(uintptr_t)bp_addr;

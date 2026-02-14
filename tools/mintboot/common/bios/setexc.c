@@ -1,5 +1,5 @@
 #include "mintboot/mb_rom.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bios_setexc(uint16_t vnum, uint32_t vptr)
 {
@@ -10,7 +10,7 @@ long mb_bios_setexc(uint16_t vnum, uint32_t vptr)
 	if (vnum >= 256)
 		return 0;
 
-	base = mb_portable_vector_base();
+	base = mb_common_vector_base();
 	vectors = (volatile uint32_t *)(uintptr_t)base;
 	prev = vectors[vnum];
 

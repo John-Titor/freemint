@@ -1,6 +1,6 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_util.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 
 long mb_bdos_cconws(const char *buf)
 {

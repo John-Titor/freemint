@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "mintboot/mb_lowmem.h"
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_rom.h"
 
 long mb_xbios_supexec(uint32_t func)

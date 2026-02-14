@@ -1,4 +1,4 @@
-#include "mintboot/mb_portable.h"
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_board.h"
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_cookie.h"
@@ -91,7 +91,7 @@ static void mb_virt_parse_bootinfo(void)
 			}
 
 			st_size = 0x03f00000u;
-			mb_portable_set_st_ram(mem->addr, st_size);
+			mb_common_set_st_ram(mem->addr, st_size);
 		}
 
 		if (rec->tag == MB_LINUX_BI_CPUTYPE) {
@@ -193,7 +193,7 @@ static void mb_virt_enable_pic_irq(uint32_t pic, uint32_t irq)
 void mb_virt_start(void)
 {
 	mb_board_early_init();
-	mb_portable_boot(&mb_virt_boot);
+	mb_common_boot(&mb_virt_boot);
 	mb_board_exit(0);
 }
 
