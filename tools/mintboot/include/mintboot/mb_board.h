@@ -3,6 +3,7 @@
 
 /* Board-specific early init (clocks, memory, console). */
 void mb_board_early_init(void);
+void mb_board_init(void);
 
 /* Board hook to override cookie defaults after common init. */
 void mb_board_init_cookies(void);

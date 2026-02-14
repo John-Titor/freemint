@@ -3,13 +3,18 @@
 #include "mintboot/mb_rom.h"
 #include "mintboot/mb_cookie.h"
 #include "mintboot/mb_lowmem.h"
+#include "mintboot/mb_osbind.h"
+#include "mintboot/mb_cpu.h"
 #include "mb_virt_mmio.h"
 
 #include <stdint.h>
+#include <stddef.h>
 
 static uint8_t mb_virt_rx;
 static const uint32_t mb_virt_tmr_ms = 20;
 static const uint32_t mb_virt_hz200_step = 4;
+struct mb_interrupt_frame;
+static void mb_virt_pic_int(void);
 
 uintptr_t mb_virt_ramdisk_base;
 uint32_t mb_virt_ramdisk_size;
@@ -30,6 +35,7 @@ struct mb_linux_bootinfo_memchunk {
 #define MB_LINUX_BI_CPUTYPE  0x0003
 #define MB_LINUX_BI_RAMDISK  0x0006
 #define MB_LINUX_BI_CMDLINE  0x0007
+#define MB_AUTOVEC_LEVEL6    30u
 
 struct mb_linux_bootinfo_cputype {
 	uint16_t tag;
@@ -158,7 +164,8 @@ static void mb_virt_parse_bootinfo(void)
 	if (!saw_ramdisk)
 		mb_panic("bootinfo missing ramdisk tag");
 }
-static void mb_virt_init_rtc_50hz(void)
+
+static void mb_virt_rtc_set_alarm(void)
 {
 	uint64_t now;
 	uint64_t alarm;
@@ -191,10 +198,16 @@ static void mb_virt_enable_pic_irq(uint32_t pic, uint32_t irq)
 
 void mb_board_early_init(void)
 {
+	mb_cpu_set_vbr(0);
 	mb_virt_parse_bootinfo();
+}
+
+void mb_board_init(void)
+{
 	*mb_lm_tmr_ms() = mb_virt_tmr_ms;
+	(void)Setexc(MB_AUTOVEC_LEVEL6, mb_virt_pic_int);
 	mb_virt_enable_pic_irq(6, 1);
-	mb_virt_init_rtc_50hz();
+	mb_virt_rtc_set_alarm();
 }
 
 void mb_board_init_cookies(void)
@@ -203,25 +216,15 @@ void mb_board_init_cookies(void)
 	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'F', 'P', 'U'), 40);
 }
 
-void mb_autovec_level6_handler(void)
+__attribute__((interrupt))
+static void mb_virt_pic_int()
 {
-	uint64_t now;
-	uint64_t alarm;
-	uint32_t low;
-	uint32_t high;
 	void (*handler)(void);
 
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_ALARM, 1);
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_INTERRUPT, 1);
 
-	low = mb_mmio_read32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_TIME_LOW);
-	high = mb_mmio_read32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_TIME_HIGH);
-	now = ((uint64_t)high << 32) | low;
-	alarm = now + ((uint64_t)mb_virt_tmr_ms * 1000000ull);
-	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_HIGH,
-			(uint32_t)(alarm >> 32));
-	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_LOW,
-			(uint32_t)alarm);
+	mb_virt_rtc_set_alarm();
 
 	*mb_lm_hz_200() = *mb_lm_hz_200() + mb_virt_hz200_step;
 

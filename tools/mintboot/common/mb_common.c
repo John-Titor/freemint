@@ -125,6 +125,7 @@ void mb_common_start(void)
 	mb_cookie_init_defaults();
 	mb_board_init_cookies();
 	mb_common_setup_vectors();
+	mb_board_init();
 	mb_cpu_enable_interrupts();
 	mb_cpu_write_sr((uint16_t)(mb_cpu_read_sr() & (uint16_t)~0x2000u));
 	mb_common_init_boot_drive();
