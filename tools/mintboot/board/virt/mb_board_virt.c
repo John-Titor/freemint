@@ -212,8 +212,8 @@ void mb_board_init(void)
 
 void mb_board_init_cookies(void)
 {
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), 40);
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'F', 'P', 'U'), 40);
+	mb_cookie_set(MB_COOKIE_ID('_', 'C', 'P', 'U'), 40);
+	mb_cookie_set(MB_COOKIE_ID('_', 'F', 'P', 'U'), 40);
 }
 
 __attribute__((interrupt))

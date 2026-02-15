@@ -1,85 +1,73 @@
 #include "mintboot/mb_cookie.h"
+#include "mintboot/mb_lowmem.h"
 
-struct mb_cookie_jar mb_cookie_jar;
+#define MB_COOKIE_CAPACITY      20u
 
-#define MB_COOKIE_PTR_ADDR      0x000005a0u
-#define MB_COOKIE_STORAGE_ADDR  0x00000600u
-#define MB_COOKIE_CAPACITY      16u
+struct mb_cookie {
+	uint32_t id;
+	uint32_t value;
+};
 
-static void mb_cookie_terminate(struct mb_cookie_jar *jar, size_t idx)
+static struct mb_cookie mb_cookie_jar[MB_COOKIE_CAPACITY];
+
+static struct mb_cookie *mb_get_cookie_jar(void)
 {
-	jar->entries[idx].id = 0;
-	jar->entries[idx].value = 0;
+	return (struct mb_cookie *)*mb_lm_p_cookies();
 }
 
-void mb_cookie_init(struct mb_cookie_jar *jar, struct mb_cookie *storage, size_t capacity)
+int mb_cookie_set(uint32_t id, uint32_t value)
 {
-	if (!jar || !storage || capacity == 0)
-		return;
+	struct mb_cookie *cp = mb_get_cookie_jar();
 
-	jar->entries = storage;
-	jar->capacity = capacity;
-	mb_cookie_terminate(jar, 0);
-}
-
-int mb_cookie_set(struct mb_cookie_jar *jar, uint32_t id, uint32_t value)
-{
-	size_t i;
-
-	if (!jar || !jar->entries || jar->capacity == 0 || id == 0)
+	if (!cp)
 		return -1;
 
-	for (i = 0; i + 1 < jar->capacity; i++) {
-		if (jar->entries[i].id == id || jar->entries[i].id == 0) {
-			jar->entries[i].id = id;
-			jar->entries[i].value = value;
-			mb_cookie_terminate(jar, i + 1);
+	while (cp->id != 0) {
+		if (cp->id == id) {
+			cp->value = value;
 			return 0;
 		}
+		cp++;
 	}
-
-	return -1;
+	if (cp->value < 1) {
+		return -1;
+	}
+	cp[1].id = 0;
+	cp[1].value = cp->value - 1;
+	cp->id = id;
+	cp->value = value;
+	return 0;
 }
 
-int mb_cookie_get(struct mb_cookie_jar *jar, uint32_t id, uint32_t *value)
+int mb_cookie_get(uint32_t id, uint32_t *value)
 {
-	size_t i;
+	const struct mb_cookie *cp = mb_get_cookie_jar();
 
-	if (!jar || !jar->entries || id == 0)
+	if (!cp)
 		return -1;
 
-	for (i = 0; i < jar->capacity; i++) {
-		if (jar->entries[i].id == 0)
-			break;
-		if (jar->entries[i].id == id) {
+	while (cp->id != 0) {
+		if (cp->id == id) {
 			if (value)
-				*value = jar->entries[i].value;
+				*value = cp->value;
 			return 0;
 		}
+		cp++;
 	}
-
 	return -1;
 }
 
 void mb_cookie_init_defaults(void)
 {
-	struct mb_cookie *storage = (struct mb_cookie *)MB_COOKIE_STORAGE_ADDR;
-	volatile struct mb_cookie **jar_ptr = (volatile struct mb_cookie **)MB_COOKIE_PTR_ADDR;
-
-	mb_cookie_init(&mb_cookie_jar, storage, MB_COOKIE_CAPACITY);
-	*jar_ptr = mb_cookie_entries(&mb_cookie_jar);
+	/* jar init */
+	mb_cookie_jar[0].id = 0u;
+	mb_cookie_jar[0].value = MB_COOKIE_CAPACITY - 1;
+	*(struct mb_cookie **)mb_lm_p_cookies() = &mb_cookie_jar[0];
 
 	/* Defaults; board code may override. */
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), 0xffffffffu);
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'F', 'P', 'U'), 0xffffffffu);
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'M', 'C', 'H'), 0xffffffffu);
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'V', 'D', 'O'), 0xffffffffu);
-	mb_cookie_set(&mb_cookie_jar, MB_COOKIE_ID('_', 'S', 'N', 'D'), 0xffffffffu);
-}
-
-struct mb_cookie *mb_cookie_entries(struct mb_cookie_jar *jar)
-{
-	if (!jar)
-		return NULL;
-	return jar->entries;
+	mb_cookie_set(MB_COOKIE_ID('_', 'C', 'P', 'U'), 0xffffffffu);
+	mb_cookie_set(MB_COOKIE_ID('_', 'F', 'P', 'U'), 0xffffffffu);
+	mb_cookie_set(MB_COOKIE_ID('_', 'M', 'C', 'H'), 0xffffffffu);
+	mb_cookie_set(MB_COOKIE_ID('_', 'V', 'D', 'O'), 0xffffffffu);
+	mb_cookie_set(MB_COOKIE_ID('_', 'S', 'N', 'D'), 0xffffffffu);
 }

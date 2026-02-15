@@ -89,7 +89,7 @@ int mb_common_find_kernel_path(char *out, size_t outsz)
 	if (mb_path_exists(out))
 		return 0;
 
-	if (mb_cookie_get(&mb_cookie_jar, MB_COOKIE_ID('_', 'C', 'P', 'U'), &cpu) == 0) {
+	if (mb_cookie_get(MB_COOKIE_ID('_', 'C', 'P', 'U'), &cpu) == 0) {
 		switch (cpu) {
 		case 20:
 			name = "mint020.prg";

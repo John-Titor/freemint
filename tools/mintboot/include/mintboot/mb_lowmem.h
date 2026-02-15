@@ -29,6 +29,7 @@
 #define MB_LM_LONGFRAME_ADDR  0x0000059eu
 #define MB_LM_OSHDR_ADDR      0x00000680u
 #define MB_LM_OSRUN_ADDR      0x000006b0u
+#define MB_LM_P_COOKIES_ADDR  0x000005a0u
 
 static inline volatile uint32_t *mb_lm_memvalid(void)
 {
@@ -138,6 +139,11 @@ static inline void *mb_lm_oshdr(void)
 static inline void *mb_lm_osrun(void)
 {
 	return (void *)(uintptr_t)MB_LM_OSRUN_ADDR;
+}
+
+static inline void **mb_lm_p_cookies(void)
+{
+	return (void *)(uintptr_t)MB_LM_P_COOKIES_ADDR;
 }
 
 #endif /* MINTBOOT_MB_LOWMEM_H */
