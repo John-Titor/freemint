@@ -1,6 +1,8 @@
 #ifndef MINTBOOT_MB_BOARD_H
 #define MINTBOOT_MB_BOARD_H
 
+#include "mintboot/mb_common.h"
+
 /* Board-specific early init (clocks, memory, console). */
 void mb_board_early_init(void);
 void mb_board_init(void);
@@ -12,6 +14,6 @@ void mb_board_init_cookies(void);
 void mb_board_console_putc(int ch);
 int mb_board_console_getc(void);
 int mb_board_console_poll(void);
-void mb_board_exit(int code) __attribute__((noreturn));
+void mb_board_exit(int code) NORETURN;
 
 #endif /* MINTBOOT_MB_BOARD_H */

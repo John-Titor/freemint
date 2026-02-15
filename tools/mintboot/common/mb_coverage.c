@@ -100,12 +100,10 @@ void __gcov_merge_add(void *counters, unsigned int n)
 	(void)n;
 }
 
-void abort(void) __attribute__((noreturn));
-void abort(void)
+MB_COV_EXPECT_UNHIT void abort(void) NORETURN;
+MB_COV_EXPECT_UNHIT void abort(void)
 {
 	mb_panic("abort");
-	for (;;)
-		;
 }
 
 #else

@@ -63,7 +63,7 @@ typedef struct
 } exception_frame;
 #pragma pack(pop)
 
-void mb_trap_panic(exception_frame frame);
+MB_COV_EXPECT_UNHIT void mb_trap_panic(exception_frame frame);
 
 extern void mb_trap_fatal(void);
 extern void mb_line1010(void);
@@ -169,13 +169,14 @@ static const char * const transfer_modes[] = {"data cache push",
                                        "supervisor code",
                                        "reserved"};
 
+MB_COV_EXPECT_UNHIT
 static const char *
 exception_name(const exception_frame *frame)
 {
     return (frame->vector < 64) ? exception_names[frame->vector] : "interrupt";
 }
 
-__attribute__((noreturn))
+MB_COV_EXPECT_UNHIT NORETURN
 void mb_trap_panic(exception_frame _frame)
 {
 	exception_frame *frame = &_frame;
