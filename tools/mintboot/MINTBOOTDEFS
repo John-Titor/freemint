@@ -1,3 +1,21 @@
+TEST_COBJS = \
+	tests/fs_fat/mb_fat_tests.c \
+	tests/fs_fat/mb_fat_test_support.c \
+	tests/fs_fat/mb_fat_test_lookup.c \
+	tests/fs_fat/mb_fat_test_rename.c \
+	tests/fs_fat/mb_fat_test_dir.c \
+	tests/fs_fat/mb_fat_test_core.c \
+	tests/mb_test_helpers.c \
+	tests/mb_test_setexc.c \
+	tests/mb_test_gettime.c \
+	tests/mb_test_drive_range.c \
+	tests/mb_test_drive_path.c \
+	tests/mb_test_bconmap.c \
+	tests/mb_test_bios_bdos.c \
+	tests/mb_test_vbclock.c \
+	tests/mb_test_kernel_loader.c \
+	tests/mb_tests_main.c
+
 ifeq ($(mintboot),generic)
 TARGET = ../libmintboot-generic.a
 CPU = 000
@@ -15,22 +33,6 @@ COBJS = \
 	common/mb_lib.c \
 	common/mb_util.c \
 	common/linea/mb_linea.c \
-	tests/fs_fat/mb_fat_tests.c \
-	tests/fs_fat/mb_fat_test_support.c \
-	tests/fs_fat/mb_fat_test_lookup.c \
-	tests/fs_fat/mb_fat_test_rename.c \
-	tests/fs_fat/mb_fat_test_dir.c \
-	tests/fs_fat/mb_fat_test_core.c \
-	tests/mb_test_helpers.c \
-	tests/mb_test_setexc.c \
-	tests/mb_test_gettime.c \
-	tests/mb_test_drive_range.c \
-	tests/mb_test_drive_path.c \
-	tests/mb_test_bconmap.c \
-	tests/mb_test_bios_bdos.c \
-	tests/mb_test_vbclock.c \
-	tests/mb_test_kernel_loader.c \
-	tests/mb_tests_main.c \
 	common/bios/dispatch.c \
 	common/bios/bconstat.c \
 	common/bios/bconin.c \
@@ -87,6 +89,9 @@ COBJS = \
 	common/bdos/fcntl.c \
 	common/bdos/mshrink.c \
 	board/mb_board.c
+ifeq ($(MINTBOOT_TESTS),yes)
+COBJS += $(TEST_COBJS)
+endif
 SOBJS = common/mb_vectors.S
 endif
 
@@ -110,22 +115,6 @@ COBJS = \
 	common/mb_lib.c \
 	common/mb_util.c \
 	common/linea/mb_linea.c \
-	tests/fs_fat/mb_fat_tests.c \
-	tests/fs_fat/mb_fat_test_support.c \
-	tests/fs_fat/mb_fat_test_lookup.c \
-	tests/fs_fat/mb_fat_test_rename.c \
-	tests/fs_fat/mb_fat_test_dir.c \
-	tests/fs_fat/mb_fat_test_core.c \
-	tests/mb_test_helpers.c \
-	tests/mb_test_setexc.c \
-	tests/mb_test_gettime.c \
-	tests/mb_test_drive_range.c \
-	tests/mb_test_drive_path.c \
-	tests/mb_test_bconmap.c \
-	tests/mb_test_bios_bdos.c \
-	tests/mb_test_vbclock.c \
-	tests/mb_test_kernel_loader.c \
-	tests/mb_tests_main.c \
 	common/bios/dispatch.c \
 	common/bios/bconstat.c \
 	common/bios/bconin.c \
@@ -183,6 +172,9 @@ COBJS = \
 	common/bdos/mshrink.c \
 	board/virt/mb_board_virt.c \
 	board/virt/mb_rom_virt.c
+ifeq ($(MINTBOOT_TESTS),yes)
+COBJS += $(TEST_COBJS)
+endif
 SOBJS = common/mb_vectors.S board/virt/mb_virt_entry.S
 LDSCRIPT = $(srcdir)/board/virt/mb_virt.ld
 endif
@@ -190,6 +182,12 @@ endif
 mintboottargets = generic virt
 
 cflags += -msoft-float
+
+MINTBOOT_TESTS ?= no
+MINTBOOT_TESTS_EXIT ?= no
+ifeq ($(MINTBOOT_TESTS_EXIT),yes)
+cflags += -DMB_EXIT_AFTER_TESTS=1
+endif
 
 MINTBOOT_COVERAGE ?= no
 ifeq ($(MINTBOOT_COVERAGE),yes)

@@ -3,6 +3,9 @@ ENTRY(mb_entry)
 OUTPUT_FORMAT(elf32-m68k)
 OUTPUT_ARCH(m68k)
 
+MB_VIRT_BASE = 0x03f00000;
+MB_VIRT_MAX_FOOTPRINT = 0x00100000;
+
 PHDRS
 {
 	text PT_LOAD FLAGS(5);
@@ -11,7 +14,7 @@ PHDRS
 
 SECTIONS
 {
-    . = 0x03f00000;
+    . = MB_VIRT_BASE;
 
 	.vectors : {
 		*(.vectors)
@@ -45,3 +48,6 @@ SECTIONS
 	. = ALIGN(4);
 	_mb_image_end = .;
 }
+
+ASSERT((_mb_image_end - MB_VIRT_BASE) <= MB_VIRT_MAX_FOOTPRINT,
+       "mintboot: virt image footprint exceeds 1MiB");

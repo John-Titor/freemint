@@ -10,8 +10,7 @@ RAMDISK_DIR="$ROOT/ramdisk.d"
 RAMDISK_SIZE_MIB=32
 RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
-MEM_SIZE_MIB=64
-MEM_SIZE_BYTES=$((MEM_SIZE_MIB * 1024 * 1024))
+BASE_MEM_SIZE_MIB=64
 MEM_FILE=${MEM_FILE:-/tmp/mintboot-virt.mem}
 CMDLINE=${CMDLINE:-}
 QEMU_TRACE=${QEMU_TRACE:-}
@@ -115,6 +114,11 @@ if [ $# -gt 0 ]; then
 	CMDLINE="$*"
 fi
 
+ramdisk_bytes=$(wc -c < "$RAMDISK" | tr -d '[:space:]')
+ramdisk_mib_rounded=$(((ramdisk_bytes + 1048576 - 1) / 1048576))
+MEM_SIZE_MIB=$((BASE_MEM_SIZE_MIB + ramdisk_mib_rounded))
+MEM_SIZE_BYTES=$((MEM_SIZE_MIB * 1048576))
+
 if [ ! -f "$MEM_FILE" ]; then
 	dd if=/dev/zero of="$MEM_FILE" bs=1048576 count="$MEM_SIZE_MIB" 2>/dev/null
 else
@@ -127,6 +131,12 @@ fi
 mkdir -p "$(dirname "$RUN_LOG")"
 rm -f "$RUN_LOG"
 
+QEMU_PIPE=$(mktemp -u /tmp/mintboot-qemu.XXXXXX)
+mkfifo "$QEMU_PIPE"
+tee "$RUN_LOG" < "$QEMU_PIPE" &
+TEE_PID=$!
+
+set +e
 "$QEMU" \
 	-M virt,memory-backend=ram \
 	-object memory-backend-file,id=ram,size="$MEM_SIZE_BYTES",mem-path="$MEM_FILE",share=on \
@@ -136,7 +146,12 @@ rm -f "$RUN_LOG"
 	-kernel "$ELF" \
 	-initrd "$RAMDISK" \
 	${QEMU_TRACE:+$QEMU_TRACE} \
-	${CMDLINE:+-append "$CMDLINE"} 2>&1 | tee "$RUN_LOG"
+	${CMDLINE:+-append "$CMDLINE"} > "$QEMU_PIPE" 2>&1
+QEMU_RC=$?
+set -e
+
+wait "$TEE_PID"
+rm -f "$QEMU_PIPE"
 
 if grep -q '^MB-COV-BEGIN' "$RUN_LOG"; then
 	if ! command -v xxd >/dev/null 2>&1; then
@@ -162,4 +177,12 @@ if grep -q '^MB-COV-BEGIN' "$RUN_LOG"; then
 	fi
 fi
 
+if [ "$QEMU_RC" -eq 0 ]; then
+	echo "mintboot: qemu exited with zero status"
+else
+	echo "mintboot: qemu exited with non-zero status ($QEMU_RC)"
+fi
+
 echo "mintboot: preserved guest RAM image at $MEM_FILE"
+
+exit "$QEMU_RC"

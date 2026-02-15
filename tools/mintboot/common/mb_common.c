@@ -100,7 +100,9 @@ uint32_t mb_common_vector_base(void)
 	return mb_cpu_get_vbr();
 }
 
-void mb_common_run_tests(void);
+__attribute__((weak)) void mb_common_run_tests(void)
+{
+}
 
 void mb_common_start(void)
 {
@@ -115,6 +117,9 @@ void mb_common_start(void)
 	mb_cpu_write_sr((uint16_t)(mb_cpu_read_sr() & (uint16_t)~0x2000u));
 	mb_common_init_boot_drive();
 	mb_common_run_tests();
+#if defined(MB_EXIT_AFTER_TESTS)
+	mb_board_exit(0);
+#endif
 	mb_common_boot();
 	mb_board_exit(0);
 	/* TODO: load/relocate kernel, finalize boot info, jump to entry. */

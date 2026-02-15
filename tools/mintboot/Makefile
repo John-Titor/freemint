@@ -36,12 +36,14 @@ all-targets:
 $(mintboottargets):
 	$(MAKE) buildmintboot mintboot=$@
 
-virt-coverage:
+virt-test:
 	$(MAKE) buildmintboot \
 		mintboot=virt \
+		MINTBOOT_TESTS=yes \
+		MINTBOOT_TESTS_EXIT=yes \
 		MINTBOOT_COVERAGE=yes \
-		compile_dir=.compile_virt_coverage \
-		mintboottarget=_stmp_virt_coverage
+		compile_dir=.compile_virt_test \
+		mintboottarget=_stmp_virt_test
 
 #
 # multi target stuff
