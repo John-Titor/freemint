@@ -29,6 +29,185 @@ require_cmd() {
 	fi
 }
 
+parse_last_hex_after_label() {
+	local label=$1
+	local file=$2
+	local line value
+
+	line=$(grep -E "$label[[:space:]]*0x[0-9a-fA-F]+" "$file" | tail -n1 || true)
+	if [[ -z "$line" ]]; then
+		return 1
+	fi
+	value=$(sed -E "s/.*$label[[:space:]]*0x([0-9a-fA-F]+).*/\\1/" <<<"$line")
+	if [[ -z "$value" || "$value" == "$line" ]]; then
+		return 1
+	fi
+	printf '%s\n' "$value"
+}
+
+section_vma_size() {
+	local binary=$1
+	local section=$2
+	local objdump=${OBJDUMP:-m68k-atari-mintelf-objdump}
+	local line size vma
+
+	line=$("$objdump" -h "$binary" | awk -v sec="$section" '$2 == sec { print $3 " " $4; exit }')
+	if [[ -z "$line" ]]; then
+		return 1
+	fi
+	read -r size vma <<<"$line"
+	printf '%s %s\n' "$vma" "$size"
+}
+
+dump_stack_window() {
+	local label=$1
+	local addr_hex=$2
+	local mem_file=$3
+	local mem_size=$4
+	local addr start_raw end_raw start end len
+
+	addr=$((16#$addr_hex))
+	if (( addr >= mem_size )); then
+		echo "mintboot: $label=0x$(printf '%08x' "$addr") outside RAM image (size=0x$(printf '%x' "$mem_size"))"
+		return
+	fi
+
+	start_raw=$((addr >= 64 ? addr - 64 : 0))
+	end_raw=$((addr + 64))
+	if (( end_raw > mem_size )); then
+		end_raw=$mem_size
+	fi
+	start=$((start_raw & ~0xf))
+	end=$(((end_raw + 15) & ~0xf))
+	if (( end > mem_size )); then
+		end=$mem_size
+	fi
+	if (( end <= start )); then
+		echo "mintboot: $label window empty"
+		return
+	fi
+	len=$((end - start))
+
+	echo "mintboot: $label hexdump around 0x$(printf '%08x' "$addr") [0x$(printf '%08x' "$start"),0x$(printf '%08x' "$end"))"
+	xxd -g2 -u -s "$start" -l "$len" "$mem_file"
+}
+
+disassemble_function_for_pc() {
+	local binary=$1
+	local pc_bin=$2
+	local text_end=$3
+	local name=$4
+	local nm_tool=${NM:-m68k-atari-mintelf-nm}
+	local objdump=${OBJDUMP:-m68k-atari-mintelf-objdump}
+	local sym_addr=-1 next_addr=$text_end sym_name=""
+	local addr type sym a
+
+	while read -r addr type sym _; do
+		[[ -z "${addr:-}" || -z "${type:-}" || -z "${sym:-}" ]] && continue
+		case "$type" in
+			t|T|w|W) ;;
+			*) continue ;;
+		esac
+		[[ "$sym" == .L* ]] && continue
+		a=$((16#$addr))
+		if (( a <= pc_bin )); then
+			sym_addr=$a
+			sym_name=$sym
+			continue
+		fi
+		next_addr=$a
+		break
+	done < <("$nm_tool" -n "$binary")
+
+	if (( sym_addr < 0 )); then
+		echo "mintboot: $name PC has no matching symbol in $binary"
+		return
+	fi
+	if (( next_addr <= sym_addr )); then
+		next_addr=$((sym_addr + 2))
+	fi
+
+	echo "mintboot: $name symbol $sym_name @ 0x$(printf '%x' "$sym_addr"), pc=0x$(printf '%x' "$pc_bin")"
+	"$objdump" -d --start-address="$sym_addr" --stop-address="$next_addr" "$binary"
+}
+
+analyze_qemu_failure() {
+	local run_log=$1
+	local mem_file=$2
+	local elf=$3
+	local kernel_src=$4
+	local pc_hex usp_hex ssp_hex reloc_hex
+	local mem_size
+	local objdump=${OBJDUMP:-m68k-atari-mintelf-objdump}
+	local mint_vma_hex mint_size_hex kernel_vma_hex kernel_size_hex
+	local mint_vma mint_size mint_end kernel_vma kernel_size kernel_end
+	local pc pc_bin reloc_base kernel_rt_start kernel_rt_end
+
+	if [[ ! -f "$run_log" || ! -f "$mem_file" ]]; then
+		return
+	fi
+
+	require_cmd xxd
+	require_cmd "$objdump"
+	require_cmd "${NM:-m68k-atari-mintelf-nm}"
+
+	pc_hex=$(parse_last_hex_after_label "PC" "$run_log" || true)
+	usp_hex=$(parse_last_hex_after_label "USP" "$run_log" || true)
+	ssp_hex=$(parse_last_hex_after_label "SSP" "$run_log" || true)
+	reloc_hex=$(grep -E 'PRG relocation base=[0-9a-fA-F]+' "$run_log" | tail -n1 | sed -E 's/.*=([0-9a-fA-F]+).*/\1/' || true)
+	mem_size=$(wc -c < "$mem_file" | tr -d '[:space:]')
+
+	echo "mintboot: qemu failure analysis from $run_log"
+	if [[ -n "$pc_hex" ]]; then
+		echo "mintboot: fault PC=0x$pc_hex"
+	else
+		echo "mintboot: fault PC not found in log"
+	fi
+	[[ -n "$usp_hex" ]] && dump_stack_window "USP" "$usp_hex" "$mem_file" "$mem_size"
+	[[ -n "$ssp_hex" ]] && dump_stack_window "SSP" "$ssp_hex" "$mem_file" "$mem_size"
+
+	if [[ -z "$pc_hex" ]]; then
+		return
+	fi
+	pc=$((16#$pc_hex))
+
+	read -r mint_vma_hex mint_size_hex < <(section_vma_size "$elf" ".text")
+	mint_vma=$((16#$mint_vma_hex))
+	mint_size=$((16#$mint_size_hex))
+	mint_end=$((mint_vma + mint_size))
+
+	if (( pc >= mint_vma && pc < mint_end )); then
+		echo "mintboot: PC is in mintboot text [0x$(printf '%08x' "$mint_vma"),0x$(printf '%08x' "$mint_end"))"
+		disassemble_function_for_pc "$elf" "$pc" "$mint_end" "mintboot"
+		return
+	fi
+
+	if ! read -r kernel_vma_hex kernel_size_hex < <(section_vma_size "$kernel_src" ".text"); then
+		echo "mintboot: kernel text section unavailable in $kernel_src"
+		return
+	fi
+	if [[ -z "$reloc_hex" ]]; then
+		echo "mintboot: kernel relocation base not found in log"
+		return
+	fi
+
+	kernel_vma=$((16#$kernel_vma_hex))
+	kernel_size=$((16#$kernel_size_hex))
+	reloc_base=$((16#$reloc_hex))
+	kernel_rt_start=$((reloc_base + kernel_vma))
+	kernel_rt_end=$((kernel_rt_start + kernel_size))
+
+	if (( pc >= kernel_rt_start && pc < kernel_rt_end )); then
+		pc_bin=$((pc - reloc_base))
+		kernel_end=$((kernel_vma + kernel_size))
+		echo "mintboot: PC is in kernel text [0x$(printf '%08x' "$kernel_rt_start"),0x$(printf '%08x' "$kernel_rt_end")) reloc=0x$(printf '%08x' "$reloc_base")"
+		disassemble_function_for_pc "$kernel_src" "$pc_bin" "$kernel_end" "kernel"
+		return
+	fi
+
+	echo "mintboot: PC 0x$(printf '%08x' "$pc") is outside mintboot and kernel text ranges"
+}
+
 need_ramdisk_regen() {
 	local ramdisk=$1
 	local ramdisk_dir=$2
@@ -152,6 +331,7 @@ run_qemu() {
 		-M "virt,memory-backend=ram"
 		-object "memory-backend-file,id=ram,size=$mem_size_bytes,mem-path=$mem_file,share=on"
 		-cpu m68040
+		-action panic=exit-failure
 		-nographic
 		-serial mon:stdio
 		-kernel "$elf"
@@ -176,10 +356,11 @@ run_qemu() {
 	tee "$run_log" < "$qemu_pipe" &
 	tee_pid=$!
 
-	set +e
-	"${qemu_cmd[@]}" >"$qemu_pipe" 2>&1
-	rc=$?
-	set -e
+	if "${qemu_cmd[@]}" >"$qemu_pipe" 2>&1; then
+		rc=0
+	else
+		rc=$?
+	fi
 
 	wait "$tee_pid" || true
 	rm -f "$qemu_pipe"
@@ -251,12 +432,16 @@ main() {
 
 	mem_size_bytes=$(ensure_mem_file "$ramdisk" "$mem_file" "$base_mem_size_mib")
 
-	set +e
-	run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log"
-	qemu_rc=$?
-	set -e
+	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log"; then
+		qemu_rc=0
+	else
+		qemu_rc=$?
+	fi
 
 	process_coverage "$run_log" "$cov_stream" "$ROOT"
+	if [[ "$qemu_rc" -ne 0 ]]; then
+		analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src"
+	fi
 
 	if [[ "$qemu_rc" -eq 0 ]]; then
 		echo "mintboot: qemu exited with zero status"
