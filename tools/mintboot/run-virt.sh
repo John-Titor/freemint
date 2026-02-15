@@ -10,6 +10,9 @@ RAMDISK_DIR="$ROOT/ramdisk.d"
 RAMDISK_SIZE_MIB=32
 RAMDISK_SECTOR_SIZE=512
 RAMDISK_FIRST_SECTOR=2048
+MEM_SIZE_MIB=64
+MEM_SIZE_BYTES=$((MEM_SIZE_MIB * 1024 * 1024))
+MEM_FILE=${MEM_FILE:-/tmp/mintboot-virt.mem}
 CMDLINE=${CMDLINE:-}
 QEMU_TRACE=${QEMU_TRACE:-}
 RUN_LOG=${RUN_LOG:-$ROOT/.compile_virt/run-virt.log}
@@ -112,11 +115,21 @@ if [ $# -gt 0 ]; then
 	CMDLINE="$*"
 fi
 
+if [ ! -f "$MEM_FILE" ]; then
+	dd if=/dev/zero of="$MEM_FILE" bs=1048576 count="$MEM_SIZE_MIB" 2>/dev/null
+else
+	mem_size=$(wc -c < "$MEM_FILE")
+	if [ "$mem_size" -ne "$MEM_SIZE_BYTES" ]; then
+		dd if=/dev/zero of="$MEM_FILE" bs=1048576 count="$MEM_SIZE_MIB" 2>/dev/null
+	fi
+fi
+
 mkdir -p "$(dirname "$RUN_LOG")"
 rm -f "$RUN_LOG"
 
 "$QEMU" \
-	-M virt \
+	-M virt,memory-backend=ram \
+	-object memory-backend-file,id=ram,size="$MEM_SIZE_BYTES",mem-path="$MEM_FILE",share=on \
 	-cpu m68040 \
 	-nographic \
 	-serial mon:stdio \
@@ -148,3 +161,5 @@ if grep -q '^MB-COV-BEGIN' "$RUN_LOG"; then
 		echo "coverage markers found but stream was empty" >&2
 	fi
 fi
+
+echo "mintboot: preserved guest RAM image at $MEM_FILE"
