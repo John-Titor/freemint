@@ -21,6 +21,7 @@
 
 #define GOLDFISH_CTRL_REG_CMD      0x04
 #define GOLDFISH_CTRL_CMD_HALT     0x02
+#define GOLDFISH_CTRL_CMD_PANIC    0x03
 
 #define GOLDFISH_PIC_STATUS        0x00
 #define GOLDFISH_PIC_NUMBER        0x04

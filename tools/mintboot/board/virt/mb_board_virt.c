@@ -265,7 +265,7 @@ void mb_board_exit(int code)
 {
 	(void)code;
 	mb_mmio_write32(VIRT_GF_CTRL_MMIO_BASE + GOLDFISH_CTRL_REG_CMD,
-			GOLDFISH_CTRL_CMD_HALT);
+			code ? GOLDFISH_CTRL_CMD_PANIC : GOLDFISH_CTRL_CMD_HALT);
 	for (;;) {
 	}
 }
