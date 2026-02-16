@@ -1,14 +1,25 @@
 #include "mintboot/mb_vdi.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_trap_helpers.h"
+#include "mintboot/mb_debug.h"
 
 long mb_vdi_dispatch(uint16_t function, uint16_t *args)
 {
+	long ret;
+
+	mb_check_vector20("vdi");
+	mb_debug_vdi_enter(function, args);
 	(void)args;
 
 	switch (function) {
 	case 0:
-		return mb_bdos_pterm0();
+		ret = mb_bdos_pterm0();
+		break;
 	default:
-		return MB_ERR_INVFN;
+		ret = MB_ERR_INVFN;
+		break;
 	}
+
+	mb_debug_vdi_exit(function, args, ret);
+	return ret;
 }

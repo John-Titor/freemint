@@ -5,6 +5,7 @@
 #include "mintboot/mb_linea.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_debug.h"
 #include "mintboot/mb_cpu.h"
 #include "mintboot/mb_osbind.h"
 
@@ -27,6 +28,7 @@ static void mb_etv_timer_stub(void)
 	*mb_lm_frclock() = *mb_lm_frclock() + 1u;
 	if (*mb_lm_vblsem() == 0)
 		*mb_lm_vbclock() = *mb_lm_vbclock() + 1u;
+	mb_debug_timer_tick();
 }
 
 static void mb_common_init_lowmem(void)
