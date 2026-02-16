@@ -18,6 +18,13 @@
 #define MB_LM_TMR_MS_ADDR     0x00000442u
 #define MB_LM_VBLSEM_ADDR     0x00000452u
 #define MB_LM_FRCLOCK_ADDR    0x00000466u
+#define MB_LM_HDV_BPB_ADDR    0x00000472u
+#define MB_LM_HDV_RW_ADDR     0x00000476u
+#define MB_LM_HDV_MEDIACH_ADDR 0x0000047eu
+#define MB_LM_XCONSTAT_ADDR   0x0000051eu
+#define MB_LM_XCONIN_ADDR     0x0000053eu
+#define MB_LM_XCOSTAT_ADDR    0x0000055eu
+#define MB_LM_XCONOUT_ADDR    0x0000057eu
 #define MB_LM_ETV_CRITIC_ADDR 0x00000404u
 #define MB_LM_ETV_TERM_ADDR   0x00000408u
 #define MB_LM_ETV_TIMER_ADDR  0x0000040cu
@@ -84,6 +91,41 @@ static inline volatile uint16_t *mb_lm_vblsem(void)
 static inline volatile uint32_t *mb_lm_frclock(void)
 {
 	return (volatile uint32_t *)MB_LM_FRCLOCK_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_hdv_bpb(void)
+{
+	return (volatile uint32_t *)MB_LM_HDV_BPB_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_hdv_rw(void)
+{
+	return (volatile uint32_t *)MB_LM_HDV_RW_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_hdv_mediach(void)
+{
+	return (volatile uint32_t *)MB_LM_HDV_MEDIACH_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_xconstat(void)
+{
+	return (volatile uint32_t *)MB_LM_XCONSTAT_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_xconin(void)
+{
+	return (volatile uint32_t *)MB_LM_XCONIN_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_xcostat(void)
+{
+	return (volatile uint32_t *)MB_LM_XCOSTAT_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_xconout(void)
+{
+	return (volatile uint32_t *)MB_LM_XCONOUT_ADDR;
 }
 
 static inline volatile uint32_t *mb_lm_etv_critic(void)

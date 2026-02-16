@@ -34,6 +34,8 @@ static void mb_common_init_lowmem(void)
 	*mb_lm_etv_critic() = (uint32_t)(uintptr_t)mb_etv_critic_stub;
 	*mb_lm_etv_term() = (uint32_t)(uintptr_t)mb_etv_term_stub;
 	*mb_lm_etv_timer() = (uint32_t)(uintptr_t)mb_etv_timer_stub;
+	mb_bios_init_lowmem();
+	mb_xbios_init_lowmem();
 	*mb_lm_vbclock() = 0;
 	*mb_lm_frclock() = 0;
 	*mb_lm_hz_200() = 0;

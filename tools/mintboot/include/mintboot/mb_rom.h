@@ -56,6 +56,7 @@ long mb_bios_getbpb(uint16_t dev);
 long mb_bios_bcostat(uint16_t dev);
 long mb_bios_drvmap(void);
 long mb_bios_kbshift(uint16_t data);
+void mb_bios_init_lowmem(void);
 
 long mb_xbios_initmous(uint16_t type, uint32_t param, uint32_t vptr);
 long mb_xbios_physbase(void);
@@ -77,6 +78,7 @@ long mb_xbios_supexec(uint32_t func);
 long mb_xbios_bconmap(uint16_t dev);
 long mb_xbios_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode);
 long mb_xbios_kbrate(uint16_t delay, uint16_t rate);
+void mb_xbios_init_lowmem(void);
 
 long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);
 long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
