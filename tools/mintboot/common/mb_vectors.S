@@ -34,7 +34,8 @@ mb_trap1:
 	lea			8(%sp),%a0						// args behind trap frame
 	cmp.w		#32,(%a0)						// Super?
 	jbeq		5f								// ... yes
-2:
+
+2:												// not Super, call dispatcher
 	pea			2(%a0)							// address of function args
 	clr.l		%d0								// clear high word
 	move.w		(%a0),%d0						// ... and get low word
@@ -46,36 +47,37 @@ mb_trap1:
 
 3:												// Super from user mode
 	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
-	cmp.l		#1,(%a0)						// query?
+	cmp.l		#1,2(%a0)						// query?
 	jbne		4f								// ...no
 	clr.l		%d0								// SUP_USER
 	rte
 4:
-	move.l		%sp,%a0							// save SSP to return
-	move.l		%usp,%a1						// user stack
-	sub.l		#8,%a1							// ... make space for frame
-	move.w		(%a0),%d0						// copy SR
-	or.w		#0x2000,%d0						// ... with S set
-	move.w		%d0,(%a1)						// to new frame
-	move.l		2(%a0),2(%a1)					// copy PC
-	move.w		6(%a0),6(%a1)					// copy format / vector
+	tst.l		2(%a0)							// go super?
+	jbne		mb_trap_fatal					// ... no, fatal
+	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
+	move.l		%usp,%a1						// new SSP = USP
+	sub.l		#8,%a1							// ... make space for new frame on new stack
+	move.l		(%sp),(%a1)						// copy old frame to new frame
+	move.l		4(%sp),4(%a1)
+	or.w		#0x2000,(%a1)					// set S in new frame SR
+	move.l		%sp,%d0							// return old SSP
 	move.l		%a1,%sp							// switch stacks
-	move.l		%a0,%d0							// return old SSP
 	rte
 
 5:												// Super from supervisor mode
-	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
-	cmp.l		#1,(%a0)						// query?
+	cmp.l		#1,2(%a0)						// query?
 	jbne		6f								// ...no
 	moveq.l		#1,%d0							// SUP_SUPER
 	rte
 6:
-	move.l		(%a0),%a0						// previous SSP with original trapframe
-	move.w		(%sp),%d0						// copy SR
-	and.w		#0xdfff,%d0						// ... with S clear
-	move.w		%d0,(%a0)						// back to old frame
-	move.l		2(%sp),2(%a0)					// copy return address
-	move.l		%a0,%sp							// swap to previous SSP
+	tst.l		2(%a0)							// stack to restore?
+	jbeq		mb_trap_fatal					// ... no, fatal
+	ori         #0x0700,%sr						// mask interrupts while we shuffle stacks
+	move.l		2(%a0),%a0						// previous SSP with original trapframe
+	move.w		(%sp),%d0						// copy current SR back to old frame
+	move.l		2(%sp),2(%a0)					// copy current return address back to old frame
+	and.w		#0xdfff,(%a0)					// clear S in old frame
+	move.l		%a0,%sp							// swap to returning SSP
 	rte
 
 	/*
