@@ -4,8 +4,6 @@
 
 long mb_bdos_cconws(const char *buf)
 {
-	const char *s = mb_guarded_str(buf);
-
-	mb_log_puts(s);
+	mb_log_puts(buf);
 	return 0;
 }
