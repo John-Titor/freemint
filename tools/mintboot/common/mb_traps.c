@@ -126,7 +126,7 @@ static const char *const exception_names[] = {
     "level 5 autovector",                      // 29
     "level 6 autovector",                      // 30
     "level 7 autovector",                      // 31
-    "trap 0 (panic)",                          // 32
+    "trap 0",                                  // 32
     "trap 1",                                  // 33
     "trap 2",                                  // 34
     "trap 3",                                  // 35

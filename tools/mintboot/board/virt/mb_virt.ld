@@ -15,6 +15,7 @@ PHDRS
 SECTIONS
 {
     . = MB_VIRT_BASE;
+	_mb_image_start = .;
 
 	.vectors : {
 		*(.vectors)

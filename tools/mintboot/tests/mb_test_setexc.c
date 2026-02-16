@@ -5,8 +5,8 @@
 void mb_tests_setexc(void)
 {
 	const uint16_t vnum = 200;
-	const uint32_t new_vec = 0x12345678u;
-	const uint32_t alt_vec = 0x87654321u;
+	const uint32_t new_vec = (uint32_t)(uintptr_t)mb_tests_setexc;
+	const uint32_t alt_vec = (uint32_t)(uintptr_t)mb_tests_gettime;
 	long prev;
 	long cur;
 	long rc;

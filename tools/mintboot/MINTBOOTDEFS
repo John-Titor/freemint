@@ -7,6 +7,7 @@ TEST_COBJS = \
 	tests/fs_fat/mb_fat_test_core.c \
 	tests/mb_test_helpers.c \
 	tests/mb_test_setexc.c \
+	tests/mb_test_super.c \
 	tests/mb_test_gettime.c \
 	tests/mb_test_drive_range.c \
 	tests/mb_test_drive_path.c \

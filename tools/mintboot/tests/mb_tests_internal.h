@@ -7,6 +7,7 @@ uint32_t mb_tests_strlen(const char *s);
 void mb_tests_strcat(char *dst, uint32_t dstsz, const char *src);
 
 void mb_tests_setexc(void);
+void mb_tests_super(void);
 void mb_tests_gettime(void);
 void mb_tests_drive_range(void);
 void mb_tests_drive_path(void);

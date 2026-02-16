@@ -7,6 +7,7 @@ static void mb_tests_run_common(void)
 {
 	mb_fat_run_tests();
 	mb_tests_setexc();
+	mb_tests_super();
 	mb_tests_gettime();
 	mb_tests_drive_range();
 	mb_tests_drive_path();
