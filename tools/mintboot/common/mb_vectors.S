@@ -36,12 +36,13 @@ mb_trap1:
 	jbeq		5f								// ... yes
 
 2:												// not Super, call dispatcher
+	pea			2(%sp)							// return address (for debug purposes)
 	pea			2(%a0)							// address of function args
 	clr.l		%d0								// clear high word
 	move.w		(%a0),%d0						// ... and get low word
 	move.l		%d0,-(%sp)						// ... of function code
     jsr			mb_bdos_dispatch				// call dispatcher
-    addq.l		#8,%sp							// adjust stack
+    add.l		#12,%sp							// adjust stack
     rte											// return already in D0
 	.size mb_trap1, .-mb_trap1
 
@@ -95,12 +96,13 @@ mb_trap1:
 1:
 	lea			8(%sp),%a0						// args behind trap frame
 2:
+	pea			2(%sp)							// return address (for debug purposes)
 	pea			2(%a0)							// address of function args
 	clr.l		%d0								// clear high word
 	move.w		(%a0),%d0						// ... and get low word
 	move.l		%d0,-(%sp)						// ... of function code
     jsr			\handler						// call dispatcher
-    addq.l		#8,%sp							// adjust stack
+    add.l		#12,%sp							// adjust stack
     rte											// return already in D0
 	.size \name, .-\name
 	.endm

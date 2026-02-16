@@ -4,12 +4,11 @@
 #include "mintboot/mb_common.h"
 #include "mintboot/mb_debug.h"
 
-long mb_bios_dispatch(uint16_t fnum, uint16_t *args)
+long mb_bios_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	long ret;
 
-	mb_check_vector20("bios");
-	mb_debug_bios_enter(fnum, args);
+	mb_debug_bios_enter(fnum, args, retaddr);
 
 	switch (fnum) {
 	case 0x01:
@@ -49,6 +48,6 @@ long mb_bios_dispatch(uint16_t fnum, uint16_t *args)
 		break;
 	}
 
-	mb_debug_bios_exit(fnum, args, ret);
+	mb_debug_bios_exit(fnum, args, retaddr, ret);
 	return ret;
 }

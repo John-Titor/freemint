@@ -55,13 +55,4 @@ static inline int mb_is_sane_vector_target(uint32_t ptr)
 	return 0;
 }
 
-static inline void mb_check_vector20(const char *who)
-{
-	uint32_t v = *(volatile uint32_t *)(uintptr_t)0x20u;
-
-	if (!mb_is_sane_vector_target(v)) {
-		mb_panic("%s: vector[8 @ 0x20] corrupted: %08x", who, v);
-	}
-}
-
 #endif /* MINTBOOT_MB_TRAP_HELPERS_H */

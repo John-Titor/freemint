@@ -4,6 +4,7 @@
 #include "mintboot/mb_kernel.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_cpu.h"
+#include "mintboot/mb_debug.h"
 
 #include <stdarg.h>
 
@@ -201,6 +202,7 @@ void mb_panic(const char *fmt, ...)
 {
 	va_list ap;
 
+	mb_debug_dump_state();
 	mb_log_puts("\nmintboot panic: ");
 	va_start(ap, fmt);
 	mb_log_vprintf(fmt, ap);

@@ -7,9 +7,6 @@
 
 #include "mintboot/mb_lib.h"
 
-long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
-long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);
-
 void mb_tests_bios_bdos(void)
 {
 	uint16_t drive;
@@ -90,8 +87,8 @@ void mb_tests_bios_bdos(void)
 	    Mxalloc((int32_t)(avail + 4u), 0) != MB_ERR_NHNDL)
 		mb_panic("BIOS/BDOS test: Mxalloc ENHNDL");
 
-	if (mb_bios_dispatch(0xffffu, args) != MB_ERR_INVFN)
+	if (mb_bios_dispatch(0xffffu, args, NULL) != MB_ERR_INVFN)
 		mb_panic("BIOS/BDOS test: bios dispatch default");
-	if (mb_bdos_dispatch(0xffffu, args) != MB_ERR_INVFN)
+	if (mb_bdos_dispatch(0xffffu, args, NULL) != MB_ERR_INVFN)
 		mb_panic("BIOS/BDOS test: bdos dispatch default");
 }

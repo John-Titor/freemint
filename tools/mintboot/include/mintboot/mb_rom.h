@@ -80,8 +80,8 @@ long mb_xbios_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t 
 long mb_xbios_kbrate(uint16_t delay, uint16_t rate);
 void mb_xbios_init_lowmem(void);
 
-long mb_bdos_dispatch(uint16_t fnum, uint16_t *args);
-long mb_bios_dispatch(uint16_t fnum, uint16_t *args);
-long mb_xbios_dispatch(uint16_t fnum, uint16_t *args);
+long mb_bdos_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr);
+long mb_bios_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr);
+long mb_xbios_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr);
 
 #endif /* MINTBOOT_MB_ROM_H */
