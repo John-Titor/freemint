@@ -29,6 +29,18 @@ require_cmd() {
 	fi
 }
 
+prepare_artifact_dir() {
+	local artifact_dir=$1
+
+	if [[ "$artifact_dir" != /tmp/* ]]; then
+		echo "ARTIFACT_DIR must be under /tmp: $artifact_dir" >&2
+		exit 1
+	fi
+
+	rm -rf "$artifact_dir"
+	mkdir -p "$artifact_dir"
+}
+
 parse_last_hex_after_label() {
 	local label=$1
 	local file=$2
@@ -323,6 +335,7 @@ run_qemu() {
 	local qemu_trace=$6
 	local cmdline=$7
 	local run_log=$8
+	local artifact_dir=$9
 	local qemu_pipe tee_pid rc
 	local -a qemu_cmd trace_args
 
@@ -356,7 +369,10 @@ run_qemu() {
 	tee "$run_log" < "$qemu_pipe" &
 	tee_pid=$!
 
-	if "${qemu_cmd[@]}" >"$qemu_pipe" 2>&1; then
+	if (
+		cd "$artifact_dir"
+		"${qemu_cmd[@]}"
+	) >"$qemu_pipe" 2>&1; then
 		rc=0
 	else
 		rc=$?
@@ -394,22 +410,23 @@ process_coverage() {
 
 main() {
 	local qemu_default=/Users/agent/work/Agent/M68K/_Emulators/qemu/qemu/build/qemu-system-m68k-unsigned
+	local artifact_dir="${ARTIFACT_DIR:-/tmp/mintboot-virt-run}"
 	local qemu="${QEMU:-$qemu_default}"
 	local elf="${ELF:-$ROOT/.compile_virt/mintboot-virt.elf}"
 	local ramdisk="${RAMDISK:-$ROOT/ramdisk.img}"
 	local ramdisk_dir="${RAMDISK_DIR:-$ROOT/ramdisk.d}"
-	local mem_file="${MEM_FILE:-/tmp/mintboot-virt.mem}"
+	local mem_file="${MEM_FILE:-$artifact_dir/memory.bin}"
 	local cmdline="${CMDLINE:-}"
 	local qemu_trace="${QEMU_TRACE:-}"
-	local run_log="${RUN_LOG:-$ROOT/.compile_virt/run-virt.log}"
-	local cov_stream="${COV_STREAM:-$ROOT/.compile_virt/coverage.stream}"
+	local run_log="${RUN_LOG:-$artifact_dir/run.log}"
+	local cov_stream="${COV_STREAM:-$artifact_dir/coverage.stream}"
 	local version_h="${VERSION_H:-$ROOT/../../sys/buildinfo/version.h}"
 	local kernel_src="${KERNEL_SRC:-$ROOT/../../sys/compile.040/mint040.prg}"
 	local ramdisk_size_mib="${RAMDISK_SIZE_MIB:-32}"
 	local ramdisk_sector_size="${RAMDISK_SECTOR_SIZE:-512}"
 	local ramdisk_first_sector="${RAMDISK_FIRST_SECTOR:-2048}"
 	local base_mem_size_mib="${BASE_MEM_SIZE_MIB:-64}"
-	local mem_size_bytes qemu_rc
+	local mem_size_bytes qemu_rc analysis_tmp
 
 	if [[ ! -f "$kernel_src" ]]; then
 		kernel_src="$ROOT/../../sys/.compile_040/mint040.prg"
@@ -424,6 +441,7 @@ main() {
 	require_file "$kernel_src" "kernel"
 	require_file "$version_h" "version header"
 
+	prepare_artifact_dir "$artifact_dir"
 	mkdir -p "$ramdisk_dir"
 	if need_ramdisk_regen "$ramdisk" "$ramdisk_dir" "$kernel_src"; then
 		build_ramdisk "$ramdisk" "$ramdisk_dir" "$kernel_src" "$version_h" \
@@ -432,7 +450,7 @@ main() {
 
 	mem_size_bytes=$(ensure_mem_file "$ramdisk" "$mem_file" "$base_mem_size_mib")
 
-	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log"; then
+	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log" "$artifact_dir"; then
 		qemu_rc=0
 	else
 		qemu_rc=$?
@@ -440,7 +458,20 @@ main() {
 
 	process_coverage "$run_log" "$cov_stream" "$ROOT"
 	if [[ "$qemu_rc" -ne 0 ]]; then
-		analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src"
+		if grep -q 'mintboot panic:' "$run_log"; then
+			analysis_tmp=$(mktemp /tmp/mintboot-analysis.XXXXXX)
+			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src" >"$analysis_tmp"
+			cat "$analysis_tmp"
+			{
+				echo
+				echo "==== mintboot panic analysis ===="
+				cat "$analysis_tmp"
+				echo "==== end panic analysis ===="
+			} >> "$run_log"
+			rm -f "$analysis_tmp"
+		else
+			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src"
+		fi
 	fi
 
 	if [[ "$qemu_rc" -eq 0 ]]; then
@@ -448,6 +479,7 @@ main() {
 	else
 		echo "mintboot: qemu exited with non-zero status ($qemu_rc)"
 	fi
+	echo "mintboot: run log at $run_log"
 	echo "mintboot: preserved guest RAM image at $mem_file"
 	exit "$qemu_rc"
 }
