@@ -66,9 +66,6 @@ long mb_xbios_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 	case 0x26:
 		ret = mb_xbios_supexec(mb_arg32w(args, 0));
 		break;
-	case 0x2c:
-		ret = mb_xbios_bconmap(mb_arg16(args, 0));
-		break;
 	case 0x05:
 		ret = mb_xbios_vsetscreen(mb_arg32w(args, 0), mb_arg32w(args, 2),
 					  mb_arg16(args, 4), mb_arg16(args, 5));

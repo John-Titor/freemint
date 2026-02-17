@@ -22,22 +22,6 @@ struct mb_ext_iorec {
 	uint8_t wr5;
 } __attribute__((packed));
 
-struct mb_maptab {
-	long (*bconstat)(void);
-	long (*bconin)(void);
-	long (*bcostat)(void);
-	long (*bconout)(uint16_t dev, uint16_t c);
-	long (*rsconf)(uint16_t baud, uint16_t flow, uint16_t uc, uint16_t rs,
-		       uint16_t ts, uint16_t sc);
-	struct mb_ext_iorec *iorec;
-} __attribute__((packed));
-
-struct mb_bconmap {
-	struct mb_maptab *maptab;
-	uint16_t maptabsize;
-	uint16_t mapped_device;
-} __attribute__((packed));
-
 struct mb_ext_iorec *mb_xbios_iorec_get(void);
 
 #endif /* MINTBOOT_MB_XBIOS_IOREC_H */

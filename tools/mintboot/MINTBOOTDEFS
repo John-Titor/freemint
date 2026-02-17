@@ -11,7 +11,6 @@ TEST_COBJS = \
 	tests/mb_test_gettime.c \
 	tests/mb_test_drive_range.c \
 	tests/mb_test_drive_path.c \
-	tests/mb_test_bconmap.c \
 	tests/mb_test_bios_bdos.c \
 	tests/mb_test_vbclock.c \
 	tests/mb_test_kernel_loader.c \
@@ -65,7 +64,6 @@ COBJS = \
 	common/xbios/kbdvbase.c \
 	common/xbios/vsync.c \
 	common/xbios/supexec.c \
-	common/xbios/bconmap.c \
 	common/xbios/vsetscreen.c \
 	common/xbios/kbrate.c \
 	common/xbios/lowmem.c \
@@ -149,7 +147,6 @@ COBJS = \
 	common/xbios/kbdvbase.c \
 	common/xbios/vsync.c \
 	common/xbios/supexec.c \
-	common/xbios/bconmap.c \
 	common/xbios/vsetscreen.c \
 	common/xbios/kbrate.c \
 	common/xbios/lowmem.c \

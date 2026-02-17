@@ -74,7 +74,6 @@ long mb_xbios_dosound(uint32_t ptr);
 long mb_xbios_kbdvbase(void);
 long mb_xbios_vsync(void);
 long mb_xbios_supexec(uint32_t func);
-long mb_xbios_bconmap(uint16_t dev);
 long mb_xbios_vsetscreen(uint32_t lscrn, uint32_t pscrn, uint16_t rez, uint16_t mode);
 long mb_xbios_kbrate(uint16_t delay, uint16_t rate);
 void mb_xbios_init_lowmem(void);
