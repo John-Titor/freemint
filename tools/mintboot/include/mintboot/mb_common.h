@@ -39,12 +39,9 @@ uint32_t mb_common_vector_base(void);
 
 /* Minimal logging helpers (common layer). */
 void mb_log_puts(const char *s);
-void mb_log_hex32(uint32_t value);
-void mb_log_hex64(uint64_t value);
-void mb_log_u32(uint32_t value);
-void mb_log_i32(int32_t value);
 void mb_log_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void mb_log_vprintf(const char *fmt, va_list ap) __attribute__((format(printf, 1, 0)));
 void mb_panic(const char *fmt, ...) __attribute__((format(printf, 1, 2))) NORETURN;
+void mb_panic2(const char *fmt, ...) __attribute__((format(printf, 1, 2))) NORETURN;
 
 #endif /* MINTBOOT_MB_COMMON_H */

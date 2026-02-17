@@ -7,7 +7,6 @@ long mb_vdi_dispatch(uint16_t function, uint16_t *args, uint32_t *retaddr)
 {
 	long ret;
 
-	mb_check_vector20("vdi");
 	mb_debug_vdi_enter(function, args, retaddr);
 	(void)args;
 

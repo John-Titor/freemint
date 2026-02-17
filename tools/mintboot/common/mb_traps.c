@@ -231,5 +231,5 @@ void mb_trap_panic(exception_frame _frame)
                     frame->a[i],
                     frame->a[i]);
     }
-    mb_panic("mintboot: fatal exception\n");
+    mb_panic2("mintboot: fatal exception\n");
 }

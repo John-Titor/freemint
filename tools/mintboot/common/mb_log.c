@@ -8,6 +8,9 @@
 
 #include <stdarg.h>
 
+static void mb_log_u32(uint32_t value);
+static void mb_log_i32(int32_t value);
+
 static void mb_log_putc(int ch)
 {
 	if (ch == '\n')
@@ -64,26 +67,6 @@ void mb_log_puts(const char *s)
 {
 	for (; *s; s++)
 		mb_log_putc(*s);
-}
-
-void mb_log_hex32(uint32_t value)
-{
-	static const char hex[] = "0123456789abcdef";
-	int shift;
-
-	mb_log_puts("0x");
-	for (shift = 28; shift >= 0; shift -= 4)
-		mb_log_putc(hex[(value >> shift) & 0xf]);
-}
-
-void mb_log_hex64(uint64_t value)
-{
-	static const char hex[] = "0123456789abcdef";
-	int shift;
-
-	mb_log_puts("0x");
-	for (shift = 60; shift >= 0; shift -= 4)
-		mb_log_putc(hex[(value >> shift) & 0xf]);
 }
 
 void mb_log_u32(uint32_t value)
@@ -198,16 +181,30 @@ void mb_log_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
+NORETURN
+static void mb_panic_internal(const char *fmt, va_list ap)
+{
+	mb_log_puts("\nmintboot panic: ");
+	mb_log_vprintf(fmt, ap);
+	mb_log_puts("\n");
+	mb_board_exit(1);
+}
+
+NORETURN
 void mb_panic(const char *fmt, ...)
 {
 	va_list ap;
 
 	mb_debug_dump_state();
-	mb_log_puts("\nmintboot panic: ");
 	va_start(ap, fmt);
-	mb_log_vprintf(fmt, ap);
-	va_end(ap);
-	mb_log_puts("\n");
+	mb_panic_internal(fmt, ap);
+}
 
-	mb_board_exit(1);
+NORETURN
+void mb_panic2(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	mb_panic_internal(fmt, ap);
 }
