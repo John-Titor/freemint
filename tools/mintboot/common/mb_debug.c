@@ -41,11 +41,13 @@ static void mb_debug_check_low_vectors(const char *source)
 			      i, source, was, now);
 	}
 
+#if MB_DEBUG_LOWMEM_CORRUPTION
 	if (changed) {
 		if (mb_debug_handler_depth)
 			mb_panic("vector trample");
 		mb_debug_dump_state();
 	}
+#endif
 }
 
 static uint32_t mb_debug_retaddr_value(uint32_t *retaddr)

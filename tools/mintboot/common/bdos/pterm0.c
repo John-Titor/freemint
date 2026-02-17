@@ -5,5 +5,4 @@
 long mb_bdos_pterm0(void)
 {
 	mb_panic("kernel called Pterm0");
-	return 0;
 }
