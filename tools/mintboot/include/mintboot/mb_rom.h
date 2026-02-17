@@ -35,7 +35,6 @@ long mb_bdos_dgetpath(char *buf, uint16_t drive);
 long mb_bdos_pterm0(void);
 long mb_bdos_cconin(void);
 long mb_bdos_cconws(const char *buf);
-long mb_bdos_mxalloc(int32_t amount, uint16_t mode);
 long mb_bdos_fcreate(const char *fn, uint16_t mode);
 long mb_bdos_fopen(const char *filename, uint16_t mode);
 long mb_bdos_fclose(uint16_t handle);
@@ -45,7 +44,6 @@ long mb_bdos_fdelete(const char *fn);
 long mb_bdos_fseek(int32_t where, uint16_t handle, uint16_t how);
 long mb_bdos_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length);
 long mb_bdos_fcntl(uint16_t f, uint32_t arg, uint16_t cmd);
-long mb_bdos_mshrink(uint16_t zero, uint32_t base, uint32_t len);
 
 long mb_bios_bconstat(uint16_t dev);
 long mb_bios_bconin(uint16_t dev);

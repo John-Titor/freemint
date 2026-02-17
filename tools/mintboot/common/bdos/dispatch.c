@@ -3,6 +3,7 @@
 #include "mintboot/mb_errors.h"
 #include "mintboot/mb_common.h"
 #include "mintboot/mb_debug.h"
+#include "mintboot/mb_bdos_mem.h"
 
 long mb_bdos_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
@@ -63,10 +64,16 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 		ret = mb_bdos_fseek((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2), mb_arg16(args, 3));
 		break;
 	case 0x044:
-		ret = mb_bdos_mxalloc((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2));
+		ret = mb_bdos_mem_mxalloc((int32_t)mb_arg32w(args, 0), mb_arg16(args, 2));
+		break;
+	case 0x048:
+		ret = mb_bdos_mem_mxalloc((int32_t)mb_arg32w(args, 0), MB_MEM_POOL_ST);
+		break;
+	case 0x049:
+		ret = mb_bdos_mem_mfree(mb_arg32w(args, 0));
 		break;
 	case 0x04a:
-		ret = mb_bdos_mshrink(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
+		ret = mb_bdos_mem_mshrink(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
 		break;
 	case 0x05c:
 		ret = mb_bdos_flock(mb_arg16(args, 0), mb_arg16(args, 1),

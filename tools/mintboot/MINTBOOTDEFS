@@ -81,7 +81,6 @@ COBJS = \
 	common/bdos/pterm0.c \
 	common/bdos/cconin.c \
 	common/bdos/cconws.c \
-	common/bdos/mxalloc.c \
 	common/bdos/fcreate.c \
 	common/bdos/fopen.c \
 	common/bdos/fclose.c \
@@ -91,7 +90,7 @@ COBJS = \
 	common/bdos/fseek.c \
 	common/bdos/flock.c \
 	common/bdos/fcntl.c \
-	common/bdos/mshrink.c \
+	common/bdos/memory.c \
 	board/mb_board.c
 ifeq ($(MINTBOOT_TESTS),yes)
 COBJS += $(TEST_COBJS)
@@ -166,7 +165,6 @@ COBJS = \
 	common/bdos/pterm0.c \
 	common/bdos/cconin.c \
 	common/bdos/cconws.c \
-	common/bdos/mxalloc.c \
 	common/bdos/fcreate.c \
 	common/bdos/fopen.c \
 	common/bdos/fclose.c \
@@ -176,7 +174,7 @@ COBJS = \
 	common/bdos/fseek.c \
 	common/bdos/flock.c \
 	common/bdos/fcntl.c \
-	common/bdos/mshrink.c \
+	common/bdos/memory.c \
 	board/virt/mb_board_virt.c \
 	board/virt/mb_rom_virt.c
 ifeq ($(MINTBOOT_TESTS),yes)

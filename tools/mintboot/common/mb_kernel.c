@@ -17,7 +17,6 @@
 
 #define MB_PRG_MAGIC 0x601au
 #define MB_PRG_HDR_SIZE 28u
-#define MB_PRG_BASE_ADDR 0x00010000u
 #define MB_PRG_STACK_USER    0x00010000u
 #define MB_PRG_STACK_SUP     0x00010000u
 #define MB_PRG_STACK_RESERVE (MB_PRG_STACK_USER + MB_PRG_STACK_SUP)
@@ -296,6 +295,8 @@ int mb_common_load_kernel(const char *path, int do_jump)
 	uint32_t entry_off;
 	uint32_t file_text_len;
 	uint32_t file_data_len;
+	long st_avail;
+	long st_alloc;
 	uint8_t *tbase;
 	uint8_t *dbase;
 	uint8_t *bbase;
@@ -347,22 +348,21 @@ int mb_common_load_kernel(const char *path, int do_jump)
 
 	text_data_len = hdr.tlen + hdr.dlen;
 	total_len = (uint32_t)sizeof(*bp) + text_data_len + hdr.blen;
-	tpa_start = MB_PRG_BASE_ADDR;
-	tpa_end = *mb_lm_memtop();
-	if (tpa_end == 0)
-		tpa_end = *mb_lm_phystop();
-	if (_mb_image_end && (uint32_t)(uintptr_t)_mb_image_end < tpa_end) {
-		uint32_t end_addr = (uint32_t)(uintptr_t)_mb_image_end;
-		end_addr = (end_addr + 3u) & ~3u;
-		if (end_addr > tpa_start)
-			tpa_start = end_addr;
-	}
-	if (tpa_end <= tpa_start + MB_PRG_STACK_RESERVE) {
+	st_avail = Malloc(-1);
+	if (st_avail <= 0) {
 		Fclose(handle);
 		return -1;
 	}
+	st_alloc = Malloc(st_avail);
+	if (st_alloc <= 0) {
+		Fclose(handle);
+		return -1;
+	}
+	tpa_start = (uint32_t)st_alloc;
+	tpa_end = tpa_start + (uint32_t)st_avail;
 
 	if (tpa_start + total_len > tpa_end - MB_PRG_STACK_RESERVE) {
+		Mfree(tpa_start);
 		Fclose(handle);
 		return -1;
 	}

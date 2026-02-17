@@ -29,6 +29,7 @@ int mb_common_find_kernel_path(char *out, size_t outsz);
 uint32_t mb_common_last_basepage(void);
 void mb_common_kernel_bounds(uint32_t *base, uint32_t *end);
 void mb_common_set_st_ram(uint32_t base, uint32_t size);
+void mb_common_set_tt_ram(uint32_t base, uint32_t size);
 void mb_coverage_dump(void);
 
 uint16_t mb_common_boot_drive(void);

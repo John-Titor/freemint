@@ -4,7 +4,6 @@
 
 long mb_bdos_pterm0(void)
 {
-	mb_log_puts("Pterm0\n");
-	mb_board_exit(0);
+	mb_panic("kernel called Pterm0");
 	return 0;
 }

@@ -402,6 +402,12 @@ extern "C" {
 #define Mxalloc(amt, flag)                                                 \
 	(long)MB_TRAP1_WLW((short)(0x44), (long)(amt), (short)(flag))
 
+#define Malloc(amt)                                                        \
+	(long)MB_TRAP1_WL((short)(0x48), (long)(amt))
+
+#define Mfree(ptr)                                                         \
+	(long)MB_TRAP1_WL((short)(0x49), (long)(ptr))
+
 #define Fgetdta()                                                          \
 	(void *)MB_TRAP1_W((short)(0x2f))
 

@@ -5,11 +5,14 @@
 #include "mintboot/mb_linea.h"
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_rom.h"
+#include "mintboot/mb_bdos_mem.h"
 #include "mintboot/mb_debug.h"
 #include "mintboot/mb_cpu.h"
 #include "mintboot/mb_osbind.h"
 
 #include <stddef.h>
+
+#define MB_RAMVALID_MAGIC 0x1357bd13u
 
 extern uint8_t _mb_image_end[] __attribute__((weak));
 
@@ -42,7 +45,9 @@ static void mb_common_init_lowmem(void)
 	*mb_lm_frclock() = 0;
 	*mb_lm_hz_200() = 0;
 	*mb_lm_vblsem() = 0;
-	*mb_lm_v_bas_ad() = 0xffffffffu;
+	*mb_lm_v_bas_ad() = 0;
+	*mb_lm_ramtop() = 0;
+	*mb_lm_ramvalid() = 0;
 	*mb_lm_bootdev() = 0xffffu;
 	mb_linea_init();
 }
@@ -64,6 +69,14 @@ void mb_common_set_st_ram(uint32_t base, uint32_t size)
 	*mb_lm_memval2() = 0x237698aau;
 	*mb_lm_memval3() = 0x5555aaaau;
 	*mb_lm_longframe() = 1;
+	mb_bdos_mem_set_st_ram(membot, memtop - membot);
+}
+
+void mb_common_set_tt_ram(uint32_t base, uint32_t size)
+{
+	*mb_lm_ramtop() = base + size;
+	*mb_lm_ramvalid() = MB_RAMVALID_MAGIC;
+	mb_bdos_mem_set_tt_ram(base, size);
 }
 
 __attribute__((weak)) void mb_board_init_cookies(void)

@@ -33,6 +33,8 @@
 #define MB_LM_DRVBITS_ADDR    0x000004c2u
 #define MB_LM_SYSBASE_ADDR    0x000004f2u
 #define MB_LM_COOKIE_P_ADDR   0x000005a0u
+#define MB_LM_RAMTOP_ADDR     0x000005a4u
+#define MB_LM_RAMVALID_ADDR   0x000005a8u
 #define MB_LM_LONGFRAME_ADDR  0x0000059eu
 #define MB_LM_OSHDR_ADDR      0x00000680u
 #define MB_LM_OSRUN_ADDR      0x000006b0u
@@ -166,6 +168,16 @@ static inline volatile void **mb_lm_sysbase(void)
 static inline volatile void **mb_lm_cookie_p(void)
 {
 	return (volatile void **)MB_LM_COOKIE_P_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_ramtop(void)
+{
+	return (volatile uint32_t *)MB_LM_RAMTOP_ADDR;
+}
+
+static inline volatile uint32_t *mb_lm_ramvalid(void)
+{
+	return (volatile uint32_t *)MB_LM_RAMVALID_ADDR;
 }
 
 static inline volatile uint16_t *mb_lm_longframe(void)

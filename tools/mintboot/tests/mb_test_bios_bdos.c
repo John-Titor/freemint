@@ -17,7 +17,7 @@ void mb_tests_bios_bdos(void)
 	uint32_t membot;
 	uint32_t memtop;
 	uint32_t avail;
-	uint32_t old_membot;
+	uint32_t alloc_ptr;
 	uint32_t physbase;
 	uint16_t args[4] = { 0, 0, 0, 0 };
 
@@ -68,24 +68,28 @@ void mb_tests_bios_bdos(void)
 	if (Flock(3, 0, 0, 0) != MB_ERR_INVFN)
 		mb_panic("BIOS/BDOS test: Flock");
 
-	old_membot = *mb_lm_membot();
-	membot = old_membot;
+	membot = *mb_lm_membot();
 	memtop = *mb_lm_memtop();
 	avail = (memtop > membot) ? (memtop - membot) : 0;
-	if ((uint32_t)Mxalloc(-1, 0) != avail)
+	if ((uint32_t)Malloc(-1) != (uint32_t)Mxalloc(-1, 0))
+		mb_panic("BIOS/BDOS test: Malloc/Mxalloc avail");
+	if ((uint32_t)Mxalloc(-1, 0) == 0 || (uint32_t)Mxalloc(-1, 0) > avail)
 		mb_panic("BIOS/BDOS test: Mxalloc avail");
-	if (Mxalloc(-1, 1) != 0 || Mxalloc(-1, 3) != 0)
+	if (Mxalloc(-1, 1) != 0 || (uint32_t)Mxalloc(-1, 3) != (uint32_t)Mxalloc(-1, 0))
 		mb_panic("BIOS/BDOS test: Mxalloc mode query");
+	if (Malloc(0) != 0)
+		mb_panic("BIOS/BDOS test: Malloc zero");
 	if (Mxalloc(0, 0) != 0)
 		mb_panic("BIOS/BDOS test: Mxalloc zero");
-	if (Mxalloc(4, 0) != 0)
+	alloc_ptr = (uint32_t)Mxalloc(16, 0);
+	if (alloc_ptr == 0 || (alloc_ptr & 3u) != 0)
 		mb_panic("BIOS/BDOS test: Mxalloc alloc");
-	if (*mb_lm_membot() != old_membot + 4)
-		mb_panic("BIOS/BDOS test: Mxalloc membot");
-	*mb_lm_membot() = old_membot;
-	if (avail > 0x100u &&
-	    Mxalloc((int32_t)(avail + 4u), 0) != MB_ERR_NHNDL)
-		mb_panic("BIOS/BDOS test: Mxalloc ENHNDL");
+	if (Mshrink((void *)(uintptr_t)alloc_ptr, 8) != 0)
+		mb_panic("BIOS/BDOS test: Mshrink");
+	if (Mfree((void *)(uintptr_t)alloc_ptr) != 0)
+		mb_panic("BIOS/BDOS test: Mfree");
+	if (Mxalloc((int32_t)(avail + 4u), 0) != 0)
+		mb_panic("BIOS/BDOS test: Mxalloc fail");
 
 	if (mb_bios_dispatch(0xffffu, args, NULL) != MB_ERR_INVFN)
 		mb_panic("BIOS/BDOS test: bios dispatch default");
