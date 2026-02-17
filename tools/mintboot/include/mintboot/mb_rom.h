@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "mintboot/mb_common.h"
 #include "mintboot/mb_errors.h"
 
 #define MB_MAX_DRIVES 4u
@@ -32,7 +33,7 @@ void mb_bdos_set_current_drive(uint16_t drive);
 uint16_t mb_bdos_get_current_drive(void);
 const char *mb_bdos_get_current_path(uint16_t drive);
 long mb_bdos_dgetpath(char *buf, uint16_t drive);
-long mb_bdos_pterm0(void);
+long mb_bdos_pterm0(void) NORETURN;
 long mb_bdos_cconin(void);
 long mb_bdos_cconws(const char *buf);
 long mb_bdos_fcreate(const char *fn, uint16_t mode);

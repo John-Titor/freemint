@@ -34,7 +34,7 @@ COBJS = \
 	common/mb_kernel.c \
 	common/mb_lib.c \
 	common/mb_util.c \
-	common/linea/mb_linea.c \
+	common/aes_vdi/linea.c \
 	common/bios/dispatch.c \
 	common/bios/bconstat.c \
 	common/bios/bconin.c \
@@ -46,7 +46,7 @@ COBJS = \
 	common/bios/drvmap.c \
 	common/bios/kbshift.c \
 	common/bios/lowmem.c \
-	common/vdi/dispatch.c \
+	common/aes_vdi/dispatch.c \
 	common/xbios/dispatch.c \
 	common/xbios/initmous.c \
 	common/xbios/physbase.c \
@@ -118,7 +118,7 @@ COBJS = \
 	common/mb_kernel.c \
 	common/mb_lib.c \
 	common/mb_util.c \
-	common/linea/mb_linea.c \
+	common/aes_vdi/linea.c \
 	common/bios/dispatch.c \
 	common/bios/bconstat.c \
 	common/bios/bconin.c \
@@ -130,7 +130,7 @@ COBJS = \
 	common/bios/drvmap.c \
 	common/bios/kbshift.c \
 	common/bios/lowmem.c \
-	common/vdi/dispatch.c \
+	common/aes_vdi/dispatch.c \
 	common/xbios/dispatch.c \
 	common/xbios/initmous.c \
 	common/xbios/physbase.c \

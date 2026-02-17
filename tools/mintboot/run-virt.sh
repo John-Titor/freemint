@@ -109,6 +109,7 @@ disassemble_function_for_pc() {
 	local pc_bin=$2
 	local text_end=$3
 	local name=$4
+	local disasm_cpu=$5
 	local nm_tool=${NM:-m68k-atari-mintelf-nm}
 	local objdump=${OBJDUMP:-m68k-atari-mintelf-objdump}
 	local sym_addr=-1 next_addr=$text_end sym_name=""
@@ -140,7 +141,7 @@ disassemble_function_for_pc() {
 	fi
 
 	echo "mintboot: $name symbol $sym_name @ 0x$(printf '%x' "$sym_addr"), pc=0x$(printf '%x' "$pc_bin")"
-	"$objdump" -d --start-address="$sym_addr" --stop-address="$next_addr" "$binary"
+	"$objdump" -d -M "$disasm_cpu" --start-address="$sym_addr" --stop-address="$next_addr" "$binary"
 }
 
 analyze_qemu_failure() {
@@ -148,6 +149,7 @@ analyze_qemu_failure() {
 	local mem_file=$2
 	local elf=$3
 	local kernel_src=$4
+	local disasm_cpu=$5
 	local pc_hex usp_hex ssp_hex reloc_hex
 	local mem_size
 	local objdump=${OBJDUMP:-m68k-atari-mintelf-objdump}
@@ -190,7 +192,7 @@ analyze_qemu_failure() {
 
 	if (( pc >= mint_vma && pc < mint_end )); then
 		echo "mintboot: PC is in mintboot text [0x$(printf '%08x' "$mint_vma"),0x$(printf '%08x' "$mint_end"))"
-		disassemble_function_for_pc "$elf" "$pc" "$mint_end" "mintboot"
+		disassemble_function_for_pc "$elf" "$pc" "$mint_end" "mintboot" "$disasm_cpu"
 		return
 	fi
 
@@ -213,7 +215,7 @@ analyze_qemu_failure() {
 		pc_bin=$((pc - reloc_base))
 		kernel_end=$((kernel_vma + kernel_size))
 		echo "mintboot: PC is in kernel text [0x$(printf '%08x' "$kernel_rt_start"),0x$(printf '%08x' "$kernel_rt_end")) reloc=0x$(printf '%08x' "$reloc_base")"
-		disassemble_function_for_pc "$kernel_src" "$pc_bin" "$kernel_end" "kernel"
+		disassemble_function_for_pc "$kernel_src" "$pc_bin" "$kernel_end" "kernel" "$disasm_cpu"
 		return
 	fi
 
@@ -336,6 +338,7 @@ run_qemu() {
 	local cmdline=$7
 	local run_log=$8
 	local artifact_dir=$9
+	local qemu_cpu=${10}
 	local qemu_pipe tee_pid rc
 	local -a qemu_cmd trace_args
 
@@ -343,7 +346,7 @@ run_qemu() {
 		"$qemu"
 		-M "virt,memory-backend=ram"
 		-object "memory-backend-file,id=ram,size=$mem_size_bytes,mem-path=$mem_file,share=on"
-		-cpu m68040
+		-cpu "$qemu_cpu"
 		-action panic=exit-failure
 		-nographic
 		-serial mon:stdio
@@ -420,6 +423,8 @@ main() {
 	local qemu_trace="${QEMU_TRACE:-}"
 	local run_log="${RUN_LOG:-$artifact_dir/run.log}"
 	local cov_stream="${COV_STREAM:-$artifact_dir/coverage.stream}"
+	local qemu_cpu="${QEMU_CPU:-m68040}"
+	local disasm_cpu="${DISASM_CPU:-${qemu_cpu#m}}"
 	local version_h="${VERSION_H:-$ROOT/../../sys/buildinfo/version.h}"
 	local kernel_src="${KERNEL_SRC:-$ROOT/../../sys/compile.040/mint040.prg}"
 	local ramdisk_size_mib="${RAMDISK_SIZE_MIB:-32}"
@@ -450,7 +455,7 @@ main() {
 
 	mem_size_bytes=$(ensure_mem_file "$ramdisk" "$mem_file" "$base_mem_size_mib")
 
-	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log" "$artifact_dir"; then
+	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log" "$artifact_dir" "$qemu_cpu"; then
 		qemu_rc=0
 	else
 		qemu_rc=$?
@@ -460,7 +465,7 @@ main() {
 	if [[ "$qemu_rc" -ne 0 ]]; then
 		if grep -q 'mintboot panic:' "$run_log"; then
 			analysis_tmp=$(mktemp /tmp/mintboot-analysis.XXXXXX)
-			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src" >"$analysis_tmp"
+			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src" "$disasm_cpu" >"$analysis_tmp"
 			cat "$analysis_tmp"
 			{
 				echo
@@ -470,7 +475,7 @@ main() {
 			} >> "$run_log"
 			rm -f "$analysis_tmp"
 		else
-			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src"
+			analyze_qemu_failure "$run_log" "$mem_file" "$elf" "$kernel_src" "$disasm_cpu"
 		fi
 	fi
 

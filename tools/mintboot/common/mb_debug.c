@@ -119,20 +119,20 @@ void mb_debug_bdos_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long r
 	mb_debug_check_low_vectors("bdos-exit");
 }
 
-void mb_debug_vdi_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
+void mb_debug_aes_vdi_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	(void)args;
-	mb_debug_handler_enter("vdi", fnum, retaddr);
-	mb_debug_check_low_vectors("vdi-enter");
+	mb_debug_handler_enter("aes_vdi", fnum, retaddr);
+	mb_debug_check_low_vectors("aes_vdi-enter");
 }
 
-void mb_debug_vdi_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
+void mb_debug_aes_vdi_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
 {
 	(void)fnum;
 	(void)args;
 	(void)retaddr;
 	mb_debug_handler_exit(ret);
-	mb_debug_check_low_vectors("vdi-exit");
+	mb_debug_check_low_vectors("aes_vdi-exit");
 }
 
 void mb_debug_timer_tick(void)

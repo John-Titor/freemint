@@ -82,6 +82,21 @@ mb_trap1:
 	rte
 
 	/*
+	 * Trap2 handler.
+	 */
+	.globl mb_trap2
+	.globl mb_aes_vdi_dispatch
+	.type mb_trap2, @function
+mb_trap2:
+	pea			2(%sp)							// return address (for debug purposes)
+	move.l		%d1,-(%sp)						// argument block
+	move.l		%d0,-(%sp)						// AES/VDI magic
+    jsr			mb_aes_vdi_dispatch				// call dispatcher
+    add.l		#12,%sp							// adjust stack
+    rte											// return already in D0
+	.size mb_trap2, .-mb_trap2
+
+	/*
 	 * Trap handler for simple traps not requiring special handling.
 	 */
 	.macro MB_SIMPLE_TRAP name, handler
@@ -107,7 +122,6 @@ mb_trap1:
 	.size \name, .-\name
 	.endm
 
-	MB_SIMPLE_TRAP mb_trap2, mb_vdi_dispatch
 	MB_SIMPLE_TRAP mb_trap13, mb_bios_dispatch
 	MB_SIMPLE_TRAP mb_trap14, mb_xbios_dispatch
 
