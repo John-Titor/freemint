@@ -3,6 +3,7 @@
 
 enum { mb_rs232_bufsize = 256 };
 enum { mb_console_bufsize = 256 };
+enum { mb_console_recsize = 4 };
 
 static uint8_t mb_iorec_ibuf[mb_rs232_bufsize];
 static uint8_t mb_iorec_obuf[mb_rs232_bufsize];
@@ -54,34 +55,40 @@ struct mb_iorec *mb_console_iorec_get(void)
 int mb_console_iorec_putc(uint8_t ch)
 {
 	struct mb_iorec *iorec = mb_console_iorec_get();
-	uint16_t head = iorec->head;
-	uint16_t next = (uint16_t)(head + 1u);
+	uint16_t tail = iorec->tail;
+	uint16_t next = (uint16_t)(tail + mb_console_recsize);
 
 	if (next >= iorec->size)
 		next = 0;
-	if (next == iorec->tail)
+	if (next == iorec->head)
 		return 0;
 
-	iorec->buf[head] = ch;
-	iorec->head = next;
+	/*
+	 * Keyboard-style IOREC entries are 4-byte records.
+	 * Keep scancode/modifier fields zero, ASCII in low byte.
+	 */
+	iorec->buf[next + 0] = 0;
+	iorec->buf[next + 1] = 0;
+	iorec->buf[next + 2] = 0;
+	iorec->buf[next + 3] = ch;
+	iorec->tail = next;
 	return 1;
 }
 
 int mb_console_iorec_getc(void)
 {
 	struct mb_iorec *iorec = mb_console_iorec_get();
-	uint16_t tail;
+	uint16_t head;
 	uint8_t ch;
 
 	while (iorec->tail == iorec->head) {
 	}
 
-	tail = iorec->tail;
-	ch = iorec->buf[tail];
-	tail = (uint16_t)(tail + 1u);
-	if (tail >= iorec->size)
-		tail = 0;
-	iorec->tail = tail;
+	head = (uint16_t)(iorec->head + mb_console_recsize);
+	if (head >= iorec->size)
+		head = 0;
+	ch = iorec->buf[head + 3];
+	iorec->head = head;
 	return (int)ch;
 }
 
