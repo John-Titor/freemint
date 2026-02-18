@@ -43,8 +43,6 @@ long mb_bdos_fread(uint16_t handle, uint32_t cnt, void *buf);
 long mb_bdos_fwrite(uint16_t handle, uint32_t cnt, void *buf);
 long mb_bdos_fdelete(const char *fn);
 long mb_bdos_fseek(int32_t where, uint16_t handle, uint16_t how);
-long mb_bdos_flock(uint16_t handle, uint16_t mode, int32_t start, int32_t length);
-long mb_bdos_fcntl(uint16_t f, uint32_t arg, uint16_t cmd);
 
 long mb_bios_bconstat(uint16_t dev);
 long mb_bios_bconin(uint16_t dev);

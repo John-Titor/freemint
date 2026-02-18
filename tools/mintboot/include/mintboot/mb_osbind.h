@@ -415,15 +415,6 @@ extern "C" {
 	(long)MB_TRAP1_WWLL((short)(0x4a), (short)0, (long)(ptr),        \
 			    (long)(size))
 
-#define Flock(handle, mode, start, length)                                 \
-	(long)MB_TRAP1_WWWLL((short)(0x5c), (short)(handle),             \
-			     (short)(mode), (long)(start),           \
-			     (long)(length))
-
-#define Fcntl(handle, arg, cmd)                                            \
-	(long)MB_TRAP1_WWLW((short)(0x52), (short)(handle),              \
-			    (long)(arg), (short)(cmd))
-
 #define MB_TRAP14_W(n)                                                     \
 	__extension__({                                                     \
 		register long __retvalue __asm__("d0");                     \

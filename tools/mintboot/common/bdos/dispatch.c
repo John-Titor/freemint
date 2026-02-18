@@ -75,13 +75,6 @@ long mb_bdos_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 	case 0x04a:
 		ret = mb_bdos_mem_mshrink(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg32w(args, 3));
 		break;
-	case 0x05c:
-		ret = mb_bdos_flock(mb_arg16(args, 0), mb_arg16(args, 1),
-				    (int32_t)mb_arg32w(args, 2), (int32_t)mb_arg32w(args, 4));
-		break;
-	case 0x104:
-		ret = mb_bdos_fcntl(mb_arg16(args, 0), mb_arg32w(args, 1), mb_arg16(args, 3));
-		break;
 	default:
 		if (fnum != 0xffffu)
 			mb_log_printf("bdos: unhandled 0x%04x\n", (uint32_t)fnum);

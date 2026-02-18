@@ -9,6 +9,8 @@
 
 void mb_tests_bios_bdos(void)
 {
+	typedef long (*mb_xcon_lowmem_fn)(uint32_t);
+	typedef long (*mb_mediach_lowmem_fn)(void);
 	uint16_t drive;
 	long drvmap;
 	long rc;
@@ -19,6 +21,15 @@ void mb_tests_bios_bdos(void)
 	uint32_t avail;
 	uint32_t alloc_ptr;
 	uint32_t physbase;
+	void *saved_dta;
+	uint8_t dta_buf[44];
+	volatile uint32_t *xconstat;
+	volatile uint32_t *xcostat;
+	volatile uint32_t *xconout;
+	mb_xcon_lowmem_fn xconstat_fn;
+	mb_xcon_lowmem_fn xcostat_fn;
+	mb_xcon_lowmem_fn xconout_fn;
+	mb_mediach_lowmem_fn mediach_fn;
 	uint16_t args[4] = { 0, 0, 0, 0 };
 
 	drive = (uint16_t)Dgetdrv();
@@ -44,6 +55,9 @@ void mb_tests_bios_bdos(void)
 	if (Bconout(2, 'X') != 0)
 		mb_panic("BIOS/BDOS test: Bconout");
 
+	if (Cconws("mintboot Cconws smoke\r") != 0)
+		mb_panic("BIOS/BDOS test: Cconws");
+
 	if (Kbshift(0) != 0)
 		mb_panic("BIOS/BDOS test: Kbshift");
 	physbase = (uint32_t)(uintptr_t)Physbase();
@@ -65,8 +79,42 @@ void mb_tests_bios_bdos(void)
 	if (memcmp(sector_a, sector_b, sizeof(sector_a)) != 0)
 		mb_panic("BIOS/BDOS test: Rwabs roundtrip mismatch");
 
-	if (Flock(3, 0, 0, 0) != MB_ERR_INVFN)
-		mb_panic("BIOS/BDOS test: Flock");
+	saved_dta = mb_bdos_fgetdta();
+	if (saved_dta == NULL)
+		mb_panic("BIOS/BDOS test: Fgetdta null");
+	if (mb_bdos_fsetdta(dta_buf) != 0)
+		mb_panic("BIOS/BDOS test: Fsetdta set");
+	if (mb_bdos_fgetdta() != dta_buf)
+		mb_panic("BIOS/BDOS test: Fsetdta mismatch");
+	if (mb_bdos_fsetdta(saved_dta) != 0)
+		mb_panic("BIOS/BDOS test: Fsetdta restore");
+	if (mb_bdos_fgetdta() != saved_dta)
+		mb_panic("BIOS/BDOS test: Fsetdta restore mismatch");
+
+	xconstat = mb_lm_xconstat();
+	xcostat = mb_lm_xcostat();
+	xconout = mb_lm_xconout();
+	if (xconstat[0] == 0 || xcostat[0] == 0 || xconout[0] == 0)
+		mb_panic("BIOS/BDOS test: xcon lowmem vectors missing");
+
+	xconstat_fn = (mb_xcon_lowmem_fn)(uintptr_t)xconstat[0];
+	xcostat_fn = (mb_xcon_lowmem_fn)(uintptr_t)xcostat[0];
+	xconout_fn = (mb_xcon_lowmem_fn)(uintptr_t)xconout[0];
+	rc = xconstat_fn((uint32_t)(2u << 16));
+	if (rc != 0 && rc != 1)
+		mb_panic("BIOS/BDOS test: xconstat rc=%d", (int)rc);
+	if (xcostat_fn((uint32_t)(2u << 16)) != -1)
+		mb_panic("BIOS/BDOS test: xcostat(2)");
+	if (xcostat_fn(0) != 0)
+		mb_panic("BIOS/BDOS test: xcostat(0)");
+	if (xconout_fn((uint32_t)((2u << 16) | 'Y')) != 0)
+		mb_panic("BIOS/BDOS test: xconout");
+
+	if (*mb_lm_hdv_mediach() == 0)
+		mb_panic("BIOS/BDOS test: hdv_mediach vector missing");
+	mediach_fn = (mb_mediach_lowmem_fn)(uintptr_t)(*mb_lm_hdv_mediach());
+	if (mediach_fn() != 0)
+		mb_panic("BIOS/BDOS test: hdv_mediach");
 
 	membot = *mb_lm_membot();
 	memtop = *mb_lm_memtop();

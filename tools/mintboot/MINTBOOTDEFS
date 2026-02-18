@@ -86,8 +86,6 @@ COBJS = \
 	common/bdos/fwrite.c \
 	common/bdos/fdelete.c \
 	common/bdos/fseek.c \
-	common/bdos/flock.c \
-	common/bdos/fcntl.c \
 	common/bdos/memory.c \
 	board/mb_board.c
 ifeq ($(MINTBOOT_TESTS),yes)
@@ -169,8 +167,6 @@ COBJS = \
 	common/bdos/fwrite.c \
 	common/bdos/fdelete.c \
 	common/bdos/fseek.c \
-	common/bdos/flock.c \
-	common/bdos/fcntl.c \
 	common/bdos/memory.c \
 	board/virt/mb_board_virt.c \
 	board/virt/mb_rom_virt.c
