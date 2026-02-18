@@ -11,8 +11,6 @@
 #include <stddef.h>
 
 static uint8_t mb_virt_rx;
-static const uint32_t mb_virt_tmr_ms = 20;
-static const uint32_t mb_virt_hz200_step = 4;
 struct mb_interrupt_frame;
 static void mb_virt_pic_int(void);
 
@@ -176,7 +174,8 @@ static void mb_virt_rtc_set_alarm(void)
 	high = mb_mmio_read32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_TIME_HIGH);
 	now = ((uint64_t)high << 32) | low;
 
-	alarm = now + ((uint64_t)mb_virt_tmr_ms * 1000000ull);
+	/* 200Hz timer emulation */
+	alarm = now + (5000000ull);
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_HIGH,
 			(uint32_t)(alarm >> 32));
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_ALARM_LOW,
@@ -204,7 +203,7 @@ void mb_board_early_init(void)
 
 void mb_board_init(void)
 {
-	*mb_lm_tmr_ms() = mb_virt_tmr_ms;
+	*mb_lm_tmr_ms() = 5; /* 200Hz */
 	(void)Setexc(MB_AUTOVEC_LEVEL6, mb_virt_pic_int);
 	mb_virt_enable_pic_irq(6, 1);
 	mb_virt_rtc_set_alarm();
@@ -214,23 +213,28 @@ void mb_board_init_cookies(void)
 {
 	mb_cookie_set(MB_COOKIE_ID('_', 'C', 'P', 'U'), 40);
 	mb_cookie_set(MB_COOKIE_ID('_', 'F', 'P', 'U'), 40);
+	mb_cookie_set(MB_COOKIE_ID('_', '5', 'M', 'S'), 0x78);	/* kernel will hook this vector */
 }
 
 __attribute__((interrupt))
 static void mb_virt_pic_int()
 {
-	void (*handler)(void);
+	static int decimator;
 
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_ALARM, 1);
 	mb_mmio_write32(VIRT_GF_RTC_MMIO_BASE + GOLDFISH_RTC_CLEAR_INTERRUPT, 1);
 
 	mb_virt_rtc_set_alarm();
 
-	*mb_lm_hz_200() = *mb_lm_hz_200() + mb_virt_hz200_step;
+	*mb_lm_hz_200() += 1;
 
-	handler = (void (*)(void))(*mb_lm_etv_timer());
-	if (handler)
-		handler();
+	if (decimator++ == 4) {
+		void (*handler)(void) = (void (*)(void))(*mb_lm_etv_timer());
+		decimator = 0;
+		if (handler) {
+			handler();
+		}
+	}
 }
 
 void mb_board_console_putc(int ch)
