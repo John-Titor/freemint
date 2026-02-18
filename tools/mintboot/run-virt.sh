@@ -3,6 +3,14 @@ set -euo pipefail
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
+to_abs_path() {
+	local path=$1
+	case "$path" in
+		/*) printf '%s\n' "$path" ;;
+		*) printf '%s/%s\n' "$PWD" "$path" ;;
+	esac
+}
+
 require_file() {
 	local path=$1
 	local name=$2
@@ -236,7 +244,72 @@ need_ramdisk_regen() {
 	if [[ "$kernel_src" -nt "$ramdisk" ]]; then
 		return 0
 	fi
+	if ! ramdisk_has_raw_fat_bpb "$ramdisk"; then
+		return 0
+	fi
 	return 1
+}
+
+ramdisk_has_raw_fat_bpb() {
+	local ramdisk=$1
+	local boot_hex sig bps spc rsvd nfats fatsz16 fatsz32
+	local off lo hi
+
+	boot_hex=$(xxd -p -l 512 "$ramdisk" | tr -d '\n')
+	if [[ ${#boot_hex} -lt 1024 ]]; then
+		return 1
+	fi
+
+	off=$((510 * 2))
+	sig=${boot_hex:$off:4}
+	if [[ "$sig" != "55aa" ]]; then
+		return 1
+	fi
+
+	off=$((11 * 2))
+	lo=${boot_hex:$off:2}
+	hi=${boot_hex:$((off + 2)):2}
+	bps=$((16#$hi$lo))
+	case "$bps" in
+		512|1024|2048|4096) ;;
+		*) return 1 ;;
+	esac
+
+	off=$((13 * 2))
+	spc=$((16#${boot_hex:$off:2}))
+	if (( spc == 0 || (spc & (spc - 1)) != 0 )); then
+		return 1
+	fi
+
+	off=$((14 * 2))
+	lo=${boot_hex:$off:2}
+	hi=${boot_hex:$((off + 2)):2}
+	rsvd=$((16#$hi$lo))
+	if (( rsvd == 0 )); then
+		return 1
+	fi
+
+	off=$((16 * 2))
+	nfats=$((16#${boot_hex:$off:2}))
+	if (( nfats == 0 )); then
+		return 1
+	fi
+
+	off=$((22 * 2))
+	lo=${boot_hex:$off:2}
+	hi=${boot_hex:$((off + 2)):2}
+	fatsz16=$((16#$hi$lo))
+
+	off=$((36 * 2))
+	lo=${boot_hex:$off:2}
+	hi=${boot_hex:$((off + 2)):2}
+	fatsz32=$((16#$hi$lo))
+
+	if (( fatsz16 == 0 && fatsz32 == 0 )); then
+		return 1
+	fi
+
+	return 0
 }
 
 kernel_version_path() {
@@ -261,47 +334,23 @@ build_ramdisk() {
 	local version_h=$4
 	local ramdisk_size_mib=$5
 	local ramdisk_sector_size=$6
-	local ramdisk_first_sector=$7
-	local ramdisk_size total_sectors part_sectors part_offset
-	local start_lba secs start_le size_le entry mint_vers_path
+	local mint_vers_path
 
 	require_cmd mformat
 	require_cmd mcopy
 	require_cmd mmd
 
-	ramdisk_size=$((ramdisk_size_mib * 1024 * 1024))
-	total_sectors=$((ramdisk_size / ramdisk_sector_size))
-	part_sectors=$((total_sectors - ramdisk_first_sector))
-	part_offset=$((ramdisk_first_sector * ramdisk_sector_size))
-
 	dd if=/dev/zero of="$ramdisk" bs=1048576 count="$ramdisk_size_mib" 2>/dev/null
 
-	start_lba=$ramdisk_first_sector
-	secs=$part_sectors
-	start_le=$(printf '\\x%02x\\x%02x\\x%02x\\x%02x' \
-		$((start_lba & 0xff)) \
-		$(((start_lba >> 8) & 0xff)) \
-		$(((start_lba >> 16) & 0xff)) \
-		$(((start_lba >> 24) & 0xff)))
-	size_le=$(printf '\\x%02x\\x%02x\\x%02x\\x%02x' \
-		$((secs & 0xff)) \
-		$(((secs >> 8) & 0xff)) \
-		$(((secs >> 16) & 0xff)) \
-		$(((secs >> 24) & 0xff)))
-
-	entry=$(printf '\\x00\\xff\\xff\\xff\\x06\\xff\\xff\\xff')
-	printf "%b%b%b" "$entry" "$start_le" "$size_le" | dd of="$ramdisk" bs=1 seek=446 conv=notrunc 2>/dev/null
-	printf '\x55\xaa' | dd of="$ramdisk" bs=1 seek=510 conv=notrunc 2>/dev/null
-
-	mformat -i "$ramdisk@@$part_offset" -r 512 -c 1 ::
+	mformat -i "$ramdisk" -r "$ramdisk_sector_size" -c 1 ::
 
 	mint_vers_path=$(kernel_version_path "$version_h")
-	mmd -i "$ramdisk@@$part_offset" ::/MINT 2>/dev/null || true
-	mmd -i "$ramdisk@@$part_offset" "::/MINT/$mint_vers_path" 2>/dev/null || true
-	mcopy -o -i "$ramdisk@@$part_offset" "$kernel_src" "::/MINT/$mint_vers_path/MINT040.PRG"
+	mmd -i "$ramdisk" ::/MINT 2>/dev/null || true
+	mmd -i "$ramdisk" "::/MINT/$mint_vers_path" 2>/dev/null || true
+	mcopy -o -i "$ramdisk" "$kernel_src" "::/MINT/$mint_vers_path/MINT040.PRG"
 
 	if find "$ramdisk_dir" -type f -print -quit | grep -q .; then
-		mcopy -i "$ramdisk@@$part_offset" -s "$ramdisk_dir"/* ::
+		mcopy -i "$ramdisk" -s "$ramdisk_dir"/* ::
 	fi
 }
 
@@ -429,7 +478,6 @@ main() {
 	local kernel_src="${KERNEL_SRC:-$ROOT/../../sys/compile.040/mint040.prg}"
 	local ramdisk_size_mib="${RAMDISK_SIZE_MIB:-32}"
 	local ramdisk_sector_size="${RAMDISK_SECTOR_SIZE:-512}"
-	local ramdisk_first_sector="${RAMDISK_FIRST_SECTOR:-2048}"
 	local base_mem_size_mib="${BASE_MEM_SIZE_MIB:-64}"
 	local mem_size_bytes qemu_rc analysis_tmp
 
@@ -441,6 +489,16 @@ main() {
 		cmdline="$*"
 	fi
 
+	qemu=$(to_abs_path "$qemu")
+	elf=$(to_abs_path "$elf")
+	ramdisk=$(to_abs_path "$ramdisk")
+	ramdisk_dir=$(to_abs_path "$ramdisk_dir")
+	mem_file=$(to_abs_path "$mem_file")
+	run_log=$(to_abs_path "$run_log")
+	cov_stream=$(to_abs_path "$cov_stream")
+	kernel_src=$(to_abs_path "$kernel_src")
+	version_h=$(to_abs_path "$version_h")
+
 	require_file "$elf" "mintboot-virt.elf"
 	require_executable "$qemu" "qemu binary"
 	require_file "$kernel_src" "kernel"
@@ -450,7 +508,7 @@ main() {
 	mkdir -p "$ramdisk_dir"
 	if need_ramdisk_regen "$ramdisk" "$ramdisk_dir" "$kernel_src"; then
 		build_ramdisk "$ramdisk" "$ramdisk_dir" "$kernel_src" "$version_h" \
-			"$ramdisk_size_mib" "$ramdisk_sector_size" "$ramdisk_first_sector"
+			"$ramdisk_size_mib" "$ramdisk_sector_size"
 	fi
 
 	mem_size_bytes=$(ensure_mem_file "$ramdisk" "$mem_file" "$base_mem_size_mib")

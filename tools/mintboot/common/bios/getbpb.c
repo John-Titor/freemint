@@ -31,7 +31,6 @@ static uint32_t mb_rom_le32(const uint8_t *ptr)
 long mb_bios_getbpb(uint16_t dev)
 {
 	uint8_t sector[512];
-	uint32_t part_lba;
 	uint16_t bytes_per_sec;
 	uint8_t sec_per_clus;
 	uint16_t rsvd_secs;
@@ -54,13 +53,6 @@ long mb_bios_getbpb(uint16_t dev)
 		return 0;
 
 	if (sector[510] != 0x55 || sector[511] != 0xaa)
-		return 0;
-
-	part_lba = mb_rom_le32(&sector[0x1be + 8]);
-	if (part_lba == 0)
-		return 0;
-
-	if (mb_rom_dispatch.rwabs(0, sector, 1, (uint16_t)part_lba, dev) != 0)
 		return 0;
 
 	bytes_per_sec = mb_rom_le16(&sector[0x0b]);
@@ -93,8 +85,8 @@ long mb_bios_getbpb(uint16_t dev)
 	bpb->clsizb = bytes_per_sec * sec_per_clus;
 	bpb->rdlen = (int16_t)rdlen;
 	bpb->fsiz = (int16_t)fatsz;
-	bpb->fatrec = (int16_t)(part_lba + rsvd_secs + fatsz);
-	bpb->datrec = (int16_t)(part_lba + data_start);
+	bpb->fatrec = (int16_t)(rsvd_secs + fatsz);
+	bpb->datrec = (int16_t)data_start;
 	bpb->numcl = (uint16_t)numcl;
 	bpb->bflags = 0;
 	if (num_fats == 1)
