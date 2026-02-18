@@ -21,6 +21,9 @@ static void mb_debug_check_low_vectors(const char *source)
 	uint32_t i;
 	int changed = 0;
 
+#ifndef MB_LOG_LOWMEM_CORRUPTION
+	return;
+
 	if (!mb_debug_vectors_ready) {
 		for (i = 0; i < MB_DEBUG_VECTOR_COUNT; i++)
 			mb_debug_vectors[i] = vectors[i];
@@ -47,6 +50,7 @@ static void mb_debug_check_low_vectors(const char *source)
 			mb_panic("vector trample");
 		mb_debug_dump_state();
 	}
+#endif
 #endif
 }
 
