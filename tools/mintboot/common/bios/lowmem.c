@@ -3,41 +3,44 @@
 
 #define MB_XCON_TABLE_SLOTS 8u
 
-static long mb_hdv_bpb_stub(uint16_t dev)
+/*
+ * These functions are called directly by the kernel, which uses the -mshort calling convention.
+ * Thus, we invoke via the dispatchers in order to get correct argument unpacking.
+ */
+
+static long mb_hdv_bpb_stub(uint32_t args)
 {
-	return mb_bios_getbpb(dev);
+	return mb_bios_dispatch(0x07, (uint16_t *)&args, (uint32_t *)8);
 }
 
-static long mb_hdv_rw_stub(uint16_t rwflag, void *buf, uint16_t count,
-			   uint16_t recno, uint16_t dev)
+static long mb_hdv_rw_stub(uint32_t args)
 {
-	return mb_bios_rwabs(rwflag, buf, count, recno, dev);
+	return mb_bios_dispatch(0x04, (uint16_t *)&args, (uint32_t *)8);
 }
 
-static long mb_hdv_mediach_stub(uint16_t dev)
+static long mb_hdv_mediach_stub(void)
 {
-	(void)dev;
 	return 0;
 }
 
-static long mb_xconstat_stub(uint16_t dev)
+static long mb_xconstat_stub(uint32_t args)
 {
-	return mb_bios_bconstat(dev);
+	return mb_bios_dispatch(0x01, (uint16_t *)&args, (uint32_t *)8);
 }
 
-static long mb_xconin_stub(uint16_t dev)
+static long mb_xconin_stub(uint32_t args)
 {
-	return mb_bios_bconin(dev);
+	return mb_bios_dispatch(0x02, (uint16_t *)&args, (uint32_t *)8);
 }
 
-static long mb_xcostat_stub(uint16_t dev)
+static long mb_xcostat_stub(uint32_t args)
 {
-	return mb_bios_bcostat(dev);
+	return mb_bios_dispatch(0x08, (uint16_t *)&args, (uint32_t *)8);
 }
 
-static long mb_xconout_stub(uint16_t dev, uint16_t c)
+static long mb_xconout_stub(uint32_t args)
 {
-	return mb_bios_bconout(dev, c);
+	return mb_bios_dispatch(0x03, (uint16_t *)&args, (uint32_t *)8);
 }
 
 void mb_bios_init_lowmem(void)

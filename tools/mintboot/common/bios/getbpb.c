@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#pragma pack(push, 1)
 struct mb_rom_bpb {
 	uint16_t recsiz;
 	int16_t clsiz;
@@ -14,6 +15,7 @@ struct mb_rom_bpb {
 	uint16_t numcl;
 	int16_t bflags;
 };
+#pragma pack(pop)
 
 static uint16_t mb_rom_le16(const uint8_t *ptr)
 {
