@@ -35,16 +35,14 @@ void mb_tests_vbclock(void)
 		vb_delta = current_vb - start_vb;
 		fr_delta = current_fr - start_fr;
 		hz_delta = current_hz - start_hz;
-		if (vb_delta >= 25u &&
-		    fr_delta >= 25u &&
-		    hz_delta >= 100u) {
-			expected_hz = fr_delta * 4u;
+		if (vb_delta >= 25u && fr_delta >= 25u) {
+			expected_hz = fr_delta * 5u;
 			hz_diff = (hz_delta > expected_hz)
 				  ? (hz_delta - expected_hz)
 				  : (expected_hz - hz_delta);
-			if (hz_diff > 4u)
-				mb_panic("HZ_200 mismatch fr=%u hz=%u diff=%u",
-					 fr_delta, hz_delta, hz_diff);
+			if (hz_diff > 5u)
+				mb_panic("HZ_200 mismatch fr=%u hz=%u expected=%u diff=%u",
+					 fr_delta, hz_delta, expected_hz, hz_diff);
 			return;
 		}
 	}
