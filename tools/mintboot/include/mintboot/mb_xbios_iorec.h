@@ -23,5 +23,9 @@ struct mb_ext_iorec {
 } __attribute__((packed));
 
 struct mb_ext_iorec *mb_xbios_iorec_get(void);
+struct mb_iorec *mb_console_iorec_get(void);
+int mb_console_iorec_putc(uint8_t ch);
+int mb_console_iorec_getc(void);
+int mb_console_iorec_ready(void);
 
 #endif /* MINTBOOT_MB_XBIOS_IOREC_H */

@@ -2,5 +2,5 @@
 
 long mb_bdos_cconin(void)
 {
-	return mb_rom_dispatch.bconin(2);
+	return mb_bios_bconin(2);
 }

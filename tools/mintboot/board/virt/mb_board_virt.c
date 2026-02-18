@@ -5,14 +5,16 @@
 #include "mintboot/mb_lowmem.h"
 #include "mintboot/mb_osbind.h"
 #include "mintboot/mb_cpu.h"
+#include "mintboot/mb_xbios_iorec.h"
 #include "mb_virt_mmio.h"
 
 #include <stdint.h>
 #include <stddef.h>
 
-static uint8_t mb_virt_rx;
 struct mb_interrupt_frame;
 static void mb_virt_pic_int(void);
+static void mb_virt_tty_drain_rx(void);
+static uint8_t mb_virt_rx;
 
 uintptr_t mb_virt_ramdisk_base;
 uint32_t mb_virt_ramdisk_size;
@@ -33,7 +35,12 @@ struct mb_linux_bootinfo_memchunk {
 #define MB_LINUX_BI_CPUTYPE  0x0003
 #define MB_LINUX_BI_RAMDISK  0x0006
 #define MB_LINUX_BI_CMDLINE  0x0007
+#define MB_AUTOVEC_LEVEL1    25u
 #define MB_AUTOVEC_LEVEL6    30u
+#define MB_VIRT_RTC_PIC      6u
+#define MB_VIRT_RTC_IRQ      1u
+#define MB_VIRT_TTY_PIC      1u
+#define MB_VIRT_TTY_IRQ      32u
 
 struct mb_linux_bootinfo_cputype {
 	uint16_t tag;
@@ -205,7 +212,7 @@ void mb_board_init(void)
 {
 	*mb_lm_tmr_ms() = 5; /* 200Hz */
 	(void)Setexc(MB_AUTOVEC_LEVEL6, mb_virt_pic_int);
-	mb_virt_enable_pic_irq(6, 1);
+	mb_virt_enable_pic_irq(MB_VIRT_RTC_PIC, MB_VIRT_RTC_IRQ);
 	mb_virt_rtc_set_alarm();
 }
 
@@ -235,34 +242,29 @@ static void mb_virt_pic_int()
 			handler();
 		}
 	}
+	mb_virt_tty_drain_rx();
+}
+
+static void mb_virt_tty_drain_rx(void)
+{
+	uintptr_t paddr = (uintptr_t)&mb_virt_rx;
+
+	while (mb_mmio_read32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_BYTES_READY) != 0) {
+		mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_PTR,
+				(uint32_t)paddr);
+		mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_LEN, 1);
+		mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_PTR_HIGH,
+				0);
+		mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_CMD,
+				GOLDFISH_CMD_READ_BUFFER);
+		(void)mb_console_iorec_putc(mb_virt_rx);
+	}
 }
 
 void mb_board_console_putc(int ch)
 {
 	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_PUT_CHAR,
 			(uint32_t)ch);
-}
-
-int mb_board_console_getc(void)
-{
-	uintptr_t paddr = (uintptr_t)&mb_virt_rx;
-
-	while (!mb_board_console_poll()) {
-	}
-
-	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_PTR,
-			(uint32_t)paddr);
-	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_LEN, 1);
-	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_DATA_PTR_HIGH, 0);
-	mb_mmio_write32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_CMD,
-			GOLDFISH_CMD_READ_BUFFER);
-
-	return mb_virt_rx;
-}
-
-int mb_board_console_poll(void)
-{
-	return mb_mmio_read32(VIRT_GF_TTY_MMIO_BASE + GOLDFISH_TTY_BYTES_READY) != 0;
 }
 
 void mb_board_exit(int code)

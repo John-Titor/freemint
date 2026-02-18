@@ -9,8 +9,6 @@
 #define MB_MAX_DRIVES 4u
 
 struct mb_rom_dispatch {
-	long (*bconstat)(uint16_t dev);
-	long (*bconin)(uint16_t dev);
 	long (*bconout)(uint16_t dev, uint16_t c);
 	long (*rwabs)(uint16_t rwflag, void *buf, uint16_t count, uint16_t recno, uint16_t dev);
 	long (*bcostat)(uint16_t dev);

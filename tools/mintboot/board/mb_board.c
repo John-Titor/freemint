@@ -17,18 +17,6 @@ void mb_board_console_putc(int ch)
 	/* TODO: output character to board console. */
 }
 
-int mb_board_console_getc(void)
-{
-	/* TODO: blocking read. */
-	return -1;
-}
-
-int mb_board_console_poll(void)
-{
-	/* TODO: return non-zero if input available. */
-	return 0;
-}
-
 void mb_board_exit(int code)
 {
 	(void)code;

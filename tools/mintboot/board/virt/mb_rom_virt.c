@@ -87,18 +87,6 @@ static long mb_virt_rom_bconout(uint16_t dev, uint16_t c)
 	return 0;
 }
 
-static long mb_virt_rom_bconstat(uint16_t dev)
-{
-	(void)dev;
-	return mb_board_console_poll() ? 1 : 0;
-}
-
-static long mb_virt_rom_bconin(uint16_t dev)
-{
-	(void)dev;
-	return mb_board_console_getc();
-}
-
 static long mb_virt_rom_rwabs(uint16_t rwflag, void *buf, uint16_t count,
 			      uint16_t recno, uint16_t dev)
 {
@@ -137,8 +125,6 @@ static long mb_virt_rom_drvmap(void)
 }
 
 const struct mb_rom_dispatch mb_rom_dispatch = {
-	.bconstat = mb_virt_rom_bconstat,
-	.bconin = mb_virt_rom_bconin,
 	.bconout = mb_virt_rom_bconout,
 	.rwabs = mb_virt_rom_rwabs,
 	.bcostat = mb_bios_bcostat,

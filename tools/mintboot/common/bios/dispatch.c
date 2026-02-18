@@ -12,10 +12,10 @@ long mb_bios_dispatch(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 
 	switch (fnum) {
 	case 0x01:
-		ret = mb_rom_dispatch.bconstat(mb_arg16(args, 0));
+		ret = mb_bios_bconstat(mb_arg16(args, 0));
 		break;
 	case 0x02:
-		ret = mb_rom_dispatch.bconin(mb_arg16(args, 0));
+		ret = mb_bios_bconin(mb_arg16(args, 0));
 		break;
 	case 0x03:
 		ret = mb_rom_dispatch.bconout(mb_arg16(args, 0), mb_arg16(args, 1));

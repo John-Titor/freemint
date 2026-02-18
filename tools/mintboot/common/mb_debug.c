@@ -6,53 +6,12 @@
 
 #define MB_DEBUG_VECTOR_COUNT 64u
 
-static uint32_t mb_debug_vectors[MB_DEBUG_VECTOR_COUNT];
-static int mb_debug_vectors_ready;
 static const char *mb_debug_last_entrypoint;
 static uint16_t mb_debug_last_function;
 static uint32_t mb_debug_last_return_address;
 static long mb_debug_last_return_value;
 static int mb_debug_last_return_valid;
 static uint32_t mb_debug_handler_depth;
-
-static void mb_debug_check_low_vectors(const char *source)
-{
-	volatile uint32_t *vectors = (volatile uint32_t *)0x0;
-	uint32_t i;
-	int changed = 0;
-
-#ifndef MB_LOG_LOWMEM_CORRUPTION
-	return;
-
-	if (!mb_debug_vectors_ready) {
-		for (i = 0; i < MB_DEBUG_VECTOR_COUNT; i++)
-			mb_debug_vectors[i] = vectors[i];
-		mb_debug_vectors_ready = 1;
-		return;
-	}
-
-	for (i = 0; i < MB_DEBUG_VECTOR_COUNT; i++) {
-		uint32_t now = vectors[i];
-		uint32_t was = mb_debug_vectors[i];
-
-		if (now == was)
-			continue;
-
-		mb_debug_vectors[i] = now;
-		changed = 1;
-		mb_log_printf("debug: vec[%02u] changed (%s) 0x%08x -> 0x%08x\n",
-			      i, source, was, now);
-	}
-
-#if MB_DEBUG_LOWMEM_CORRUPTION
-	if (changed) {
-		if (mb_debug_handler_depth)
-			mb_panic("vector trample");
-		mb_debug_dump_state();
-	}
-#endif
-#endif
-}
 
 static uint32_t mb_debug_retaddr_value(uint32_t *retaddr)
 {
@@ -81,7 +40,6 @@ void mb_debug_bios_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	(void)args;
 	mb_debug_handler_enter("bios", fnum, retaddr);
-	mb_debug_check_low_vectors("bios-enter");
 }
 
 void mb_debug_bios_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
@@ -90,14 +48,12 @@ void mb_debug_bios_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long r
 	(void)args;
 	(void)retaddr;
 	mb_debug_handler_exit(ret);
-	mb_debug_check_low_vectors("bios-exit");
 }
 
 void mb_debug_xbios_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	(void)args;
 	mb_debug_handler_enter("xbios", fnum, retaddr);
-	mb_debug_check_low_vectors("xbios-enter");
 }
 
 void mb_debug_xbios_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
@@ -106,14 +62,12 @@ void mb_debug_xbios_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long 
 	(void)args;
 	(void)retaddr;
 	mb_debug_handler_exit(ret);
-	mb_debug_check_low_vectors("xbios-exit");
 }
 
 void mb_debug_bdos_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	(void)args;
 	mb_debug_handler_enter("bdos", fnum, retaddr);
-	mb_debug_check_low_vectors("bdos-enter");
 }
 
 void mb_debug_bdos_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
@@ -122,14 +76,12 @@ void mb_debug_bdos_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long r
 	(void)args;
 	(void)retaddr;
 	mb_debug_handler_exit(ret);
-	mb_debug_check_low_vectors("bdos-exit");
 }
 
 void mb_debug_aes_vdi_enter(uint16_t fnum, uint16_t *args, uint32_t *retaddr)
 {
 	(void)args;
 	mb_debug_handler_enter("aes_vdi", fnum, retaddr);
-	mb_debug_check_low_vectors("aes_vdi-enter");
 }
 
 void mb_debug_aes_vdi_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, long ret)
@@ -138,12 +90,10 @@ void mb_debug_aes_vdi_exit(uint16_t fnum, uint16_t *args, uint32_t *retaddr, lon
 	(void)args;
 	(void)retaddr;
 	mb_debug_handler_exit(ret);
-	mb_debug_check_low_vectors("aes_vdi-exit");
 }
 
 void mb_debug_timer_tick(void)
 {
-	mb_debug_check_low_vectors("timer");
 }
 
 void mb_debug_dump_state(void)
