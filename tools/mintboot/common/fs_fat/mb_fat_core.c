@@ -8,6 +8,10 @@ struct mb_fat_volume mb_fat_vols[MB_FAT_MAX_VOLS];
 static int8_t mb_fat_dev_map[MB_MAX_DRIVES];
 static uint8_t mb_fat_vol_rr;
 static uint8_t mb_fat_dev_map_init;
+static uint8_t mb_fat_sector_cache_valid;
+static uint8_t mb_fat_sector_cache_dev;
+static uint32_t mb_fat_sector_cache_num;
+static uint8_t mb_fat_sector_cache[512];
 struct mb_fat_search mb_fat_search[MB_FAT_MAX_SEARCH];
 struct mb_fat_open mb_fat_open[MB_FAT_MAX_OPEN];
 
@@ -111,6 +115,7 @@ int mb_fat_mount(uint16_t dev)
 	vol->total_clusters = (uint32_t)bpb->numcl;
 	mb_fat_dev_map[dev] = (int8_t)slot;
 	mb_fat_vol = vol;
+	mb_fat_sector_cache_valid = 0;
 	return 0;
 }
 
@@ -124,17 +129,22 @@ uint32_t mb_fat_cluster_sector(uint32_t cluster)
 
 uint16_t mb_fat_read_fat(uint32_t cluster)
 {
-	uint8_t sector[512];
 	uint32_t offset = cluster * 2u;
 	uint32_t sector_idx = offset / mb_fat_vol->recsiz;
 	uint32_t sector_off = offset % mb_fat_vol->recsiz;
+	uint32_t sector_num = mb_fat_vol->fat_start + sector_idx;
 
-	if (mb_fat_rwabs(0, sector, 1,
-			 mb_fat_vol->fat_start + sector_idx,
-			 mb_fat_vol->dev) != 0)
-		return 0xffffu;
+	if (!mb_fat_sector_cache_valid || mb_fat_sector_cache_dev != mb_fat_vol->dev ||
+	    mb_fat_sector_cache_num != sector_num) {
+		if (mb_fat_rwabs(0, mb_fat_sector_cache, 1, sector_num,
+				 mb_fat_vol->dev) != 0)
+			return 0xffffu;
+		mb_fat_sector_cache_valid = 1;
+		mb_fat_sector_cache_dev = mb_fat_vol->dev;
+		mb_fat_sector_cache_num = sector_num;
+	}
 
-	return mb_fat_le16(&sector[sector_off]);
+	return mb_fat_le16(&mb_fat_sector_cache[sector_off]);
 }
 
 int mb_fat_write_fat(uint32_t cluster, uint16_t value)
@@ -161,6 +171,7 @@ int mb_fat_write_fat(uint32_t cluster, uint16_t value)
 				 mb_fat_vol->dev) != 0)
 			return -1;
 	}
+	mb_fat_sector_cache_valid = 0;
 
 	return 0;
 }
@@ -193,6 +204,7 @@ int mb_fat_free_chain(uint32_t start_cluster)
 			break;
 		cluster = next;
 	}
+	mb_fat_sector_cache_valid = 0;
 
 	return 0;
 }

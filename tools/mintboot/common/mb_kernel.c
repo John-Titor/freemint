@@ -220,7 +220,7 @@ static int mb_relocate_prg(uint16_t handle, uint32_t reloc_off,
 	uint32_t relst = 0;
 	uint32_t offset = 0;
 	uint32_t relbase = (uint32_t)(uintptr_t)tbase;
-	uint8_t buf[256];
+	uint8_t buf[512];
 
 	if (Fseek((int32_t)reloc_off, handle, 0) < 0) {
 		mb_log_printf("mintboot: reloc seek failed off=%08x\n", reloc_off);

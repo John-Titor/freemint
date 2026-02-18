@@ -5,6 +5,10 @@
 
 #include "mintboot/mb_lib.h"
 
+static uint8_t mb_fat_read_walk_valid[MB_FAT_MAX_OPEN];
+static uint32_t mb_fat_read_walk_offset[MB_FAT_MAX_OPEN];
+static uint32_t mb_fat_read_walk_cluster[MB_FAT_MAX_OPEN];
+
 static int mb_fat_find_free_open_slot(uint32_t *idx_out)
 {
 	uint32_t idx;
@@ -182,6 +186,7 @@ long mb_fat_fopen(const char *path, uint16_t mode)
 	mb_fat_open[idx].time = ent.wr_time;
 	mb_fat_open[idx].date = ent.wr_date;
 	mb_fat_open[idx].attr = ent.attr;
+	mb_fat_read_walk_valid[idx] = 0;
 	return (long)(idx + 3);
 }
 
@@ -245,6 +250,7 @@ long mb_fat_fcreate(const char *path, uint16_t mode)
 	mb_fat_open[open_idx].time = 0;
 	mb_fat_open[open_idx].date = 0;
 	mb_fat_open[open_idx].attr = attr;
+	mb_fat_read_walk_valid[open_idx] = 0;
 	return (long)(open_idx + 3);
 }
 
@@ -252,6 +258,7 @@ long mb_fat_fwrite(uint16_t handle, uint32_t cnt, void *buf)
 {
 	struct mb_fat_open *op;
 	uint8_t sector[512];
+	uint16_t open_idx;
 	uint32_t remaining = cnt;
 	uint8_t *src = (uint8_t *)buf;
 	uint32_t written = 0;
@@ -260,6 +267,7 @@ long mb_fat_fwrite(uint16_t handle, uint32_t cnt, void *buf)
 	op = mb_fat_get_open(handle);
 	if (!op)
 		return MB_ERR_IHNDL;
+	open_idx = handle - 3;
 	if (!op->write)
 		return MB_ERR_ACCDN;
 	if (mb_fat_mount(op->dev) != 0)
@@ -305,6 +313,7 @@ long mb_fat_fwrite(uint16_t handle, uint32_t cnt, void *buf)
 		if (op->offset > op->size)
 			op->size = op->offset;
 		op->dirty = 1;
+		mb_fat_read_walk_valid[open_idx] = 0;
 	}
 
 	return (long)written;
@@ -346,6 +355,10 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 {
 	struct mb_fat_open *op;
 	uint8_t sector[512];
+	uint16_t open_idx;
+	uint32_t cluster_size;
+	uint32_t cluster;
+	uint32_t cluster_off;
 	uint32_t remaining;
 	uint32_t read_total;
 	uint8_t *dst;
@@ -353,6 +366,7 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 	op = mb_fat_get_open(handle);
 	if (!op)
 		return MB_ERR_IHNDL;
+	open_idx = handle - 3;
 
 	if (mb_fat_mount(op->dev) != 0)
 		return -1;
@@ -363,22 +377,38 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 	if (cnt > (op->size - op->offset))
 		cnt = op->size - op->offset;
 
+	cluster_size = mb_fat_vol->spc * mb_fat_vol->recsiz;
+	if (cluster_size == 0)
+		return 0;
+
+	if (mb_fat_read_walk_valid[open_idx] &&
+	    mb_fat_read_walk_offset[open_idx] <= op->offset &&
+	    mb_fat_read_walk_cluster[open_idx] >= 2u) {
+		uint32_t walk_off = mb_fat_read_walk_offset[open_idx];
+		cluster = mb_fat_read_walk_cluster[open_idx];
+		cluster_off = op->offset - walk_off;
+		while (cluster_off >= cluster_size) {
+			uint32_t next = mb_fat_read_fat(cluster);
+			if (next >= 0xfff8u)
+				return 0;
+			cluster = next;
+			cluster_off -= cluster_size;
+			walk_off += cluster_size;
+		}
+	} else {
+		if (mb_fat_cluster_for_offset(op, op->offset, &cluster, &cluster_off) != 0)
+			return 0;
+	}
+
 	remaining = cnt;
 	read_total = 0;
 	dst = (uint8_t *)buf;
 
 	while (remaining > 0) {
-		uint32_t cluster;
-		uint32_t cluster_off;
-		uint32_t cluster_size = mb_fat_vol->spc * mb_fat_vol->recsiz;
 		uint32_t sector_in_cluster;
 		uint32_t sector_off;
 		uint32_t sector_idx;
 		uint32_t chunk;
-
-		if (mb_fat_cluster_for_offset(op, op->offset, &cluster,
-					      &cluster_off) != 0)
-			break;
 
 		sector_in_cluster = cluster_off / mb_fat_vol->recsiz;
 		sector_off = cluster_off % mb_fat_vol->recsiz;
@@ -397,21 +427,26 @@ long mb_fat_fread(uint16_t handle, uint32_t cnt, void *buf)
 		op->offset += chunk;
 		read_total += chunk;
 		remaining -= chunk;
+		cluster_off += chunk;
 
 		if (op->offset >= op->size)
 			break;
 
-		if (sector_off + chunk < mb_fat_vol->recsiz)
+		if (cluster_off < cluster_size)
 			continue;
 
-		if ((sector_in_cluster + 1) >= mb_fat_vol->spc) {
+		{
 			uint32_t next = mb_fat_read_fat(cluster);
 			if (next >= 0xfff8u)
 				break;
+			cluster = next;
+			cluster_off = 0;
 		}
-
-		(void)cluster_size;
 	}
+
+	mb_fat_read_walk_valid[open_idx] = 1;
+	mb_fat_read_walk_offset[open_idx] = op->offset - cluster_off;
+	mb_fat_read_walk_cluster[open_idx] = cluster;
 
 	return (long)read_total;
 }
@@ -444,6 +479,7 @@ long mb_fat_fseek(uint16_t handle, int32_t where, uint16_t how)
 	if (newpos < 0 || newpos > (int32_t)op->size)
 		return MB_ERR_RANGE;
 	op->offset = (uint32_t)newpos;
+	mb_fat_read_walk_valid[handle - 3] = 0;
 	return (long)op->offset;
 }
 
@@ -461,6 +497,7 @@ long mb_fat_fclose(uint16_t handle)
 	}
 
 	op->in_use = 0;
+	mb_fat_read_walk_valid[handle - 3] = 0;
 	return 0;
 }
 
