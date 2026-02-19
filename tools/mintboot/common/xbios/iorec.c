@@ -58,6 +58,9 @@ int mb_console_iorec_putc(uint8_t ch)
 	uint16_t tail = iorec->tail;
 	uint16_t next = (uint16_t)(tail + mb_console_recsize);
 
+	if (ch == 0x7fu)
+		ch = 0x08u;
+
 	if (next >= iorec->size)
 		next = 0;
 	if (next == iorec->head)
