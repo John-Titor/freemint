@@ -169,6 +169,7 @@ COBJS = \
 	common/bdos/fseek.c \
 	common/bdos/memory.c \
 	board/virt/mb_board_virt.c \
+	board/virt/mb_virt_blk.c \
 	board/virt/mb_rom_virt.c
 ifeq ($(MINTBOOT_TESTS),yes)
 COBJS += $(TEST_COBJS)
