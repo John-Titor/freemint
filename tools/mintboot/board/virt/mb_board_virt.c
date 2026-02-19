@@ -16,9 +16,6 @@ static void mb_virt_pic_int(void);
 static void mb_virt_tty_drain_rx(void);
 static uint8_t mb_virt_rx;
 
-uintptr_t mb_virt_ramdisk_base;
-uint32_t mb_virt_ramdisk_size;
-
 struct mb_linux_bootinfo {
 	uint16_t tag;
 	uint16_t size;
@@ -33,7 +30,6 @@ struct mb_linux_bootinfo_memchunk {
 
 #define MB_LINUX_BI_MEMCHUNK 0x0005
 #define MB_LINUX_BI_CPUTYPE  0x0003
-#define MB_LINUX_BI_RAMDISK  0x0006
 #define MB_LINUX_BI_CMDLINE  0x0007
 #define MB_AUTOVEC_LEVEL1    25u
 #define MB_AUTOVEC_LEVEL6    30u
@@ -48,19 +44,11 @@ struct mb_linux_bootinfo_cputype {
 	uint32_t cpu_type;
 };
 
-struct mb_linux_bootinfo_ramdisk {
-	uint16_t tag;
-	uint16_t size;
-	uint32_t addr;
-	uint32_t size_bytes;
-};
-
 static void mb_virt_parse_bootinfo(void)
 {
 	const struct mb_linux_bootinfo *rec;
 	uintptr_t addr;
 	uint32_t idx;
-	int saw_ramdisk = 0;
 
 	extern uint8_t _mb_image_end[];
 
@@ -121,22 +109,6 @@ static void mb_virt_parse_bootinfo(void)
 			}
 		}
 
-		if (rec->tag == MB_LINUX_BI_RAMDISK) {
-			const struct mb_linux_bootinfo_ramdisk *rd;
-
-			if (rec->size < sizeof(*rd)) {
-				mb_panic("bootinfo ramdisk too small: %u",
-					 rec->size);
-			}
-
-			rd = (const struct mb_linux_bootinfo_ramdisk *)rec;
-			mb_virt_ramdisk_base = (uintptr_t)rd->addr;
-			mb_virt_ramdisk_size = rd->size_bytes;
-			saw_ramdisk = 1;
-			/* mb_log_printf("mintboot virt: ramdisk=0x%08x size=0x%08x\n",
-				      rd->addr, rd->size_bytes); */
-		}
-
 		if (rec->tag == MB_LINUX_BI_CMDLINE) {
 			uint32_t len;
 			uint32_t i;
@@ -166,8 +138,6 @@ static void mb_virt_parse_bootinfo(void)
 							 rec->size);
 	}
 
-	if (!saw_ramdisk)
-		mb_panic("bootinfo missing ramdisk tag");
 }
 
 static void mb_virt_rtc_set_alarm(void)

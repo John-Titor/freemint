@@ -230,32 +230,12 @@ analyze_qemu_failure() {
 	echo "mintboot: PC 0x$(printf '%08x' "$pc") is outside mintboot and kernel text ranges"
 }
 
-need_ramdisk_regen() {
-	local ramdisk=$1
-	local ramdisk_dir=$2
-	local kernel_src=$3
-
-	if [[ ! -f "$ramdisk" ]]; then
-		return 0
-	fi
-	if find "$ramdisk_dir" -type f -newer "$ramdisk" -print -quit | grep -q .; then
-		return 0
-	fi
-	if [[ "$kernel_src" -nt "$ramdisk" ]]; then
-		return 0
-	fi
-	if ! ramdisk_has_raw_fat_bpb "$ramdisk"; then
-		return 0
-	fi
-	return 1
-}
-
-ramdisk_has_raw_fat_bpb() {
-	local ramdisk=$1
+diskimage_has_raw_fat_bpb() {
+	local diskimage=$1
 	local boot_hex sig bps spc rsvd nfats fatsz16 fatsz32
 	local off lo hi
 
-	boot_hex=$(xxd -p -l 512 "$ramdisk" | tr -d '\n')
+	boot_hex=$(xxd -p -l 512 "$diskimage" | tr -d '\n')
 	if [[ ${#boot_hex} -lt 1024 ]]; then
 		return 1
 	fi
@@ -327,42 +307,50 @@ kernel_version_path() {
 	fi
 }
 
-build_ramdisk() {
-	local ramdisk=$1
-	local ramdisk_dir=$2
+sync_diskimage() {
+	local diskimage=$1
+	local diskimage_dir=$2
 	local kernel_src=$3
 	local version_h=$4
-	local ramdisk_size_mib=$5
-	local ramdisk_sector_size=$6
+	local diskimage_size_mib=$5
+	local diskimage_sector_size=$6
 	local mint_vers_path
 
 	require_cmd mformat
 	require_cmd mcopy
 	require_cmd mmd
 
-	dd if=/dev/zero of="$ramdisk" bs=1048576 count="$ramdisk_size_mib" 2>/dev/null
+	if command -v lsof >/dev/null 2>&1; then
+		if lsof "$diskimage" >/dev/null 2>&1; then
+			echo "disk image is busy (open by another process): $diskimage" >&2
+			exit 1
+		fi
+	fi
 
-	mformat -i "$ramdisk" -r "$ramdisk_sector_size" -c 1 ::
+	if [[ ! -f "$diskimage" ]]; then
+		dd if=/dev/zero of="$diskimage" bs=1048576 count="$diskimage_size_mib" 2>/dev/null
+		mformat -i "$diskimage" -r "$diskimage_sector_size" -c 1 :: </dev/null
+	elif ! diskimage_has_raw_fat_bpb "$diskimage"; then
+		echo "disk image is not a raw FAT filesystem: $diskimage" >&2
+		exit 1
+	fi
 
 	mint_vers_path=$(kernel_version_path "$version_h")
-	mmd -i "$ramdisk" ::/MINT 2>/dev/null || true
-	mmd -i "$ramdisk" "::/MINT/$mint_vers_path" 2>/dev/null || true
-	mcopy -o -i "$ramdisk" "$kernel_src" "::/MINT/$mint_vers_path/MINT040.PRG"
+	mmd -D o -i "$diskimage" ::/MINT </dev/null >/dev/null 2>&1 || true
+	mmd -D o -i "$diskimage" "::/MINT/$mint_vers_path" </dev/null >/dev/null 2>&1 || true
+	mcopy -o -i "$diskimage" "$kernel_src" "::/MINT/$mint_vers_path/MINT040.PRG" </dev/null
 
-	if find "$ramdisk_dir" -type f -print -quit | grep -q .; then
-		mcopy -i "$ramdisk" -s "$ramdisk_dir"/* ::
+	if find "$diskimage_dir" -type f -print -quit | grep -q .; then
+		mcopy -o -i "$diskimage" -s "$diskimage_dir"/* :: </dev/null
 	fi
 }
 
 ensure_mem_file() {
-	local ramdisk=$1
-	local mem_file=$2
-	local base_mem_size_mib=$3
-	local ramdisk_bytes ramdisk_mib_rounded mem_size_mib mem_size_bytes mem_size
+	local mem_file=$1
+	local base_mem_size_mib=$2
+	local mem_size_mib mem_size_bytes mem_size
 
-	ramdisk_bytes=$(wc -c < "$ramdisk" | tr -d '[:space:]')
-	ramdisk_mib_rounded=$(((ramdisk_bytes + 1048576 - 1) / 1048576))
-	mem_size_mib=$((base_mem_size_mib + ramdisk_mib_rounded))
+	mem_size_mib=$base_mem_size_mib
 	mem_size_bytes=$((mem_size_mib * 1048576))
 
 	if [[ ! -f "$mem_file" ]]; then
@@ -382,7 +370,7 @@ run_qemu() {
 	local mem_size_bytes=$2
 	local mem_file=$3
 	local elf=$4
-	local ramdisk=$5
+	local diskimage=$5
 	local qemu_trace=$6
 	local cmdline=$7
 	local run_log=$8
@@ -399,8 +387,9 @@ run_qemu() {
 		-action panic=exit-failure
 		-nographic
 		-serial mon:stdio
+		-drive "if=none,id=vd0,format=raw,file=$diskimage"
+		-device "virtio-blk-device,drive=vd0,bus=virtio-mmio-bus.0"
 		-kernel "$elf"
-		-initrd "$ramdisk"
 	)
 
 	if [[ -n "$qemu_trace" ]]; then
@@ -465,8 +454,8 @@ main() {
 	local artifact_dir="${ARTIFACT_DIR:-/tmp/mintboot-virt-run}"
 	local qemu="${QEMU:-$qemu_default}"
 	local elf="${ELF:-$ROOT/.compile_virt/mintboot-virt.elf}"
-	local ramdisk="${RAMDISK:-$ROOT/ramdisk.img}"
-	local ramdisk_dir="${RAMDISK_DIR:-$ROOT/ramdisk.d}"
+	local diskimage="${DISKIMAGE:-$ROOT/disk.img}"
+	local diskimage_dir="${DISKIMAGE_DIR:-$ROOT/diskimage.d}"
 	local mem_file="${MEM_FILE:-$artifact_dir/memory.bin}"
 	local cmdline="${CMDLINE:-}"
 	local qemu_trace="${QEMU_TRACE:-}"
@@ -476,8 +465,8 @@ main() {
 	local disasm_cpu="${DISASM_CPU:-${qemu_cpu#m}}"
 	local version_h="${VERSION_H:-$ROOT/../../sys/buildinfo/version.h}"
 	local kernel_src="${KERNEL_SRC:-$ROOT/../../sys/compile.040/mint040.prg}"
-	local ramdisk_size_mib="${RAMDISK_SIZE_MIB:-32}"
-	local ramdisk_sector_size="${RAMDISK_SECTOR_SIZE:-512}"
+	local diskimage_size_mib="${DISKIMAGE_SIZE_MIB:-32}"
+	local diskimage_sector_size="${DISKIMAGE_SECTOR_SIZE:-512}"
 	local base_mem_size_mib="${BASE_MEM_SIZE_MIB:-64}"
 	local mem_size_bytes qemu_rc analysis_tmp
 
@@ -491,8 +480,8 @@ main() {
 
 	qemu=$(to_abs_path "$qemu")
 	elf=$(to_abs_path "$elf")
-	ramdisk=$(to_abs_path "$ramdisk")
-	ramdisk_dir=$(to_abs_path "$ramdisk_dir")
+	diskimage=$(to_abs_path "$diskimage")
+	diskimage_dir=$(to_abs_path "$diskimage_dir")
 	mem_file=$(to_abs_path "$mem_file")
 	run_log=$(to_abs_path "$run_log")
 	cov_stream=$(to_abs_path "$cov_stream")
@@ -505,15 +494,13 @@ main() {
 	require_file "$version_h" "version header"
 
 	prepare_artifact_dir "$artifact_dir"
-	mkdir -p "$ramdisk_dir"
-	if need_ramdisk_regen "$ramdisk" "$ramdisk_dir" "$kernel_src"; then
-		build_ramdisk "$ramdisk" "$ramdisk_dir" "$kernel_src" "$version_h" \
-			"$ramdisk_size_mib" "$ramdisk_sector_size"
-	fi
+	mkdir -p "$diskimage_dir"
+	sync_diskimage "$diskimage" "$diskimage_dir" "$kernel_src" "$version_h" \
+		"$diskimage_size_mib" "$diskimage_sector_size"
 
-	mem_size_bytes=$(ensure_mem_file "$ramdisk" "$mem_file" "$base_mem_size_mib")
+	mem_size_bytes=$(ensure_mem_file "$mem_file" "$base_mem_size_mib")
 
-	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$ramdisk" "$qemu_trace" "$cmdline" "$run_log" "$artifact_dir" "$qemu_cpu"; then
+	if run_qemu "$qemu" "$mem_size_bytes" "$mem_file" "$elf" "$diskimage" "$qemu_trace" "$cmdline" "$run_log" "$artifact_dir" "$qemu_cpu"; then
 		qemu_rc=0
 	else
 		qemu_rc=$?

@@ -1,4 +1,5 @@
 #include "mb_fat_tests_internal.h"
+#include "mintboot/mb_errors.h"
 
 uint16_t mb_tests_drive_dev;
 char mb_tests_drive_letter;
@@ -85,14 +86,22 @@ void mb_tests_make_noslash_path(char *out, uint32_t outsz,
 const struct mb_test_bpb *mb_tests_getbpb(void)
 {
 	const struct mb_test_bpb *bpb;
+	long bpb_ptr;
 
-	bpb = (const struct mb_test_bpb *)(uintptr_t)Getbpb(mb_tests_drive_dev);
-	if (!bpb || bpb->recsiz != 512)
+	bpb_ptr = (long)(intptr_t)Getbpb(mb_tests_drive_dev);
+	bpb = (const struct mb_test_bpb *)(uintptr_t)bpb_ptr;
+	if (!bpb || bpb->recsiz != 512) {
+		mb_log_printf("FAT test: Getbpb dev=%u ptr=0x%08lx recsiz=%u\n",
+			      (unsigned)mb_tests_drive_dev,
+			      (unsigned long)bpb_ptr,
+			      bpb ? (unsigned)bpb->recsiz : 0u);
 		mb_panic("FAT test: BPB invalid");
+	}
 	return bpb;
 }
 
-void mb_tests_set_readonly(const char name83[11])
+static int mb_tests_update_attr(const char name83[11], uint8_t set_mask,
+			       uint8_t clear_mask)
 {
 	const struct mb_test_bpb *bpb;
 	uint8_t sector[512];
@@ -119,14 +128,35 @@ void mb_tests_set_readonly(const char name83[11])
 			continue;
 		if (mb_tests_memcmp(&sector[offset], (const uint8_t *)name83, 11) != 0)
 			continue;
-		sector[offset + 11] |= 0x01;
+		sector[offset + 11] = (uint8_t)((sector[offset + 11] | set_mask) &
+						(uint8_t)~clear_mask);
 		if (mb_rom_dispatch.rwabs(1, sector, 1, (uint16_t)sector_idx,
 					  mb_tests_drive_dev) != 0)
 			mb_panic("FAT test: rwabs write root");
-		return;
+		return 0;
 	}
 
-	mb_panic("FAT test: readonly target not found");
+	return MB_ERR_FILNF;
+}
+
+void mb_tests_set_readonly(const char name83[11])
+{
+	if (mb_tests_update_attr(name83, 0x01u, 0u) != 0)
+		mb_panic("FAT test: readonly target not found");
+}
+
+static void mb_tests_clear_readonly_if_exists(const char name83[11])
+{
+	(void)mb_tests_update_attr(name83, 0u, 0x01u);
+}
+
+static void mb_tests_delete_if_exists(const char *path)
+{
+	long rc = Fdelete(path);
+
+	if (rc == 0 || rc == MB_ERR_FILNF)
+		return;
+	mb_panic("FAT test: cleanup delete rc=%d path='%s'", (int)rc, path);
 }
 
 void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
@@ -182,4 +212,10 @@ void mb_fat_tests_init_context(struct mb_fat_test_ctx *t)
 	mb_tests_make_path(t->mixed, sizeof(t->mixed), mb_tests_drive_letter,
 			   "SUBDIR\\INNER.TXT");
 	t->mixed[2] = '/';
+
+	/* Keep tests repeatable with persistent disk images across runs. */
+	mb_tests_clear_readonly_if_exists("NEWFILE TXT");
+	mb_tests_clear_readonly_if_exists("REWRITE TXT");
+	mb_tests_delete_if_exists(t->fcreate_new);
+	mb_tests_delete_if_exists(t->fcreate_rewrite);
 }
